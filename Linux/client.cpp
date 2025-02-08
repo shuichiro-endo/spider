@@ -819,7 +819,7 @@ namespace spider
 #endif
 
         free(buffer);
-        return 0;
+        return -1;
     }
 }
 
