@@ -317,7 +317,7 @@ namespace spider
                     print_bytes(buffer, rec);
 #endif
 
-                    if(!xor_flag)
+                    if(xor_flag)
                     {
                         encrypt_xor(buffer,
                                     rec);
@@ -369,7 +369,7 @@ namespace spider
             return -1;
         }
 
-        if(!xor_flag)
+        if(xor_flag)
         {
             encrypt_xor(buffer,
                         data_size);
@@ -705,6 +705,12 @@ namespace spider
             return -1;
         }
         std::memcpy(buffer, socks5_message->get_data(), rec);
+
+        if(xor_flag)
+        {
+            encrypt_xor(buffer,
+                        rec);
+        }
 
 #ifdef _DEBUG
         std::printf("[+] [client -> server] recv selection request: %d bytes\n",
