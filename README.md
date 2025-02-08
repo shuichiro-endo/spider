@@ -7,7 +7,7 @@ socks5 proxy tunnel tool
 
 The spider has the following features:
 
-- has multiple spider nodes (client, server, pipe)
+- Can have multiple spider nodes (client, server, pipe)
 - Connects to multiple spider nodes
 - Generates and exchanges routing information between spider nodes
 - Automatically generates a spider server node at the desired spider node
