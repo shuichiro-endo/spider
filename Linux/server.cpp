@@ -259,7 +259,7 @@ namespace spider
                                 int32_t data_size)
     {
         int32_t ret = 0;
-        int32_t key_length = xor_key_hex_string.size() * 2 + 1;
+        int32_t key_length = xor_key_hex_string.size() / 2;
         unsigned char *key = (unsigned char *)calloc(key_length,
                                                      sizeof(char));
 
