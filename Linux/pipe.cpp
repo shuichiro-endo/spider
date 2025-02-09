@@ -155,9 +155,11 @@ namespace spider
         if(ret == -1)
         {
 #ifdef _DEBUG
-            std::printf("[-] gettimeofday error\n");
+            std::printf("[-] recv_message gettimeofday error\n");
 #endif
-            goto error_1;
+            free(tmp);
+            free(buffer);
+            return -1;
         }
 
         while(1)
@@ -166,9 +168,11 @@ namespace spider
             if(ret == -1)
             {
 #ifdef _DEBUG
-                std::printf("[-] gettimeofday error\n");
+                std::printf("[-] recv_message gettimeofday error\n");
 #endif
-                goto error_1;
+                free(tmp);
+                free(buffer);
+                return -1;
             }
 
             t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
@@ -177,7 +181,9 @@ namespace spider
 #ifdef _DEBUG
                 printf("[-] recv_message timeout\n");
 #endif
-                goto return_0;
+                free(tmp);
+                free(buffer);
+                return 0;
             }
 
             FD_ZERO(&readfds);
@@ -197,7 +203,9 @@ namespace spider
 #ifdef _DEBUG
                 std::printf("[+] recv_message select timeout\n");
 #endif
-                goto return_0;
+                free(tmp);
+                free(buffer);
+                return 0;
             }
 
             ret = FD_ISSET(sock,
@@ -223,7 +231,9 @@ namespace spider
                         std::printf("[-] recv_message recv error: %d\n",
                                errno);
 #endif
-                        goto error_1;
+                        free(tmp);
+                        free(buffer);
+                        return -1;
                     }
                 }else
                 {
@@ -321,14 +331,6 @@ namespace spider
         free(tmp);
         free(buffer);
         return rec;
-
-return_0:
-        free(buffer);
-        return 0;
-
-error_1:
-        free(buffer);
-        return -1;
     }
 
     int32_t Pipe::send_routing_message()
@@ -352,7 +354,8 @@ error_1:
         std::shared_ptr<Routingmessage> routing_message;
         routing_message = pop_routing_message();
         if(routing_message == nullptr){
-            goto return_0;
+            free(buffer);
+            return 0;
         }
         length = routing_message->copy_to_buffer(buffer);
         len = length;
@@ -367,9 +370,10 @@ error_1:
         if(ret == -1)
         {
 #ifdef _DEBUG
-            std::printf("[-] gettimeofday error\n");
+            std::printf("[-] send_routing_message gettimeofday error\n");
 #endif
-            goto error_1;
+            free(buffer);
+            return -1;
         }
 
         while(len > 0)
@@ -379,18 +383,20 @@ error_1:
             if(ret == -1)
             {
 #ifdef _DEBUG
-                std::printf("[-] gettimeofday error\n");
+                std::printf("[-] send_routing_message gettimeofday error\n");
 #endif
-                goto error_1;
+                free(buffer);
+                return -1;
             }
 
             t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
             if(t >= (tv_sec * 1000000 + tv_usec))
             {
 #ifdef _DEBUG
-                std::printf("[-] send_data timeout\n");
+                std::printf("[-] send_routing_message timeout\n");
 #endif
-                goto return_0;
+                free(buffer);
+                return 0;
             }
 
             FD_ZERO(&writefds);
@@ -407,9 +413,10 @@ error_1:
                          &tv);
             if(ret == 0){
 #ifdef _DEBUG
-                std::printf("[I] send_data select timeout\n");
+                std::printf("[I] send_routing_message select timeout\n");
 #endif
-                goto return_0;
+                free(buffer);
+                return 0;
             }
 
             ret = FD_ISSET(sock,
@@ -432,10 +439,11 @@ error_1:
                     }else
                     {
 #ifdef _DEBUG
-                        std::printf("[-] send error: %d\n",
+                        std::printf("[-] send_routing_message send error: %d\n",
                                     errno);
 #endif
-                        goto error_1;
+                        free(buffer);
+                        return -1;
                     }
                 }
                 send_length += sen;
@@ -445,14 +453,6 @@ error_1:
 
         free(buffer);
         return length;
-
-return_0:
-        free(buffer);
-        return 0;
-
-error_1:
-        free(buffer);
-        return -1;
     }
 
     int32_t Pipe::send_socks5_message()
@@ -488,9 +488,10 @@ error_1:
         if(ret == -1)
         {
 #ifdef _DEBUG
-            std::printf("[-] gettimeofday error\n");
+            std::printf("[-] send_socks5_message gettimeofday error\n");
 #endif
-            goto error_1;
+            free(buffer);
+            return -1;
         }
 
         while(len > 0)
@@ -500,18 +501,20 @@ error_1:
             if(ret == -1)
             {
 #ifdef _DEBUG
-                std::printf("[-] gettimeofday error\n");
+                std::printf("[-] send_socks5_message gettimeofday error\n");
 #endif
-                goto error_1;;
+                free(buffer);
+                return -1;
             }
 
             t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
             if(t >= (tv_sec * 1000000 + tv_usec))
             {
 #ifdef _DEBUG
-                std::printf("[-] send_data timeout\n");
+                std::printf("[-] send_socks5_message timeout\n");
 #endif
-                goto return_0;
+                free(buffer);
+                return 0;
             }
 
             FD_ZERO(&writefds);
@@ -528,9 +531,10 @@ error_1:
                          &tv);
             if(ret == 0){
 #ifdef _DEBUG
-                std::printf("[I] send_data select timeout\n");
+                std::printf("[I] send_socks5_message select timeout\n");
 #endif
-                goto return_0;
+                free(buffer);
+                return 0;
             }
 
             ret = FD_ISSET(sock,
@@ -553,10 +557,11 @@ error_1:
                     }else
                     {
 #ifdef _DEBUG
-                        std::printf("[-] send error: %d\n",
+                        std::printf("[-] send_socks5_message send error: %d\n",
                                     errno);
 #endif
-                        goto error_1;
+                        free(buffer);
+                        return -1;
                     }
                 }
                 send_length += sen;
@@ -566,14 +571,5 @@ error_1:
 
         free(buffer);
         return length;
-
-
-return_0:
-        free(buffer);
-        return 0;
-
-error_1:
-        free(buffer);
-        return -1;
     }
 }
