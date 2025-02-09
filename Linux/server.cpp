@@ -333,7 +333,7 @@ namespace spider
             }else
             {
 #ifdef _DEBUG
-                std::printf("recv_message unknown message type: %c\n",
+                std::printf("[-] recv_message unknown message type: %c\n",
                             message_type);
 #endif
                 return -1;
@@ -341,7 +341,7 @@ namespace spider
         }else
         {
 #ifdef _DEBUG
-            std::printf("recv_message error\n");
+            std::printf("[-] recv_message error\n");
 #endif
             return -1;
         }
@@ -362,7 +362,7 @@ namespace spider
 
         if(data_size > SOCKS5_MESSAGE_DATA_SIZE){
 #ifdef _DEBUG
-            std::printf("send_message data size error: %d\n",
+            std::printf("[-] send_message data size error: %d\n",
                         data_size);
 #endif
             free(socks5_message_data);
