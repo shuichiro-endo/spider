@@ -170,7 +170,6 @@ namespace spider
             return -1;
         }
 
-
         while(1)
         {
             ret = gettimeofday(&end, NULL);
@@ -291,7 +290,7 @@ namespace spider
 #endif
                             free(tmp);
                             free(buffer);
-                            return -1;
+                            return 0;
                         }
 
                         continue;
@@ -338,7 +337,7 @@ namespace spider
 #endif
                             free(tmp);
                             free(buffer);
-                            return -1;
+                            return 0;
                         }
                     }else
                     {
@@ -395,7 +394,7 @@ namespace spider
 #endif
                             free(tmp);
                             free(buffer);
-                            return -1;
+                            return 0;
                         }
                     }
 
