@@ -79,6 +79,9 @@ command >
 ```
 
 - 1: add node (spider client)
+> [!NOTE]
+> The startup location of the spider server node is determined by the 'server destination ip' when adding the spider client node.
+
 ```
 command > 1
 [+] add node (spider client)
