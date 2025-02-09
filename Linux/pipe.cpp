@@ -234,7 +234,7 @@ namespace spider
                                   0);
                 }
 
-                if(tmprec < 0)
+                if(tmprec <= 0)
                 {
                     if(errno == EINTR)
                     {
@@ -253,9 +253,6 @@ namespace spider
                         free(buffer);
                         return -1;
                     }
-                }else if(tmprec == 0)
-                {
-                    continue;
                 }else
                 {
                     std::memcpy(buffer + rec,
@@ -501,7 +498,7 @@ namespace spider
                 sen = send(sock,
                            buffer+send_length,
                            len,
-                           0);
+                           MSG_NOSIGNAL);
                 if(sen <= 0)
                 {
                     if(errno == EINTR)
@@ -619,7 +616,7 @@ namespace spider
                 sen = send(sock,
                            buffer+send_length,
                            len,
-                           0);
+                           MSG_NOSIGNAL);
                 if(sen <= 0)
                 {
                     if(errno == EINTR)

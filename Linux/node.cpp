@@ -270,7 +270,7 @@ namespace spider
                 sen = send(sock,
                            buffer+send_length,
                            len,
-                           0);
+                           MSG_NOSIGNAL);
                 if(sen <= 0)
                 {
                     if(errno == EINTR)

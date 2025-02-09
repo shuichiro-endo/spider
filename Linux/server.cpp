@@ -473,7 +473,7 @@ namespace spider
                     sen = send(target_sock,
                                buffer,
                                rec,
-                               0);
+                               MSG_NOSIGNAL);
                     if(sen <= 0)
                     {
                         break;
