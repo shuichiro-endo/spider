@@ -288,7 +288,7 @@ namespace spider
             if(message_type == 's')     // socks5 message
             {
                 rec = socks5_message->get_data_size();
-                if(rec > 0)
+                if(rec >= 0)
                 {
                     if(register_server_id_flag)
                     {

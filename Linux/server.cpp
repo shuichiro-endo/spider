@@ -307,7 +307,7 @@ namespace spider
             if(message_type == 's')     // socks5 message
             {
                 rec = socks5_message->get_data_size();
-                if(rec > 0)
+                if(rec >= 0)
                 {
                     std::memcpy(buffer,
                                 socks5_message->get_data(),

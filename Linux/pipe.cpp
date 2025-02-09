@@ -129,6 +129,7 @@ namespace spider
     {
         int ret = 0;
         int32_t rec = 0;
+        int32_t tmprec = 0;
         fd_set readfds;
         int nfds = -1;
         struct timeval tv;
@@ -139,6 +140,8 @@ namespace spider
         long t = 0;
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
+        char *tmp = (char *)calloc(NODE_BUFFER_SIZE,
+                                   sizeof(char));
 
         std::shared_ptr<Routingmessage> routing_message;
         struct routing_message_data *routing_message_data;
@@ -201,11 +204,11 @@ namespace spider
                            &readfds);
             if(ret)
             {
-                rec = recv(sock,
-                           buffer,
-                           NODE_BUFFER_SIZE,
-                           0);
-                if(rec <= 0)
+                tmprec = recv(sock,
+                              tmp,
+                              NODE_BUFFER_SIZE,
+                              0);
+                if(tmprec <= 0)
                 {
                     if(errno == EINTR)
                     {
@@ -224,64 +227,98 @@ namespace spider
                     }
                 }else
                 {
+                    std::memcpy(buffer + rec,
+                                tmp,
+                                tmprec);
+                    rec += tmprec;
+
+                    std::memset(tmp,
+                                0,
+                                NODE_BUFFER_SIZE);
+                    tmprec = 0;
+
+#ifdef _DEBUG
+//                    std::printf("rec: %d\n", rec);
+//                    print_bytes(buffer, rec);
+#endif
+
+                    if(rec > 0)
+                    {
+                        if(buffer[0] == 'r')
+                        {
+                            if(rec < routing_message_header_size)
+                            {
+                                continue;
+                            }else
+                            {
+                                routing_message_data = (struct routing_message_data *)buffer;
+                                if(rec < routing_message_header_size + routing_message_data->data_size)
+                                {
+                                    continue;
+                                }else if(rec == routing_message_header_size + routing_message_data->data_size)
+                                {
+                                    routing_message = std::make_unique<Routingmessage>(this->get_pipe_id(),
+                                                                                       routing_message_data);
+
+                                    std::thread thread_message_manager(&Messagemanager::push_routing_message,
+                                                                       message_manager,
+                                                                       routing_message);
+                                    thread_message_manager.detach();
+                                }else
+                                {
+#ifdef _DEBUG
+                                    std::printf("[-] recv_message routing message recv length error: %d\n", rec);
+#endif
+                                    free(tmp);
+                                    free(buffer);
+                                    return 0;
+                                }
+                            }
+                        }else if(buffer[0] == 's'){
+                            if(rec < socks5_message_header_size)
+                            {
+                                continue;
+                            }else
+                            {
+                                socks5_message_data = (struct socks5_message_data*)buffer;
+                                if(rec < socks5_message_header_size + socks5_message_data->data_size){
+                                    continue;
+                                }else if(rec == socks5_message_header_size + socks5_message_data->data_size)
+                                {
+                                    socks5_message = std::make_unique<Socks5message>(socks5_message_data);
+
+                                    std::thread thread_message_manager(&Messagemanager::push_socks5_message,
+                                                                       message_manager,
+                                                                       socks5_message);
+                                    thread_message_manager.detach();
+
+                                }else
+                                {
+#ifdef _DEBUG
+                                    std::printf("[-] recv_message socks5 message recv length error: %d\n", rec);
+#endif
+                                    free(tmp);
+                                    free(buffer);
+                                    return 0;;
+                                }
+                            }
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] recv_message message type error: %c\n", buffer[0]);
+#endif
+                        }
+                    }else
+                    {
+                        continue;
+                    }
+
                     break;
                 }
             }
         }
 
-#ifdef _DEBUG
-//        std::printf("rec: %d\n", rec);
-//        print_bytes(buffer, rec);
-#endif
-
-        if(rec >= routing_message_header_size && buffer[0] == 'r')   // routing message
-        {
-            routing_message_data = (struct routing_message_data *)buffer;
-            if(rec == routing_message_header_size + routing_message_data->data_size)
-            {
-                routing_message = std::make_unique<Routingmessage>(this->get_pipe_id(),
-                                                                   routing_message_data);
-
-//                message_manager->push_routing_message(routing_message);
-                std::thread thread_message_manager(&Messagemanager::push_routing_message,
-                                                   message_manager,
-                                                   routing_message);
-                thread_message_manager.detach();
-            }else
-            {
-#ifdef _DEBUG
-                std::printf("[-] routing message recv length error: %d\n", rec);
-#endif
-                goto return_0;
-            }
-        }else if(rec >= socks5_message_header_size && buffer[0] == 's') // socks5 message
-        {
-            socks5_message_data = (struct socks5_message_data*)buffer;
-            if(rec == socks5_message_header_size + socks5_message_data->data_size)
-            {
-                socks5_message = std::make_unique<Socks5message>(socks5_message_data);
-
-//                message_manager->push_socks5_message(socks5_message);
-                std::thread thread_message_manager(&Messagemanager::push_socks5_message,
-                                                   message_manager,
-                                                   socks5_message);
-                thread_message_manager.detach();
-
-            }else
-            {
-#ifdef _DEBUG
-                std::printf("[-] socks5 message recv length error: %d\n", rec);
-#endif
-                goto return_0;
-            }
-        }else
-        {
-#ifdef _DEBUG
-            printf("[-] recv data length error: %d\n", rec);
-#endif
-            goto return_0;
-        }
-
+        free(tmp);
         free(buffer);
         return rec;
 
