@@ -151,6 +151,14 @@ namespace spider
         struct socks5_message_data *socks5_message_data;
         uint16_t socks5_message_header_size = sizeof(struct socks5_message_data_header);
 
+        bool recv_message_type_flag = false;
+        bool recv_header_flag = false;
+        int32_t recv_message_type_size = sizeof(char);
+        int32_t recv_header_size = 0;
+        int32_t recv_data_size = 0;
+        int32_t remaining_size = 0;
+
+
         ret = gettimeofday(&start, NULL);
         if(ret == -1)
         {
@@ -161,6 +169,7 @@ namespace spider
             free(buffer);
             return -1;
         }
+
 
         while(1)
         {
@@ -212,11 +221,21 @@ namespace spider
                            &readfds);
             if(ret)
             {
-                tmprec = recv(sock,
-                              tmp,
-                              NODE_BUFFER_SIZE,
-                              0);
-                if(tmprec <= 0)
+                if(recv_message_type_flag == false)
+                {
+                    tmprec = recv(sock,
+                                  tmp,
+                                  recv_message_type_size,
+                                  0);
+                }else
+                {
+                    tmprec = recv(sock,
+                                  tmp,
+                                  remaining_size,
+                                  0);
+                }
+
+                if(tmprec < 0)
                 {
                     if(errno == EINTR)
                     {
@@ -235,6 +254,9 @@ namespace spider
                         free(buffer);
                         return -1;
                     }
+                }else if(tmprec == 0)
+                {
+                    continue;
                 }else
                 {
                     std::memcpy(buffer + rec,
@@ -252,12 +274,79 @@ namespace spider
 //                    print_bytes(buffer, rec);
 #endif
 
-                    if(rec > 0)
+                    if(recv_message_type_flag == false)
+                    {
+                        recv_message_type_flag = true;
+
+                        if(buffer[0] == 'r')
+                        {
+                            remaining_size = routing_message_header_size - rec;
+                        }else if(buffer[0] == 's')
+                        {
+                            remaining_size = socks5_message_header_size - rec;
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] recv_message message type error: %c\n", buffer[0]);
+#endif
+                            free(tmp);
+                            free(buffer);
+                            return -1;
+                        }
+
+                        continue;
+                    }else if(recv_header_flag == false)
                     {
                         if(buffer[0] == 'r')
                         {
                             if(rec < routing_message_header_size)
                             {
+                                remaining_size = routing_message_header_size - rec;
+                            }else
+                            {
+                                recv_header_flag = true;
+
+                                routing_message_data = (struct routing_message_data *)buffer;
+
+                                recv_data_size = routing_message_data->data_size;
+
+                                remaining_size = recv_data_size;
+                            }
+
+                            continue;
+                        }else if(buffer[0] == 's')
+                        {
+                            if(rec < socks5_message_header_size)
+                            {
+                                remaining_size = socks5_message_header_size - rec;
+                            }else
+                            {
+                                recv_header_flag = true;
+
+                                socks5_message_data = (struct socks5_message_data*)buffer;
+
+                                recv_data_size = socks5_message_data->data_size;
+
+                                remaining_size = recv_data_size;
+                            }
+
+                            continue;
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] recv_message message type error: %c\n", buffer[0]);
+#endif
+                            free(tmp);
+                            free(buffer);
+                            return -1;
+                        }
+                    }else
+                    {
+                        if(buffer[0] == 'r')
+                        {
+                            if(rec < routing_message_header_size + recv_data_size)
+                            {
+                                remaining_size = routing_message_header_size + recv_data_size - rec;
                                 continue;
                             }else
                             {
@@ -274,24 +363,20 @@ namespace spider
                                                                        message_manager,
                                                                        routing_message);
                                     thread_message_manager.detach();
-                                }else
-                                {
-#ifdef _DEBUG
-                                    std::printf("[-] recv_message routing message recv length error: %d\n", rec);
-#endif
-                                    free(tmp);
-                                    free(buffer);
-                                    return 0;
+
                                 }
                             }
-                        }else if(buffer[0] == 's'){
-                            if(rec < socks5_message_header_size)
+                        }else if(buffer[0] == 's')
+                        {
+                            if(rec < socks5_message_header_size + recv_data_size)
                             {
+                                remaining_size = socks5_message_header_size + recv_data_size - rec;
                                 continue;
                             }else
                             {
-                                socks5_message_data = (struct socks5_message_data*)buffer;
-                                if(rec < socks5_message_header_size + socks5_message_data->data_size){
+                                socks5_message_data = (struct socks5_message_data *)buffer;
+                                if(rec < socks5_message_header_size + socks5_message_data->data_size)
+                                {
                                     continue;
                                 }else if(rec == socks5_message_header_size + socks5_message_data->data_size)
                                 {
@@ -301,15 +386,6 @@ namespace spider
                                                                        message_manager,
                                                                        socks5_message);
                                     thread_message_manager.detach();
-
-                                }else
-                                {
-#ifdef _DEBUG
-                                    std::printf("[-] recv_message socks5 message recv length error: %d\n", rec);
-#endif
-                                    free(tmp);
-                                    free(buffer);
-                                    return 0;;
                                 }
                             }
                         }else
@@ -317,10 +393,10 @@ namespace spider
 #ifdef _DEBUG
                             std::printf("[-] recv_message message type error: %c\n", buffer[0]);
 #endif
+                            free(tmp);
+                            free(buffer);
+                            return -1;
                         }
-                    }else
-                    {
-                        continue;
                     }
 
                     break;
