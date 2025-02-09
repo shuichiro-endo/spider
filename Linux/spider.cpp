@@ -164,7 +164,7 @@ namespace spider
     {
         while(1)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000ms
+            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000µs
 
             routing_manager->update_routing_table();
         }
@@ -205,7 +205,7 @@ namespace spider
     {
         while(1)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000ms
+            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000µs
 
             message_manager->transfer_routing_message();
         }
@@ -899,7 +899,7 @@ namespace spider
 
         while(1)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000ms
+//            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000µs
 
             ret = pipe->recv_message();
             if(ret == -1)
@@ -921,7 +921,7 @@ namespace spider
 
         while(1)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000ms
+//            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000µs
 
             ret = pipe->send_routing_message();
             if(ret == -1)
@@ -943,7 +943,7 @@ namespace spider
 
         while(1)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000ms
+//            std::this_thread::sleep_for(std::chrono::microseconds(5000));  // 5000µs
 
             ret = pipe->send_socks5_message();
             if(ret == -1)
