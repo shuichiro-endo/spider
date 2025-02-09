@@ -45,6 +45,7 @@ example      : ./spider -i 192.168.0.10
 - run
 > [!NOTE]
 > The -i option sets the IP address of the network interface.
+> 
 > Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
 
 ```
@@ -181,3 +182,193 @@ command > 4
 ------------------------------------------------------------------------------------------------
 ```
 
+## Example
+![](./imgs/img01.jpg)
+
+1. add spider pipe server node (1)
+```
+./spider -i 192.168.0.25
+
+                 -.                                 _//                   
+           .=  :*=--::                       _/     _//                   
+      ....  =:::::-==++-::.   _//// _/ _//          _//   _//    _/ _///  
+      .:..:--::::..--:..     _//    _/  _// _// _// _// _/   _//  _//     
+    .:::==-::.:-===.           _/// _/   _//_//_/   _//_///// _// _//     
+  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
+         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
+        :*-  :*-   .:.              _//                                   
+        =-    -:                  Linux Ver: 0.1  Author: Shuichiro Endo  
+
+
+----------     spider     ----------
+ spider ip          : 192.168.0.25
+ xor encryption     : off
+ xor key hex string : 
+---------- spider command ----------
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 0: exit
+------------------------------------
+
+command > 2
+[+] add node (spider pipe)
+mode (client:c server:s)    > s
+pipe listen port            > 1026
+
+mode                    : s
+pipe ip                 : 192.168.0.25
+pipe listen port        : 1026
+
+ok? (yes:y no:n quit:q) > y
+
+```
+
+2. add spider pipe client node (2)
+```
+./spider -i 192.168.0.26
+
+                 -.                                 _//                   
+           .=  :*=--::                       _/     _//                   
+      ....  =:::::-==++-::.   _//// _/ _//          _//   _//    _/ _///  
+      .:..:--::::..--:..     _//    _/  _// _// _// _// _/   _//  _//     
+    .:::==-::.:-===.           _/// _/   _//_//_/   _//_///// _// _//     
+  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
+         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
+        :*-  :*-   .:.              _//                                   
+        =-    -:                  Linux Ver: 0.1  Author: Shuichiro Endo  
+
+
+----------     spider     ----------
+ spider ip          : 192.168.0.26
+ xor encryption     : off
+ xor key hex string : 
+---------- spider command ----------
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 0: exit
+------------------------------------
+
+command > 2
+[+] add node (spider pipe)
+mode (client:c server:s)    > c
+pipe destination ip         > 192.168.0.25
+pipe destination port       > 1026
+
+mode                    : c
+pipe ip                 : 192.168.0.26
+pipe destination ip     : 192.168.0.25
+pipe destination port   : 1026
+
+ok? (yes:y no:n quit:q) > y
+
+```
+
+3. add spider client node (3)
+> [!NOTE]
+> The startup location of the spider server node is determined by the 'server destination ip' when adding the spider client node.
+
+```
+----------     spider     ----------
+ spider ip          : 192.168.0.25
+ xor encryption     : off
+ xor key hex string : 
+---------- spider command ----------
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 0: exit
+------------------------------------
+
+command > 1
+[+] add node (spider client)
+client listen port           > 9050
+server destination ip        > 192.168.0.26
+recv/send tv_sec  (timeout 0-60 sec)           > 3
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 30
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+client listen ip        : 192.168.0.25
+client listen port      : 9050
+server destination ip   : 192.168.0.26
+recv/send tv_sec        :       3 sec
+recv/send tv_usec       :       0 microsec
+forwarder_tv_sec        :      30 sec
+forwarder_tv_usec       :       0 microsec
+
+ok? (yes:y no:n quit:q) > y
+
+```
+
+4. check node and routing table
+- show node information (pc01 192.168.0.25)
+```
+----------     spider     ----------
+ spider ip          : 192.168.0.25
+ xor encryption     : off
+ xor key hex string : 
+---------- spider command ----------
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 0: exit
+------------------------------------
+
+command > 3
+[+] show node information
+--------------------------------------------------------------------------------------------------- client -----------------------------------------------------------------------------------------------------
+|connection id|client id |server id |client ip                                     |client port|server destination ip                         |client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|   2654369324|         0|         0|192.168.0.25                                  |       9050|192.168.0.26                                  |            6|      3|      0|              30|                0|
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------------------------------- server ----------------------------------------------------------------------------------------------------------------------------------
+|connection id|client id |server id |server ip                                     |server port|client destination ip                         |server socket|target ip                                     |target port|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------------------------- pipe -------------------------------------------------------------------------------
+|pipe id   |mode|pipe ip                                       |pipe listen port|pipe destination ip                           |pipe destination port|pipe socket|
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|1176964916|-   |192.168.0.25                                  |                |192.168.0.26                                  |                51668|          4|
+|1567359876|s   |192.168.0.25                                  |            1026|                                              |                     |          3|
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+```
+- show routing table (pc01 192.168.0.25)
+```
+----------     spider     ----------
+ spider ip          : 192.168.0.25
+ xor encryption     : off
+ xor key hex string : 
+---------- spider command ----------
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 0: exit
+------------------------------------
+
+command > 4
+[+] show routing table
+---------------------------------------- routing  table ----------------------------------------
+|type|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|c   |192.168.0.25                                  |     0|         0|Sun Feb  9 13:03:06 2025|
+|c   |192.168.0.26                                  |     1|1176964916|Sun Feb  9 13:06:08 2025|
+|s   |192.168.0.25                                  |     0|         0|Sun Feb  9 13:03:06 2025|
+|s   |192.168.0.26                                  |     1|1176964916|Sun Feb  9 13:06:08 2025|
+------------------------------------------------------------------------------------------------
+
+```
+
+5. run socks5 client (e.g. curl)
+```
+curl -v -x socks5h://192.168.0.25:9050 https://www.google.com
+```
