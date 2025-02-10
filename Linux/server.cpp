@@ -420,6 +420,8 @@ namespace spider
         int32_t ret = 0;
         int32_t rec = 0;
         int32_t sen = 0;
+        int32_t len = 0;
+        int32_t send_length = 0;
         fd_set writefds;
         int nfds = -1;
         struct timeval tv;
@@ -467,16 +469,37 @@ namespace spider
                                    forwarder_tv_usec);
                 if(rec > 0)
                 {
+                    len = rec;
+                    send_length = 0;
 #ifdef _DEBUG
                     std::printf("[+] [server -> target] send\n");
 #endif
-                    sen = send(target_sock,
-                               buffer,
-                               rec,
-                               MSG_NOSIGNAL);
-                    if(sen <= 0)
+                    while(len > 0)
                     {
-                        break;
+                        sen = send(target_sock,
+                                   buffer,
+                                   rec,
+                                   MSG_NOSIGNAL);
+                        if(sen <= 0)
+                        {
+                            if(errno == EINTR)
+                            {
+                                continue;
+                            }else if(errno == EAGAIN)
+                            {
+                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                continue;
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] forwarder_recv_data send error: %d\n",
+                                            errno);
+#endif
+                                break;
+                            }
+                        }
+                        send_length += sen;
+                        len -= sen;
                     }
                 }else
                 {
@@ -539,7 +562,24 @@ namespace spider
                            buffer,
                            socks5_message_data_max_size,
                            0);
-                if(rec > 0)
+                if(rec <= 0)
+                {
+                    if(errno == EINTR)
+                    {
+                        continue;
+                    }else if(errno == EAGAIN)
+                    {
+                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                        continue;
+                    }else
+                    {
+#ifdef _DEBUG
+                        printf("[-] forwarder_send_data recv error: %d\n",
+                               errno);
+#endif
+                        return -1;
+                    }
+                }else
                 {
 #ifdef _DEBUG
                     std::printf("[+] [client <- server] send_message\n");
@@ -552,8 +592,6 @@ namespace spider
                     {
                         break;
                     }
-                }else{
-                    break;
                 }
             }
         }

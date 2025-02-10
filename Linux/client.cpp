@@ -443,7 +443,7 @@ namespace spider
             if(ret == 0)
             {
 #ifdef _DEBUG
-                std::printf("[+] forwarder_recv_data timeout\n");
+                std::printf("[+] forwarder_recv_data select timeout\n");
 #endif
                 break;
             }
@@ -463,7 +463,24 @@ namespace spider
                            buffer,
                            socks5_message_data_max_size,
                            0);
-                if(rec > 0)
+                if(rec <= 0)
+                {
+                    if(errno == EINTR)
+                    {
+                        continue;
+                    }else if(errno == EAGAIN)
+                    {
+                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                        continue;
+                    }else
+                    {
+#ifdef _DEBUG
+                        printf("[-] forwarder_recv_data recv error: %d\n",
+                               errno);
+#endif
+                        return -1;
+                    }
+                }else
                 {
 #ifdef _DEBUG
                     std::printf("[+] [client -> server] send_message\n");
@@ -475,8 +492,6 @@ namespace spider
                     if(sen <= 0){
                         break;
                     }
-                }else{
-                    break;
                 }
             }
         }
@@ -489,6 +504,8 @@ namespace spider
         int32_t ret = 0;
         int32_t rec = 0;
         int32_t sen = 0;
+        int32_t len = 0;
+        int32_t send_length = 0;
         fd_set writefds;
         int nfds = -1;
         struct timeval tv;
@@ -515,7 +532,7 @@ namespace spider
             if(ret == 0)
             {
 #ifdef _DEBUG
-                std::printf("[+] forwarder_send_data timeout\n");
+                std::printf("[+] forwarder_send_data select timeout\n");
 #endif
                 break;
             }
@@ -537,16 +554,37 @@ namespace spider
                                    false);
                 if(rec > 0)
                 {
+                    len = rec;
+                    send_length = 0;
 #ifdef _DEBUG
                     std::printf("[+] [client <- client] send\n");
 #endif
-                    sen = send(sock,
-                               buffer,
-                               rec,
-                               MSG_NOSIGNAL);
-                    if(sen <= 0)
+                    while(len > 0)
                     {
-                        break;
+                        sen = send(sock,
+                                   buffer,
+                                   rec,
+                                   MSG_NOSIGNAL);
+                        if(sen <= 0)
+                        {
+                            if(errno == EINTR)
+                            {
+                                continue;
+                            }else if(errno == EAGAIN)
+                            {
+                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                continue;
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] forwarder_send_data send error: %d\n",
+                                            errno);
+#endif
+                                break;
+                            }
+                        }
+                        send_length += sen;
+                        len -= sen;
                     }
                 }else
                 {
