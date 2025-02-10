@@ -31,12 +31,18 @@ namespace spider
         this->data = (char *)calloc(SOCKS5_MESSAGE_DATA_SIZE,
                                     sizeof(char));
         if(this->data_size <= SOCKS5_MESSAGE_DATA_SIZE){
-            memcpy(this->data, socks5_message_data->data, this->data_size);
+            std::memcpy(this->data,
+                        socks5_message_data->data,
+                        this->data_size);
         }else{
 #ifdef _DEBUG
-            std::printf("[-] socks5 message data size error: %d\n", this->data_size);
-            memcpy(this->data, socks5_message_data->data, SOCKS5_MESSAGE_DATA_SIZE);
+            std::printf("[-] socks5 message data size error: %d\n",
+                        this->data_size);
 #endif
+            this->data_size = SOCKS5_MESSAGE_DATA_SIZE;
+            std::memcpy(this->data,
+                        socks5_message_data->data,
+                        SOCKS5_MESSAGE_DATA_SIZE);
         }
     }
 
