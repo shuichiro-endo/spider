@@ -181,7 +181,7 @@ namespace spider
             }else
             {
 #ifdef _DEBUG
-                std::printf("unknown message type: %c\n",
+                std::printf("[-] unknown message type: %c\n",
                             message_type);
 #endif
             }
