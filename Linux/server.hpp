@@ -134,6 +134,9 @@ namespace spider
         void set_target_port(std::string target_port);
         std::string get_target_port();
 
+        void set_target_sock(int32_t target_sock);
+        int32_t get_target_sock();
+
         void set_tv_sec(int32_t tv_sec);
         int32_t get_tv_sec();
 

@@ -92,14 +92,14 @@ namespace spider
 
     void Servermanager::show_servers_map()
     {
-        std::printf("--------------------------------------------------------------------------------------------------------------------------------- server ----------------------------------------------------------------------------------------------------------------------------------\n");
-        std::printf("|connection id|client id |server id |server ip                                     |server port|client destination ip                         |server socket|target ip                                     |target port|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
-        std::printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("---------------------------------------------------------------------------------------------------------------------------------------- server -----------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("|connection id|client id |server id |server ip                                     |server port|client destination ip                         |server socket|target ip                                     |target port|target socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
+        std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock_servers_map(servers_map_mutex);
         for(auto iterator = servers_map.begin(); iterator != servers_map.end(); ++iterator)
         {
-            std::printf("|   %10u|%10u|%10u|%-46s|      %5s|%-46s|        %5d|%-46s|%7d|%7d|         %7d|          %7d|\n",
+            std::printf("|   %10u|%10u|%10u|%-46s|      %5s|%-46s|        %5d|%-46s|      %5s|        %5d|%7d|%7d|         %7d|          %7d|\n",
                         iterator->second->get_connection_id(),
                         iterator->second->get_client_id(),
                         iterator->second->get_server_id(),
@@ -109,6 +109,7 @@ namespace spider
                         iterator->second->get_sock(),
                         iterator->second->get_target_ip().c_str(),
                         iterator->second->get_target_port().c_str(),
+                        iterator->second->get_target_sock(),
                         iterator->second->get_tv_sec(),
                         iterator->second->get_tv_usec(),
                         iterator->second->get_forwarder_tv_sec(),
@@ -116,7 +117,7 @@ namespace spider
         }
         lock_servers_map.unlock();
 
-        std::printf("---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         std::printf("\n");
 
         return;

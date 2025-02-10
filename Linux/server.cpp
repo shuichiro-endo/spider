@@ -42,6 +42,7 @@ namespace spider
         this->xor_key_hex_string = xor_key_hex_string;
 
         this->sock = server_sock;
+        this->target_sock = -1;
         this->message_manager = message_manager;
     }
 
@@ -128,6 +129,16 @@ namespace spider
     std::string Server::get_target_port()
     {
         return target_port;
+    }
+
+    void Server::set_target_sock(int32_t target_sock)
+    {
+        this->target_sock = target_sock;
+    }
+
+    int32_t Server::get_target_sock()
+    {
+        return target_sock;
     }
 
     void Server::set_tv_sec(int32_t tv_sec)
