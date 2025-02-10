@@ -32,6 +32,7 @@ namespace spider
         uint32_t client_id;
         uint32_t server_id;
         std::string client_ip;
+        std::string client_listen_port;
         std::string client_port;
         std::string server_destination_ip;
         int32_t tv_sec;
@@ -76,6 +77,7 @@ namespace spider
                uint32_t client_id,
                uint32_t server_id,
                std::string client_ip,
+               std::string client_listen_port,
                std::string client_port,
                std::string server_destination_ip,
                int32_t client_sock,
@@ -100,6 +102,9 @@ namespace spider
 
         void set_client_ip(std::string client_ip);
         std::string get_client_ip();
+
+        void set_client_listen_port(std::string client_listen_port);
+        std::string get_client_listen_port();
 
         void set_client_port(std::string client_port);
         std::string get_client_port();
