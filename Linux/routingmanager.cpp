@@ -192,14 +192,24 @@ namespace spider
 
     void Routingmanager::delete_routing_table()
     {
+        int ret = 0;
         struct timeval now;
         long d;
         int count = 0;
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
 
-        std::pair<char, std::string> keys[routes_map.size()];
-        gettimeofday(&now, NULL);
+        std::pair<char, std::string> keys[KEYS_MAP_SIZE];
+        ret = gettimeofday(&now,
+                           NULL);
+        if(ret == 1)
+        {
+#ifdef _DEBUG
+            std::printf("[-] delete_routing_table gettimeofday error\n");
+#endif
+            lock.unlock();
+            return;
+        }
 
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
@@ -210,15 +220,18 @@ namespace spider
 
                 if(d >= DELETE_ROUTE_TIME)
                 {
-                    std::pair<char, std::string> route_key = std::make_pair(iterator->second->get_type(),
-                                                                            iterator->second->get_ip().c_str());
-                    keys[count] = route_key;
-                    count++;
+                    if(count < KEYS_MAP_SIZE)
+                    {
+                        std::pair<char, std::string> route_key = std::make_pair(iterator->second->get_type(),
+                                                                                iterator->second->get_ip().c_str());
+                        keys[count] = route_key;
+                        count++;
+                    }
                 }
             }
         }
 
-        for(int i = 0; i <= count; i++)
+        for(int i = 0; i < count; i++)
         {
             routes_map.erase(keys[i]);  // delete route
         }
