@@ -355,6 +355,10 @@ namespace spider
                     0,
                     sizeof(struct sockaddr_in6));
 
+        std::memset((char *)&hints,
+                    0,
+                    sizeof(struct addrinfo));
+
 
         if(client_listen_ip.find(":") == std::string::npos)  // ipv4 address
         {
