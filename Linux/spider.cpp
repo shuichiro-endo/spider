@@ -43,12 +43,6 @@
 #include "servermanager.hpp"
 #include "messagemanager.hpp"
 
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT  1
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE    2
-#define SPIDER_COMMAND_SHOW_NODE_INFORMATION   3
-#define SPIDER_COMMAND_SHOW_ROUTING_TABLE      4
-#define SPIDER_COMMAND_EXIT                    0
-
 
 namespace spider
 {
