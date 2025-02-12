@@ -223,6 +223,11 @@ namespace spider
         {
             if(iterator->second->get_ip() != spider_ip || iterator->second->get_metric() != 0)
             {
+                if(iterator->second->get_mode() == 's') // self
+                {
+                    continue;
+                }
+
                 struct timeval t = iterator->second->get_time();
                 d = now.tv_sec - t.tv_sec;
 
