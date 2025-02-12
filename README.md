@@ -9,7 +9,7 @@ The spider has the following features:
 
 - Can have multiple spider nodes (client, server, pipe)
 - Connects to multiple spider nodes
-- Generates and exchanges routing information between spider
+- Generates and exchanges routing information between spiders
 - Automatically generates a spider server node at the desired spider
 - Automatically forwards SOCKS5 packets to the desired spider
 - Forwards packets from the SOCKS5 client from the spider client node to the desired spider server node
