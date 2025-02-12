@@ -1,7 +1,7 @@
 /*
  * Title:  spider spider.cpp (Windows)
  * Author: Shuichiro Endo
- * Ver:    0.1
+ * Ver:    0.2
  */
 
 #define NOMINMAX
@@ -115,6 +115,10 @@ namespace spider
                                       std::shared_ptr<Pipemanager> pipe_manager);
 
     static void show_routing_table(std::shared_ptr<Routingmanager> routing_manager);
+
+    static void edit_routing_table(std::string spider_ip,
+                                   std::shared_ptr<Pipemanager> pipe_manager,
+                                   std::shared_ptr<Routingmanager> routing_manager);
 
     static void usage(char *filename);
 
@@ -1790,6 +1794,230 @@ namespace spider
         return;
     }
 
+    void edit_routing_table(std::string spider_ip,
+                            std::shared_ptr<Pipemanager> pipe_manager,
+                            std::shared_ptr<Routingmanager> routing_manager)
+    {
+        char edit_mode;  // add:a delete:d
+        char type;       // client:c server:s
+        std::string ip;
+        uint32_t metric;
+        uint32_t pipe_id;
+        char check = 'n';
+
+
+        while(1)
+        {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
+            std::printf("edit mode (add:a delete:d quit:q)  > ");
+            std::cin >> edit_mode;
+            if(std::cin.fail())
+            {
+#ifdef _DEBUG
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(edit_mode == 'a')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                std::printf("ip address                         > ");
+                std::cin >> ip;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(ip == spider_ip)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    continue;
+                }
+
+                std::printf("metric (0 < metric <= %d)         > ", UINT8_MAX);
+                std::cin >> metric;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(metric == 0 || metric > UINT8_MAX)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    continue;
+                }
+
+                pipe_manager->show_pipes_map();
+
+                std::printf("pipe id                             > ");
+                std::cin >> pipe_id;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("\n");
+                std::printf("edit mode       : %c\n", edit_mode);
+                std::printf("ip address      : %s\n", ip.c_str());
+                std::printf("metric          : %u\n", metric);
+                std::printf("pipe id         : %10u\n", pipe_id);
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)             > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    std::shared_ptr<Route> route_c = std::make_shared<Route>('s',
+                                                                             'c',
+                                                                             ip,
+                                                                             (uint8_t)metric,
+                                                                             pipe_id);
+                    routing_manager->add_route(route_c);
+
+                    std::shared_ptr<Route> route_s = std::make_shared<Route>('s',
+                                                                             's',
+                                                                             ip,
+                                                                             (uint8_t)metric,
+                                                                             pipe_id);
+                    routing_manager->add_route(route_s);
+
+                    continue;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q'){
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else{
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+
+                break;
+            }else if(edit_mode == 'd')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                std::printf("ip address                         > ");
+                std::cin >> ip;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(ip == spider_ip)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    continue;
+                }
+
+                std::printf("\n");
+                std::printf("edit mode       : %c\n", edit_mode);
+                std::printf("ip address      : %s\n", ip.c_str());
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)            > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    routing_manager->delete_route('c',
+                                                  ip);
+
+
+                    routing_manager->delete_route('s',
+                                                  ip);
+
+                    continue;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q'){
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else{
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+
+                break;
+            }else if(check == 'q'){
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }else{
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }
+
+            break;
+        }
+
+        return;
+    }
+
     static void print_title()
     {
         std::printf("\n");
@@ -1801,7 +2029,7 @@ namespace spider
         std::printf("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     \n");
         std::printf("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     \n");
         std::printf("        :*-  :*-   .:.              _//                                   \n");
-        std::printf("        =-    -:                Windows Ver: 0.1  Author: Shuichiro Endo  \n");
+        std::printf("        =-    -:                Windows Ver: 0.2  Author: Shuichiro Endo  \n");
         std::printf("\n");
     }
 
@@ -1809,9 +2037,11 @@ namespace spider
     {
         std::printf("\n");
         std::printf("usage        : %s -i spider_ip\n", filename);
+        std::printf("             : [-r routing_mode(auto:a self:s)]\n");
         std::printf("             : [-x (xor encryption)] [-k key(hexstring)]\n");
         std::printf("example      : %s -i 192.168.0.10\n", filename);
         std::printf("             : %s -i 192.168.0.10 -x -k deadbeef\n", filename);
+        std::printf("             : %s -i 192.168.0.10 -r s\n", filename);
         std::printf("             : %s -i fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
         std::printf("\n");
     }
@@ -1861,9 +2091,10 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:i:xk:";
+    const char *optstring = "h:i:r:xk:";
     int opterr = 0;
     std::string spider_ip;
+    std::string routing_mode = "a";
     BOOL xor_flag = false;
     std::string xor_key_hex_string;
 
@@ -1880,6 +2111,10 @@ int main(int argc,
 
             case 'i':
                 spider_ip = optarg;
+                break;
+
+            case 'r':
+                routing_mode = optarg;
                 break;
 
             case 'x':
@@ -1931,9 +2166,12 @@ int main(int argc,
                                                                pipe_manager,
                                                                routing_manager);
 
-    std::thread routing_manager_thread(spider::routing_manager_worker,
-                                       routing_manager);
-    routing_manager_thread.detach();
+    if(routing_mode != "s") // auto
+    {
+        std::thread routing_manager_thread(spider::routing_manager_worker,
+                                           routing_manager);
+        routing_manager_thread.detach();
+    }
 
     std::thread message_manager_thread(spider::message_manager_worker,
                                        spider_ip,
@@ -1951,6 +2189,7 @@ int main(int argc,
         std::printf("\n");
         std::printf("----------     spider     ----------\n");
         std::printf(" spider ip          : %s\n", spider_ip.c_str());
+        std::printf(" routing mode       : %s\n", (routing_mode == "s" ? "self" : "auto"));
         std::printf(" xor encryption     : %s\n", (xor_flag ? "on" : "off"));
         std::printf(" xor key hex string : %s\n", xor_key_hex_string.c_str());
         std::printf("---------- spider command ----------\n");
@@ -1958,6 +2197,7 @@ int main(int argc,
         std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
         std::printf(" %d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
         std::printf(" %d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
+        std::printf(" %d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
         std::printf(" %d: exit\n", SPIDER_COMMAND_EXIT);
         std::printf("------------------------------------\n");
         std::printf("\n");
@@ -2003,6 +2243,13 @@ int main(int argc,
             case SPIDER_COMMAND_SHOW_ROUTING_TABLE:
                 std::printf("[+] show routing table\n");
                 spider::show_routing_table(routing_manager);
+                break;
+
+            case SPIDER_COMMAND_EDIT_ROUTING_TABLE:
+                std::printf("[+] edit routing table\n");
+                spider::edit_routing_table(spider_ip,
+                                           pipe_manager,
+                                           routing_manager);
                 break;
 
             case SPIDER_COMMAND_EXIT:

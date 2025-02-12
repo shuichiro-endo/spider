@@ -14,7 +14,8 @@ namespace spider
     class Route
     {
     private:
-        char type;
+        char mode;  // auto:a self:s
+        char type;  // client:c server:s
         std::string ip;
         uint8_t metric;
         uint32_t pipe_id;
@@ -25,12 +26,16 @@ namespace spider
     private:
 
     public:
-        Route(char type,
+        Route(char mode,
+              char type,
               std::string ip,
               uint8_t metric,
               uint32_t pipe_id);
 
         ~Route();
+
+        void set_mode(char mode);
+        char get_mode();
 
         void set_type(char type);
         char get_type();

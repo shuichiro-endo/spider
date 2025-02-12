@@ -34,13 +34,15 @@ compile.bat
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.1  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.2  Author: Shuichiro Endo
 
 
 usage        : spider.exe -i spider_ip
+             : [-r routing_mode(auto:a self:s)]
              : [-x (xor encryption)] [-k key(hexstring)]
 example      : spider.exe -i 192.168.0.10
              : spider.exe -i 192.168.0.10 -x -k deadbeef
+             : spider.exe -i 192.168.0.10 -r s
              : spider.exe -i fe80::xxxx:xxxx:xxxx:xxxx%14
 
 ```
@@ -62,11 +64,12 @@ example      : spider.exe -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.1  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.2  Author: Shuichiro Endo
 
 
 ----------     spider     ----------
  spider ip          : 192.168.0.31
+ routing mode       : auto
  xor encryption     : off
  xor key hex string :
 ---------- spider command ----------
@@ -74,6 +77,7 @@ example      : spider.exe -i 192.168.0.10
  2: add node (spider pipe)
  3: show node information
  4: show routing table
+ 5: edit routing table
  0: exit
 ------------------------------------
 

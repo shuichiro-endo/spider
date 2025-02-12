@@ -45,14 +45,16 @@ namespace spider
     void Routingmanager::init_routing_table()
     {
         // client (self)
-        std::shared_ptr<Route> client_route = std::make_shared<Route>('c',
+        std::shared_ptr<Route> client_route = std::make_shared<Route>('-',
+                                                                      'c',
                                                                       spider_ip,
                                                                       0,
                                                                       0);
         this->add_route(client_route);
 
         // server (self)
-        std::shared_ptr<Route> server_route = std::make_shared<Route>('s',
+        std::shared_ptr<Route> server_route = std::make_shared<Route>('-',
+                                                                      's',
                                                                       spider_ip,
                                                                       0,
                                                                       0);
@@ -61,9 +63,9 @@ namespace spider
 
     void Routingmanager::show_routing_table()
     {
-        std::printf("---------------------------------------- routing  table ----------------------------------------\n");
-        std::printf("|type|ip address                                    |metric|pipe id   |time                    |\n");
-        std::printf("------------------------------------------------------------------------------------------------\n");
+        std::printf("------------------------------------------- routing table -------------------------------------------\n");
+        std::printf("|mode|type|ip address                                    |metric|pipe id   |time                    |\n");
+        std::printf("-----------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
 
@@ -71,7 +73,8 @@ namespace spider
         {
             struct timeval t = iterator->second->get_time();
 
-            std::printf("|%c   |%-46s|   %3d|%10u|%.24s|\n",
+            std::printf("|%c   |%c   |%-46s|   %3d|%10u|%.24s|\n",
+                        iterator->second->get_mode(),
                         iterator->second->get_type(),
                         iterator->second->get_ip().c_str(),
                         iterator->second->get_metric(),
@@ -81,7 +84,7 @@ namespace spider
 
         lock.unlock();
 
-        std::printf("------------------------------------------------------------------------------------------------\n");
+        std::printf("-----------------------------------------------------------------------------------------------------\n");
 
         return;
     }
@@ -133,6 +136,7 @@ namespace spider
         std::shared_ptr<Routingmessage> routing_message;
         std::shared_ptr<Route> route_new;
         uint32_t pipe_id;
+        char mode;
         char type;
         std::string ip;
         uint8_t metric;
@@ -156,6 +160,7 @@ namespace spider
                 for(int i = 0; i + route_data_size <= data_size; data += route_data_size, i += route_data_size)
                 {
                     route_data = (struct route_data *)data;
+                    mode = 'a';
                     type = route_data->type;
                     ip = route_data->ip;
                     if(ip == spider_ip)
@@ -171,7 +176,8 @@ namespace spider
                         metric = UINT8_MAX;
                     }
 
-                    route_new = std::make_shared<Route>(type,
+                    route_new = std::make_shared<Route>(mode,
+                                                        type,
                                                         ip,
                                                         metric,
                                                         pipe_id);
@@ -316,6 +322,19 @@ namespace spider
         }
 
         return ret;
+    }
+
+    void Routingmanager::delete_route(char type,
+                                      std::string ip)
+    {
+        std::pair<char, std::string> route_key = std::make_pair(type,
+                                                                ip.c_str());
+
+        std::unique_lock<std::mutex> lock(routes_map_mutex);
+        routes_map.erase(route_key);
+        lock.unlock();
+
+        return;
     }
 
     std::shared_ptr<Pipe> Routingmanager::get_destination_pipe(char type,

@@ -62,6 +62,9 @@ namespace spider
 
         int update_route(std::shared_ptr<Route> route_new);
 
+        void delete_route(char type,
+                          std::string ip);
+
         std::shared_ptr<Pipe> get_destination_pipe(char type,
                                                    std::string ip);
     };
