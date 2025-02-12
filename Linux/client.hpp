@@ -6,17 +6,6 @@
 #ifndef CLIENT_H_
 #define CLIENT_H_
 
-#include <cstring>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <thread>
-#include <mutex>
-#include <queue>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-
 #include "spider.hpp"
 #include "node.hpp"
 

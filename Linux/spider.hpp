@@ -25,5 +25,31 @@
 #define SPIDER_COMMAND_SHOW_ROUTING_TABLE      4
 #define SPIDER_COMMAND_EXIT                    0
 
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <iostream>
+#include <limits>
+#include <string>
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <random>
+#include <map>
+#include <mutex>
+#include <queue>
+#include <semaphore>
+#include <unistd.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <limits.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
+
 #endif /* SPIDER_H_ */
 

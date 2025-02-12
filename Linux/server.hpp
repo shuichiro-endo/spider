@@ -6,22 +6,6 @@
 #ifndef SERVER_H_
 #define SERVER_H_
 
-#include <cstring>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <thread>
-#include <mutex>
-#include <queue>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include "spider.hpp"
 #include "node.hpp"
 

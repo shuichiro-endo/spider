@@ -6,10 +6,6 @@
 #ifndef SOCKS5MESSAGE_H_
 #define SOCKS5MESSAGE_H_
 
-#include <cstring>
-#include <string>
-#include <arpa/inet.h>
-
 #include "spider.hpp"
 #include "message.hpp"
 

@@ -6,11 +6,6 @@
 #ifndef ROUTE_H_
 #define ROUTE_H_
 
-#include <cstdint>
-#include <string>
-#include <memory>
-#include <sys/time.h>
-
 #include "spider.hpp"
 
 

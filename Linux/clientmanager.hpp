@@ -6,10 +6,6 @@
 #ifndef CLIENTMANAGER_H_
 #define CLIENTMANAGER_H_
 
-#include <memory>
-#include <mutex>
-#include <map>
-
 #include "spider.hpp"
 
 

@@ -6,10 +6,6 @@
 #ifndef ROUTINGMESSAGEQUEUE_H_
 #define ROUTINGMESSAGEQUEUE_H_
 
-#include <memory>
-#include <queue>
-#include <semaphore>
-
 #include "spider.hpp"
 
 

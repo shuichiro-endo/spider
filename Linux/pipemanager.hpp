@@ -6,10 +6,6 @@
 #ifndef PIPEMANAGER_H_
 #define PIPEMANAGER_H_
 
-#include <memory>
-#include <mutex>
-#include <map>
-
 #include "spider.hpp"
 
 

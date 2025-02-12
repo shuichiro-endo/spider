@@ -6,12 +6,6 @@
 #ifndef ROUTINGMANAGER_H_
 #define ROUTINGMANAGER_H_
 
-#include <string>
-#include <memory>
-#include <map>
-#include <mutex>
-#include <queue>
-
 #include "spider.hpp"
 
 

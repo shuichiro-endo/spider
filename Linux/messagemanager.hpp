@@ -6,11 +6,6 @@
 #ifndef MESSAGEMANAGER_H_
 #define MESSAGEMANAGER_H_
 
-#include <string>
-#include <memory>
-#include <mutex>
-#include <queue>
-
 #include "spider.hpp"
 
 

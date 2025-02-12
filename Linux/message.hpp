@@ -6,10 +6,6 @@
 #ifndef MESSAGE_H_
 #define MESSAGE_H_
 
-#include <cstring>
-#include <iostream>
-#include <string>
-
 #include "spider.hpp"
 
 

@@ -6,11 +6,6 @@
 #ifndef SOCKS5MESSAGEQUEUE_H_
 #define SOCKS5MESSAGEQUEUE_H_
 
-#include <chrono>
-#include <memory>
-#include <queue>
-#include <semaphore>
-
 #include "spider.hpp"
 
 

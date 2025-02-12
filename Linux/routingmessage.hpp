@@ -6,9 +6,6 @@
 #ifndef ROUTINGMESSAGE_H_
 #define ROUTINGMESSAGE_H_
 
-#include <cstdint>
-#include <arpa/inet.h>
-
 #include "spider.hpp"
 #include "message.hpp"
 
