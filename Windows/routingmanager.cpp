@@ -44,7 +44,7 @@ namespace spider
 
     void Routingmanager::init_routing_table()
     {
-        // client (self)
+        // self
         std::shared_ptr<Route> route = std::make_shared<Route>('-',
                                                                spider_ip,
                                                                0,
