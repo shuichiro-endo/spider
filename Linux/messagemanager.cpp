@@ -189,8 +189,7 @@ namespace spider
                     }
                 }else
                 {
-                    pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_node_type(),
-                                                                 socks5_message->get_destination_ip());
+                    pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
                     if(pipe != nullptr)
                     {
 //                        pipe->push_socks5_message(socks5_message);

@@ -29,7 +29,6 @@ namespace spider
 
     struct route_data
     {
-        char type;
         char ip[INET6_ADDRSTRLEN + 1];
         uint8_t metric;
     };

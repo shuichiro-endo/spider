@@ -1,7 +1,7 @@
 /*
  * Title:  spider spider.cpp (Windows)
  * Author: Shuichiro Endo
- * Ver:    0.2
+ * Ver:    0.3
  */
 
 #define NOMINMAX
@@ -1799,7 +1799,6 @@ namespace spider
                             std::shared_ptr<Routingmanager> routing_manager)
     {
         char edit_mode;  // add:a delete:d
-        char type;       // client:c server:s
         std::string ip;
         uint32_t metric;
         uint32_t pipe_id;
@@ -1902,19 +1901,11 @@ namespace spider
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::shared_ptr<Route> route_c = std::make_shared<Route>('s',
-                                                                             'c',
-                                                                             ip,
-                                                                             (uint8_t)metric,
-                                                                             pipe_id);
-                    routing_manager->add_route(route_c);
-
-                    std::shared_ptr<Route> route_s = std::make_shared<Route>('s',
-                                                                             's',
-                                                                             ip,
-                                                                             (uint8_t)metric,
-                                                                             pipe_id);
-                    routing_manager->add_route(route_s);
+                    std::shared_ptr<Route> route = std::make_shared<Route>('s',
+                                                                           ip,
+                                                                           (uint8_t)metric,
+                                                                           pipe_id);
+                    routing_manager->add_route(route);
 
                     continue;
                 }else if(check == 'n')
@@ -1978,12 +1969,7 @@ namespace spider
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    routing_manager->delete_route('c',
-                                                  ip);
-
-
-                    routing_manager->delete_route('s',
-                                                  ip);
+                    routing_manager->delete_route(ip);
 
                     continue;
                 }else if(check == 'n')
@@ -2029,7 +2015,7 @@ namespace spider
         std::printf("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     \n");
         std::printf("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     \n");
         std::printf("        :*-  :*-   .:.              _//                                   \n");
-        std::printf("        =-    -:                Windows Ver: 0.2  Author: Shuichiro Endo  \n");
+        std::printf("        =-    -:                Windows Ver: 0.3  Author: Shuichiro Endo  \n");
         std::printf("\n");
     }
 

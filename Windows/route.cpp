@@ -11,13 +11,11 @@
 namespace spider
 {
     Route::Route(char mode,
-                 char type,
                  std::string ip,
                  uint8_t metric,
                  uint32_t pipe_id)
     {
         this->mode = mode;
-        this->type = type;
         this->ip = ip;
         this->metric = metric;
         this->pipe_id = pipe_id;
@@ -45,16 +43,6 @@ namespace spider
     char Route::get_mode()
     {
         return mode;
-    }
-
-    void Route::set_type(char type)
-    {
-        this->type = type;
-    }
-
-    char Route::get_type()
-    {
-        return type;
     }
 
     void Route::set_ip(std::string ip)

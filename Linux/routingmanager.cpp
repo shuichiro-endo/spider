@@ -44,28 +44,19 @@ namespace spider
 
     void Routingmanager::init_routing_table()
     {
-        // client (self)
-        std::shared_ptr<Route> client_route = std::make_shared<Route>('-',
-                                                                      'c',
-                                                                      spider_ip,
-                                                                      0,
-                                                                      0);
-        this->add_route(client_route);
-
-        // server (self)
-        std::shared_ptr<Route> server_route = std::make_shared<Route>('-',
-                                                                      's',
-                                                                      spider_ip,
-                                                                      0,
-                                                                      0);
-        this->add_route(server_route);
+        // self
+        std::shared_ptr<Route> route = std::make_shared<Route>('-',
+                                                               spider_ip,
+                                                               0,
+                                                               0);
+        this->add_route(route);
     }
 
     void Routingmanager::show_routing_table()
     {
-        std::printf("------------------------------------------- routing table -------------------------------------------\n");
-        std::printf("|mode|type|ip address                                    |metric|pipe id   |time                    |\n");
-        std::printf("-----------------------------------------------------------------------------------------------------\n");
+        std::printf("---------------------------------------- routing  table ----------------------------------------\n");
+        std::printf("|mode|ip address                                    |metric|pipe id   |time                    |\n");
+        std::printf("------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
 
@@ -73,9 +64,8 @@ namespace spider
         {
             struct timeval t = iterator->second->get_time();
 
-            std::printf("|%c   |%c   |%-46s|   %3d|%10u|%.24s|\n",
+            std::printf("|%c   |%-46s|   %3d|%10u|%.24s|\n",
                         iterator->second->get_mode(),
-                        iterator->second->get_type(),
                         iterator->second->get_ip().c_str(),
                         iterator->second->get_metric(),
                         iterator->second->get_pipe_id(),
@@ -84,7 +74,7 @@ namespace spider
 
         lock.unlock();
 
-        std::printf("-----------------------------------------------------------------------------------------------------\n");
+        std::printf("------------------------------------------------------------------------------------------------\n");
 
         return;
     }
@@ -103,7 +93,6 @@ namespace spider
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
             route_data = (struct route_data *)p;
-            route_data->type = iterator->second->get_type();
             std::memcpy(&route_data->ip, iterator->second->get_ip().c_str(), iterator->second->get_ip().size());
             route_data->metric = iterator->second->get_metric();
 
@@ -137,7 +126,6 @@ namespace spider
         std::shared_ptr<Route> route_new;
         uint32_t pipe_id;
         char mode;
-        char type;
         std::string ip;
         uint8_t metric;
         int data_size;
@@ -161,7 +149,6 @@ namespace spider
                 {
                     route_data = (struct route_data *)data;
                     mode = 'a';
-                    type = route_data->type;
                     ip = route_data->ip;
                     if(ip == spider_ip)
                     {
@@ -177,7 +164,6 @@ namespace spider
                     }
 
                     route_new = std::make_shared<Route>(mode,
-                                                        type,
                                                         ip,
                                                         metric,
                                                         pipe_id);
@@ -205,7 +191,7 @@ namespace spider
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
 
-        std::pair<char, std::string> keys[KEYS_MAP_SIZE];
+        std::string keys[KEYS_MAP_SIZE];
         ret = gettimeofday(&now,
                            NULL);
         if(ret == 1)
@@ -219,13 +205,10 @@ namespace spider
 
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
-            if(iterator->second->get_ip() != spider_ip || iterator->second->get_metric() != 0)
+            if(iterator->second->get_mode() != 's'
+               && iterator->second->get_ip() != spider_ip
+               && iterator->second->get_metric() != 0)
             {
-                if(iterator->second->get_mode() == 's') // self
-                {
-                    continue;
-                }
-
                 struct timeval t = iterator->second->get_time();
                 d = now.tv_sec - t.tv_sec;
 
@@ -233,8 +216,7 @@ namespace spider
                 {
                     if(count < KEYS_MAP_SIZE)
                     {
-                        std::pair<char, std::string> route_key = std::make_pair(iterator->second->get_type(),
-                                                                                iterator->second->get_ip().c_str());
+                        std::string route_key = iterator->second->get_ip();
                         keys[count] = route_key;
                         count++;
                     }
@@ -266,12 +248,10 @@ namespace spider
         return routing_message;
     }
 
-    std::shared_ptr<Route> Routingmanager::get_route(char type,
-                                                     std::string ip)
+    std::shared_ptr<Route> Routingmanager::get_route(std::string ip)
     {
         std::shared_ptr<Route> route = nullptr;
-        std::pair<char, std::string> route_key = std::make_pair(type,
-                                                                ip.c_str());
+        std::string route_key = ip;
         std::size_t check_route_key_count = 0;
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
@@ -289,8 +269,7 @@ namespace spider
 
     void Routingmanager::add_route(std::shared_ptr<Route> route)
     {
-        std::pair<char, std::string> route_key = std::make_pair(route->get_type(),
-                                                                route->get_ip().c_str());
+        std::string route_key = route->get_ip();
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
         routes_map.insert({route_key, route});
@@ -304,8 +283,7 @@ namespace spider
     {
         int ret = -1;
         std::shared_ptr<Route> route = nullptr;
-        std::pair<char, std::string> route_new_key = std::make_pair(route_new->get_type(),
-                                                                    route_new->get_ip().c_str());
+        std::string route_new_key = route_new->get_ip();
         std::size_t check_route_new_key_count = 0;
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
@@ -329,11 +307,9 @@ namespace spider
         return ret;
     }
 
-    void Routingmanager::delete_route(char type,
-                                      std::string ip)
+    void Routingmanager::delete_route(std::string ip)
     {
-        std::pair<char, std::string> route_key = std::make_pair(type,
-                                                                ip.c_str());
+        std::string route_key = ip;
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
         routes_map.erase(route_key);
@@ -342,15 +318,13 @@ namespace spider
         return;
     }
 
-    std::shared_ptr<Pipe> Routingmanager::get_destination_pipe(char type,
-                                                               std::string ip)
+    std::shared_ptr<Pipe> Routingmanager::get_destination_pipe(std::string ip)
     {
         std::shared_ptr<Route> route = nullptr;
         uint32_t pipe_id = 0;
         std::shared_ptr<Pipe> pipe = nullptr;
 
-        route = get_route(type,
-                          ip);
+        route = get_route(ip);
         if(route != nullptr)
         {
             pipe_id = route->get_pipe_id();

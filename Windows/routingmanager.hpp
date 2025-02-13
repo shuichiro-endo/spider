@@ -24,7 +24,7 @@ namespace spider
         std::string spider_ip;
         std::shared_ptr<Pipemanager> pipe_manager;
         std::shared_ptr<Messagemanager> message_manager;
-        std::map<std::pair<char, std::string>, std::shared_ptr<Route>> routes_map;
+        std::map<std::string, std::shared_ptr<Route>> routes_map;
         std::mutex routes_map_mutex;
         std::unique_ptr<Routingmessagequeue> routing_messages_queue;
 
@@ -55,18 +55,15 @@ namespace spider
 
         void push_routing_message(std::shared_ptr<Routingmessage> routing_message);
 
-        std::shared_ptr<Route> get_route(char type,
-                                         std::string ip);
+        std::shared_ptr<Route> get_route(std::string ip);
 
         void add_route(std::shared_ptr<Route> route);
 
         int update_route(std::shared_ptr<Route> route_new);
 
-        void delete_route(char type,
-                          std::string ip);
+        void delete_route(std::string ip);
 
-        std::shared_ptr<Pipe> get_destination_pipe(char type,
-                                                   std::string ip);
+        std::shared_ptr<Pipe> get_destination_pipe(std::string ip);
 
         int gettimeofday(timeval *tv, timezone *tz);
     };
