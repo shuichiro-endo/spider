@@ -38,7 +38,7 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.3  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.4  Author: Shuichiro Endo  
 
 
 usage        : ./spider -i spider_ip
@@ -68,7 +68,7 @@ example      : ./spider -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.3  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.4  Author: Shuichiro Endo  
 
 
 ----------     spider     ----------
@@ -82,10 +82,11 @@ example      : ./spider -i 192.168.0.10
  3: show node information
  4: show routing table
  5: edit routing table
+ 6: add node (spider client udp)
  0: exit
 ------------------------------------
 
-command > 
+command >
 
 ```
 
@@ -239,6 +240,40 @@ ok? (yes:y no:n quit:q)            > y
 |-   |192.168.0.25                                  |     0|         0|Thu Feb 13 10:45:52 2025|
 ------------------------------------------------------------------------------------------------
 ```
+
+- 6: add node (spider client udp)
+> [!IMPORTANT]
+> This is not SOCKS5 connection. (UDP over TCP)
+
+```
+command > 6
+[+] add node (spider client udp)
+[!] This is not SOCKS5 connection. (UDP over TCP)
+client listen port                             > 10053
+server destination ip                          > 192.168.0.26
+target ip (ipv4<16, domainname<256, ipv6<46)   > 1.1.1.1
+target port                                    > 53
+recv/send tv_sec  (timeout 0-60 sec)           > 3
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 10
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+client listen ip        : 192.168.0.25
+client listen port      : 10053
+server destination ip   : 192.168.0.26
+target ip               : 1.1.1.1
+target port             : 53
+recv/send tv_sec        :       3 sec
+recv/send tv_usec       :       0 microsec
+forwarder_tv_sec        :      10 sec
+forwarder_tv_usec       :       0 microsec
+FORWARDER_UDP_TIMEOUT   :     300 sec
+ok? (yes:y no:n quit:q) > y
+```
+> [!NOTE]
+> Please set the 'client listen port' to the destination port of the UDP connection tool. (e.g. dig @192.168.0.25 -p 10053 google.com +notcp)
+> 
+> The server startup time is set to 5 minutes (spider.hpp FORWARDER_UDP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
 
 ## Example
 ![](./imgs/img01.jpg)

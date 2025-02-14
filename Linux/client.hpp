@@ -24,6 +24,8 @@ namespace spider
         std::string client_listen_port;
         std::string client_port;
         std::string server_destination_ip;
+        std::string target_ip;
+        std::string target_port;
         int32_t tv_sec;
         int32_t tv_usec;
         int32_t forwarder_tv_sec;
@@ -61,6 +63,10 @@ namespace spider
 
         int32_t forwarder();
 
+        int32_t forwarder_udp_recv_send_data(int addr_length);
+
+        int32_t forwarder_udp(int addr_length);
+
     public:
         Client(uint32_t connection_id,
                uint32_t client_id,
@@ -69,6 +75,24 @@ namespace spider
                std::string client_listen_port,
                std::string client_port,
                std::string server_destination_ip,
+               int32_t client_sock,
+               int32_t tv_sec,
+               int32_t tv_usec,
+               int32_t forwarder_tv_sec,
+               int32_t forwarder_tv_usec,
+               bool xor_flag,
+               std::string xor_key_hex_string,
+               std::shared_ptr<Messagemanager> message_manager);
+
+        Client(uint32_t connection_id,
+               uint32_t client_id,
+               uint32_t server_id,
+               std::string client_ip,
+               std::string client_listen_port,
+               std::string client_port,
+               std::string server_destination_ip,
+               std::string target_ip,
+               std::string target_port,
                int32_t client_sock,
                int32_t tv_sec,
                int32_t tv_usec,
@@ -101,6 +125,12 @@ namespace spider
         void set_server_destination_ip(std::string server_destination_ip);
         std::string get_server_destination_ip();
 
+        void set_target_ip(std::string target_ip);
+        std::string get_target_ip();
+
+        void set_target_port(std::string target_port);
+        std::string get_target_port();
+
         void set_tv_sec(int32_t tv_sec);
         int32_t get_tv_sec();
 
@@ -120,6 +150,8 @@ namespace spider
         std::string get_xor_key_hex_string();
 
         int32_t do_socks5_connection();
+
+        int32_t do_socks5_connection_udp();
     };
 }
 

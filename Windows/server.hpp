@@ -76,6 +76,12 @@ namespace spider
                                          char rsv,
                                          char atyp);
 
+        int32_t forwarder_udp_recv_send_data(struct sockaddr *target_addr,
+                                             int target_addr_lengthh);
+
+        int32_t forwarder_udp(struct sockaddr *target_addr,
+                              int target_addr_lengthh);
+
     public:
         Server(uint32_t connection_id,
                uint32_t client_id,

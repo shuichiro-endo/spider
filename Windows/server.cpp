@@ -695,8 +695,205 @@ namespace spider
         return sen;
     }
 
+    int32_t Server::forwarder_udp_recv_send_data(struct sockaddr *target_addr,
+                                                 int target_addr_length)
+    {
+        int32_t ret = 0;
+        int32_t rec = 0;
+        int32_t sen = 0;
+        int32_t len = 0;
+        int32_t send_length = 0;
+        fd_set readfds;
+        fd_set writefds;
+        struct timeval tv;
+
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+
+
+        while(1)
+        {
+            FD_ZERO(&writefds);
+            FD_SET(target_sock, &writefds);
+            tv.tv_sec = forwarder_tv_sec;
+            tv.tv_usec = forwarder_tv_usec;
+
+            ret = select(NULL,
+                         NULL,
+                         &writefds,
+                         NULL,
+                         &tv);
+            if(ret == 0)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[+] forwarder_udp_recv_send_data select timeout\n");
+#endif
+//                break;
+            }else if(ret == SOCKET_ERROR)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[+] forwarder_udp_recv_send_data select error: 0x%x\n",
+                            ret);
+#endif
+//                break;
+            }
+
+            ret = FD_ISSET(target_sock,
+                           &writefds);
+            if(ret){
+#ifdef DEBUGPRINT
+                std::printf("[+] [client <- server] recv_message\n");
+#endif
+                std::memset(buffer,
+                            0,
+                            buffer_max_length);
+
+                rec = recv_message(buffer,
+                                   buffer_max_length,
+                                   FORWARDER_UDP_TIMEOUT,
+                                   0);
+                if(rec > 0)
+                {
+                    len = rec;
+                    send_length = 0;
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- client] sendto\n");
+#endif
+                    while(len > 0)
+                    {
+                        sen = sendto(target_sock,
+                                     buffer+send_length,
+                                     len,
+                                     0,
+                                     target_addr,
+                                     target_addr_length);
+                        if(sen == SOCKET_ERROR)
+                        {
+                            ret =  WSAGetLastError();
+                            if(ret == WSAEWOULDBLOCK)
+                            {
+                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                continue;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] forwarder_send_data sendto error: %d\n",
+                                            ret);
+#endif
+//                                free(buffer);
+//                                return 0;
+                            }
+                        }
+                        send_length += sen;
+                        len -= sen;
+                    }
+                }else
+                {
+                    break;
+                }
+
+
+                FD_ZERO(&readfds);
+                FD_SET(target_sock, &readfds);
+                tv.tv_sec = forwarder_tv_sec;
+                tv.tv_usec = forwarder_tv_usec;
+
+                ret = select(NULL,
+                             &readfds,
+                             NULL,
+                             NULL,
+                             &tv);
+                if(ret == 0)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] forwarder_udp_recv_send_data select timeout\n");
+#endif
+//                    break;
+                }else if(ret == SOCKET_ERROR)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] forwarder_udp_recv_send_data select error: 0x%x\n",
+                                ret);
+#endif
+//                    break;
+                }
+
+                ret = FD_ISSET(target_sock,
+                               &readfds);
+                if(ret)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client -> client] recvfrom\n");
+#endif
+                    std::memset(buffer,
+                                0,
+                                buffer_max_length);
+
+                    rec = recvfrom(target_sock,
+                                   buffer,
+                                   socks5_message_data_max_size,
+                                   0,
+                                   target_addr,
+                                   (socklen_t *)&target_addr_length);
+                    if(rec == SOCKET_ERROR)
+                    {
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            printf("[-] forwarder_udp_recv_send_data recvfrom error: %d\n",
+                                   ret);
+#endif
+//                            break;
+                        }
+                    }else if(rec > 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[+] [client -> server] send_message\n");
+#endif
+                        sen = send_message(buffer,
+                                           rec,
+                                           forwarder_tv_sec,
+                                           forwarder_tv_usec);
+                        if(sen <= 0){
+//                          break;
+                        }
+                    }else
+                    {
+//                        break;
+                    }
+                }
+            }
+        }
+
+        free(buffer);
+        return 0;
+    }
+
+    int32_t Server::forwarder_udp(struct sockaddr *target_addr,
+                                  int target_addr_lengthh)
+    {
+        std::thread thread(&Server::forwarder_udp_recv_send_data,
+                           this,
+                           target_addr,
+                           target_addr_lengthh);
+
+        thread.join();
+
+        return 0;
+    }
+
     int32_t Server::do_socks5_connection(std::shared_ptr<Socks5message> socks5_message)
     {
+        BOOL socks5_connect_flag = true;
+        BOOL socks5_connect_udp_flag = false;
+
         static char authentication_method = 0x0; // 0x0:No Authentication Required  0x2:Username/Password Authentication
         char username[256] = "socks5user";
         char password[256] = "supersecretpassword";
@@ -724,17 +921,20 @@ namespace spider
         char atyp;
         char cmd;
 
-        struct sockaddr_in target_addr, *tmp_ipv4;  // IPv4
+        struct sockaddr_in target_addr, *tmp_ipv4;      // IPv4
+        struct sockaddr_in6 target_addr6, *tmp_ipv6;    // IPv6
+        struct addrinfo hints, *target_host_addr_info;
+        int target_addr_length = sizeof(target_addr);
+        int target_addr6_length = sizeof(target_addr6);
+
         std::memset(&target_addr,
                     0,
                     sizeof(struct sockaddr_in));
 
-        struct sockaddr_in6 target_addr6, *tmp_ipv6;	// IPv6
         std::memset(&target_addr6,
                     0,
                     sizeof(struct sockaddr_in6));
 
-        struct addrinfo hints, *target_host_addr_info;
         std::memset(&hints,
                     0,
                     sizeof(struct addrinfo));
@@ -966,7 +1166,8 @@ namespace spider
         }
 
         cmd = socks_request->cmd;
-        if(cmd != 0x1)  // CONNECT only
+        if(cmd != 0x1
+           && cmd != 0x8)  // CONNECT (0x1), CONNECT UDP (0x8, UDP over TCP, original command)
         {
 #ifdef DEBUGPRINT
             std::printf("[-] socks request cmd(%d) error\n",
@@ -1163,14 +1364,14 @@ namespace spider
             target_ip = inet_ntoa(target_addr.sin_addr);
             target_port = std::to_string(ntohs(target_addr.sin_port));
 
-#ifdef DEBUGPRINT
-            std::printf("[+] [server -> target] connecting ip: %s port: %s\n",
-                        target_ip.c_str(),
-                        target_port.c_str());
-#endif
-
             if(cmd == 0x1)  // CONNECT
             {
+#ifdef DEBUGPRINT
+                std::printf("[+] [server -> target] connecting ip: %s port: %s\n",
+                            target_ip.c_str(),
+                            target_port.c_str());
+#endif
+
 #ifdef DEBUGPRINT
                 std::printf("[+] socks5 response cmd: CONNECT\n");
 #endif
@@ -1280,6 +1481,60 @@ namespace spider
 
                 free(buffer);
                 return -1;
+            }else if(cmd == 0x8)    // CONNECT UDP (0x8, UDP over TCP, original command)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[+] socks5 response cmd: CONNECT UDP (0x8, UDP over TCP, original command)\n");
+#endif
+
+#ifdef DEBUGPRINT
+                std::printf("[+] ip: %s port: %s\n",
+                            target_ip.c_str(),
+                            target_port.c_str());
+#endif
+
+                target_sock = socket(AF_INET,
+                                     SOCK_DGRAM,
+                                     IPPROTO_UDP);
+                if(target_sock == INVALID_SOCKET)
+                {
+                    ret = WSAGetLastError();
+#ifdef DEBUGPRINT
+                    std::printf("[-] [server <- target] socket error: %d\n",
+                                ret);
+#endif
+                    sen = send_socks_response_ipv4(buffer,
+                                                   buffer_max_length,
+                                                   0x5,
+                                                   0x5,
+                                                   0x0,
+                                                   0x1);
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                                rec,
+                                sen);
+#endif
+
+                    free(buffer);
+                    return -1;
+                }
+
+                sen = send_socks_response_ipv4(buffer,
+                                               buffer_max_length,
+                                               0x5,
+                                               0x0,
+                                               0x0,
+                                               0x1);
+
+#ifdef DEBUGPRINT
+                std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                            rec,
+                            sen);
+#endif
+
+                socks5_connect_flag = false;
+                socks5_connect_udp_flag = true;
             }else
             {
 #ifdef DEBUGPRINT
@@ -1303,14 +1558,14 @@ namespace spider
                 target_ip = inet_ntoa(target_addr.sin_addr);
                 target_port = std::to_string(ntohs(target_addr.sin_port));
 
-#ifdef DEBUGPRINT
-                std::printf("[+] [server -> target] connecting ip: %s port: %s\n",
-                            target_ip.c_str(),
-                            target_port.c_str());
-#endif
-
                 if(cmd == 0x1)  // CONNECT
                 {
+#ifdef DEBUGPRINT
+                    std::printf("[+] [server -> target] connecting ip: %s port: %s\n",
+                                target_ip.c_str(),
+                                target_port.c_str());
+#endif
+
 #ifdef DEBUGPRINT
                     std::printf("[+] socks5 response cmd: CONNECT\n");
 #endif
@@ -1420,6 +1675,61 @@ namespace spider
 
                     free(buffer);
                     return -1;
+                }else if(cmd == 0x8)    // CONNECT UDP (0x8, UDP over TCP, original command)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] socks5 response cmd: CONNECT UDP (0x8, UDP over TCP, original command)\n");
+#endif
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] ip: %s port: %s\n",
+                                target_ip.c_str(),
+                                target_port.c_str());
+#endif
+
+                    target_sock = socket(AF_INET,
+                                         SOCK_DGRAM,
+                                         IPPROTO_UDP);
+                    if(target_sock == INVALID_SOCKET)
+                    {
+                        ret = WSAGetLastError();
+#ifdef DEBUGPRINT
+                        std::printf("[-] [server <- target] socket error: %d\n",
+                                    ret);
+#endif
+
+                        sen = send_socks_response_ipv4(buffer,
+                                                       buffer_max_length,
+                                                       0x5,
+                                                       0x5,
+                                                       0x0,
+                                                       0x1);
+
+#ifdef DEBUGPRINT
+                        std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                                    rec,
+                                    sen);
+#endif
+
+                        free(buffer);
+                        return -1;
+                    }
+
+                    sen = send_socks_response_ipv4(buffer,
+                                                   buffer_max_length,
+                                                   0x5,
+                                                   0x0,
+                                                   0x0,
+                                                   0x1);
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                                rec,
+                                sen);
+#endif
+
+                    socks5_connect_flag = false;
+                    socks5_connect_udp_flag = true;
                 }else
                 {
 #ifdef DEBUGPRINT
@@ -1453,14 +1763,14 @@ namespace spider
                     target_port = ntohs(target_addr6.sin6_port);
                 }
 
-#ifdef DEBUGPRINT
-                std::printf("[+] [server -> target] Connecting ip: %s port: %s\n",
-                            target_ip.c_str(),
-                            target_port.c_str());
-#endif
-
                 if(cmd == 0x1)  // CONNECT
                 {
+#ifdef DEBUGPRINT
+                    std::printf("[+] [server -> target] Connecting ip: %s port: %s\n",
+                                target_ip.c_str(),
+                                target_port.c_str());
+#endif
+
 #ifdef DEBUGPRINT
                     std::printf("[+] socks5 response cmd: CONNECT\n");
 #endif
@@ -1571,6 +1881,61 @@ namespace spider
 
                     free(buffer);
                     return -1;
+                }else if(cmd == 0x8)    // CONNECT UDP (0x8, UDP over TCP, original command)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] socks5 response cmd: CONNECT UDP (0x8, UDP over TCP, original command)\n");
+#endif
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] ip: %s port: %s\n",
+                                target_ip.c_str(),
+                                target_port.c_str());
+#endif
+
+                    target_sock = socket(AF_INET6,
+                                         SOCK_DGRAM,
+                                         IPPROTO_UDP);
+                    if(target_sock == INVALID_SOCKET)
+                    {
+                        ret = WSAGetLastError();
+#ifdef DEBUGPRINT
+                        std::printf("[-] [server <- target] socket error: %d\n",
+                                    ret);
+#endif
+
+                        sen = send_socks_response_ipv6(buffer,
+                                                       buffer_max_length,
+                                                       0x5,
+                                                       0x5,
+                                                       0x0,
+                                                       0x4);
+
+#ifdef DEBUGPRINT
+                        std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                                    rec,
+                                    sen);
+#endif
+
+                        free(buffer);
+                        return -1;
+                    }
+
+                    sen = send_socks_response_ipv6(buffer,
+                                                   buffer_max_length,
+                                                   0x5,
+                                                   0x0,
+                                                   0x0,
+                                                   0x4);
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                                rec,
+                                sen);
+#endif
+
+                    socks5_connect_flag = false;
+                    socks5_connect_udp_flag = true;
                 }else
                 {
 #ifdef DEBUGPRINT
@@ -1620,21 +1985,20 @@ namespace spider
                 target_port = ntohs(target_addr6.sin6_port);
             }
 
-
-#ifdef DEBUGPRINT
-            std::printf("[+] [server -> target] Connecting ip: %s port: %s\n",
-                        target_ip.c_str(),
-                        target_port.c_str());
-#endif
-
             if(cmd == 0x1)  // CONNECT
             {
+#ifdef DEBUGPRINT
+                std::printf("[+] [server -> target] Connecting ip: %s port: %s\n",
+                            target_ip.c_str(),
+                            target_port.c_str());
+#endif
+
 #ifdef DEBUGPRINT
                 std::printf("[+] socks5 response cmd: CONNECT\n");
 #endif
                 target_sock = socket(AF_INET6,
-                                       SOCK_STREAM,
-                                       0);
+                                     SOCK_STREAM,
+                                     0);
                 if(target_sock == INVALID_SOCKET)
                 {
                     ret = WSAGetLastError();
@@ -1739,6 +2103,61 @@ namespace spider
 
                 free(buffer);
                 return -1;
+            }else if(cmd == 0x8)    // CONNECT UDP (0x8, UDP over TCP, original command)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[+] socks5 response cmd: CONNECT UDP (0x8, UDP over TCP, original command)\n");
+#endif
+
+#ifdef DEBUGPRINT
+                std::printf("[+] ip: %s port: %s\n",
+                            target_ip.c_str(),
+                            target_port.c_str());
+#endif
+
+                target_sock = socket(AF_INET6,
+                                     SOCK_DGRAM,
+                                     IPPROTO_UDP);
+                if(target_sock == INVALID_SOCKET)
+                {
+                    ret = WSAGetLastError();
+#ifdef DEBUGPRINT
+                    std::printf("[-] [server <- target] socket error: %d\n",
+                                ret);
+#endif
+
+                    sen = send_socks_response_ipv6(buffer,
+                                                   buffer_max_length,
+                                                   0x5,
+                                                   0x5,
+                                                   0x0,
+                                                   0x4);
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                                rec,
+                                sen);
+#endif
+
+                    free(buffer);
+                    return -1;
+                }
+
+                sen = send_socks_response_ipv6(buffer,
+                                               buffer_max_length,
+                                               0x5,
+                                               0x0,
+                                               0x0,
+                                               0x4);
+
+#ifdef DEBUGPRINT
+                std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                            rec,
+                            sen);
+#endif
+
+                socks5_connect_flag = false;
+                socks5_connect_udp_flag = true;
             }else{
 #ifdef DEBUGPRINT
                 std::printf("[-] not implemented\n");
@@ -1775,7 +2194,20 @@ namespace spider
 #ifdef DEBUGPRINT
         std::printf("[+] [client <> client <> server <> target] forwarder\n");
 #endif
-        ret = forwarder();
+        if(socks5_connect_flag == true)
+        {
+            ret = forwarder();
+        }else if(socks5_connect_udp_flag == true)
+        {
+            if(family == AF_INET)
+            {
+                ret = forwarder_udp((sockaddr *)&target_addr, target_addr_length);
+            }else if(family == AF_INET6)
+            {
+                ret = forwarder_udp((sockaddr *)&target_addr6, target_addr6_length);
+            }
+        }
+
 
 #ifdef DEBUGPRINT
         std::printf("[+] worker exit\n");

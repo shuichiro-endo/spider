@@ -1,7 +1,7 @@
 /*
  * Title:  spider spider.cpp (Windows)
  * Author: Shuichiro Endo
- * Ver:    0.3
+ * Ver:    0.4
  */
 
 #define NOMINMAX
@@ -119,6 +119,26 @@ namespace spider
     static void edit_routing_table(std::string spider_ip,
                                    std::shared_ptr<Pipemanager> pipe_manager,
                                    std::shared_ptr<Routingmanager> routing_manager);
+
+    static void client_udp_workder(std::shared_ptr<Clientmanager> client_manager,
+                                   std::shared_ptr<Messagemanager> message_manager,
+                                   std::string client_listen_ip,
+                                   std::string client_listen_port,
+                                   std::string server_destination_ip,
+                                   std::string target_ip,
+                                   std::string target_port,
+                                   int32_t tv_sec,
+                                   int32_t tv_usec,
+                                   int32_t forwarder_tv_sec,
+                                   int32_t forwarder_tv_usec,
+                                   BOOL xor_flag,
+                                   std::string xor_key_hex_string);
+
+    static void add_node_spider_client_udp(std::string spider_ip,
+                                           BOOL xor_flag,
+                                           std::string xor_key_hex_string,
+                                           std::shared_ptr<Clientmanager> client_manager,
+                                           std::shared_ptr<Messagemanager> message_manager);
 
     static void usage(char *filename);
 
@@ -1814,7 +1834,7 @@ namespace spider
             std::cin >> edit_mode;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                 std::printf("[-] input error\n");
 #endif
                 std::cin.clear();
@@ -1829,7 +1849,7 @@ namespace spider
                 std::cin >> ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     std::cin.clear();
@@ -1839,7 +1859,7 @@ namespace spider
 
                 if(ip == spider_ip)
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     continue;
@@ -1849,7 +1869,7 @@ namespace spider
                 std::cin >> metric;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     std::cin.clear();
@@ -1859,7 +1879,7 @@ namespace spider
 
                 if(metric == 0 || metric > UINT8_MAX)
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     continue;
@@ -1871,7 +1891,7 @@ namespace spider
                 std::cin >> pipe_id;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     std::cin.clear();
@@ -1890,7 +1910,7 @@ namespace spider
                 std::cin >> check;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     std::cin.clear();
@@ -1933,7 +1953,7 @@ namespace spider
                 std::cin >> ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     std::cin.clear();
@@ -1943,7 +1963,7 @@ namespace spider
 
                 if(ip == spider_ip)
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     continue;
@@ -1958,7 +1978,7 @@ namespace spider
                 std::cin >> check;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
 #endif
                     std::cin.clear();
@@ -2004,6 +2024,278 @@ namespace spider
         return;
     }
 
+   static void client_udp_workder(std::shared_ptr<Clientmanager> client_manager,
+                                   std::shared_ptr<Messagemanager> message_manager,
+                                   std::string client_listen_ip,
+                                   std::string client_listen_port,
+                                   std::string server_destination_ip,
+                                   std::string target_ip,
+                                   std::string target_port,
+                                   int32_t tv_sec,
+                                   int32_t tv_usec,
+                                   int32_t forwarder_tv_sec,
+                                   int32_t forwarder_tv_usec,
+                                   BOOL xor_flag,
+                                   std::string xor_key_hex_string)
+    {
+        int32_t ret = 0;
+        uint32_t connection_id = 0;
+        uint32_t client_id = 0;
+        SOCKET client_udp_sock = INVALID_SOCKET;
+        std::shared_ptr<Client> client_udp;
+        std::pair<uint32_t, uint32_t> client_udp_key;
+
+
+        client_udp = std::make_shared<Client>(0,
+                                              0,
+                                              0,
+                                              client_listen_ip,
+                                              client_listen_port,
+                                              "",
+                                              server_destination_ip,
+                                              target_ip,
+                                              target_port,
+                                              client_udp_sock,
+                                              tv_sec,
+                                              tv_usec,
+                                              forwarder_tv_sec,
+                                              forwarder_tv_usec,
+                                              xor_flag,
+                                              xor_key_hex_string,
+                                              message_manager);
+
+        do
+        {
+            connection_id = generate_random_id();
+            client_id = generate_random_id();
+            ret = client_manager->insert_client(connection_id,
+                                                client_id,
+                                                client_udp);
+        }while(ret != 0);
+
+        ret = client_udp->do_socks5_connection_udp();
+        if(ret == -1)
+        {
+            client_manager->erase_client(client_udp->get_connection_id(),
+                                         client_udp->get_client_id());
+        }
+
+        return;
+    }
+
+    static void add_node_spider_client_udp(std::string spider_ip,
+                                           BOOL xor_flag,
+                                           std::string xor_key_hex_string,
+                                           std::shared_ptr<Clientmanager> client_manager,
+                                           std::shared_ptr<Messagemanager> message_manager)
+    {
+        std::string client_listen_ip = spider_ip;
+        std::string client_listen_port;
+        std::string server_destination_ip;
+        std::string target_ip;      // ipv4, domainname, ipv6
+        std::string target_port;
+        int32_t tv_sec = 0;
+        int32_t tv_usec = 0;
+        int32_t forwarder_tv_sec = 0;
+        int32_t forwarder_tv_usec = 0;
+        char check = 'n';
+
+
+        while(1)
+        {
+            std::printf("client listen port                             > ");
+            std::cin >> client_listen_port;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("server destination ip                          > ");
+            std::cin >> server_destination_ip;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("target ip (ipv4<16, domainname<256, ipv6<46)   > ");
+            std::cin >> target_ip;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(target_ip.size() >= 256)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("target port                                    > ");
+            std::cin >> target_port;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+            std::cin >> tv_sec;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                tv_sec = 3;
+            }else if(tv_sec < 0 || tv_sec > 60)
+            {
+                tv_sec = 3;
+            }
+
+            std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+            std::cin >> tv_usec;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                tv_usec = 0;
+            }else if(tv_usec < 0 || tv_usec > 1000000)
+            {
+                tv_usec = 0;
+            }
+
+            if(tv_sec == 0 && tv_usec == 0){
+                tv_sec = 3;
+                tv_usec = 0;
+            }
+
+            std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+            std::cin >> forwarder_tv_sec;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                forwarder_tv_sec = 3;
+            }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+            {
+                forwarder_tv_sec = 3;
+            }
+
+            std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+            std::cin >> forwarder_tv_usec;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                forwarder_tv_usec = 0;
+            }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+            {
+                forwarder_tv_usec = 0;
+            }
+
+            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+            {
+                forwarder_tv_sec = 3;
+                forwarder_tv_usec = 0;
+            }
+
+            std::printf("\n");
+            std::printf("client listen ip        : %s\n", client_listen_ip.c_str());
+            std::printf("client listen port      : %s\n", client_listen_port.c_str());
+            std::printf("server destination ip   : %s\n", server_destination_ip.c_str());
+            std::printf("target ip               : %s\n", target_ip.c_str());
+            std::printf("target port             : %s\n", target_port.c_str());
+            std::printf("recv/send tv_sec        : %7d sec\n", tv_sec);
+            std::printf("recv/send tv_usec       : %7d microsec\n", tv_usec);
+            std::printf("forwarder_tv_sec        : %7d sec\n", forwarder_tv_sec);
+            std::printf("forwarder_tv_usec       : %7d microsec\n", forwarder_tv_usec);
+            std::printf("FORWARDER_UDP_TIMEOUT   : %7d sec\n", FORWARDER_UDP_TIMEOUT);
+            std::printf("\n");
+
+            std::printf("ok? (yes:y no:n quit:q) > ");
+            std::cin >> check;
+            if(std::cin.fail())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(check == 'y')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                break;
+            }else if(check == 'n')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(check == 'q'){
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }else{
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }
+
+        }
+
+        std::thread thread(client_udp_workder,
+                           client_manager,
+                           message_manager,
+                           client_listen_ip,
+                           client_listen_port,
+                           server_destination_ip,
+                           target_ip,
+                           target_port,
+                           tv_sec,
+                           tv_usec,
+                           forwarder_tv_sec,
+                           forwarder_tv_usec,
+                           xor_flag,
+                           xor_key_hex_string);
+                           thread.detach();
+
+        return;
+    }
+
     static void print_title()
     {
         std::printf("\n");
@@ -2015,7 +2307,7 @@ namespace spider
         std::printf("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     \n");
         std::printf("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     \n");
         std::printf("        :*-  :*-   .:.              _//                                   \n");
-        std::printf("        =-    -:                Windows Ver: 0.3  Author: Shuichiro Endo  \n");
+        std::printf("        =-    -:                Windows Ver: 0.4  Author: Shuichiro Endo  \n");
         std::printf("\n");
     }
 
@@ -2184,6 +2476,7 @@ int main(int argc,
         std::printf(" %d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
         std::printf(" %d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
         std::printf(" %d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
+        std::printf(" %d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
         std::printf(" %d: exit\n", SPIDER_COMMAND_EXIT);
         std::printf("------------------------------------\n");
         std::printf("\n");
@@ -2238,8 +2531,19 @@ int main(int argc,
                                            routing_manager);
                 break;
 
+            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP:
+                std::printf("[+] add node (spider client udp)\n");
+                std::printf("[!] This is not SOCKS5 connection. (UDP over TCP)\n");
+                spider::add_node_spider_client_udp(spider_ip,
+                                                   xor_flag,
+                                                   xor_key_hex_string,
+                                                   client_manager,
+                                                   message_manager);
+                break;
+
             case SPIDER_COMMAND_EXIT:
                 std::printf("[+] exit\n");
+                WSACleanup();
                 exit(0);
                 break;
 

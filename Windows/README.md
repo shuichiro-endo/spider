@@ -43,7 +43,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.3  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.4  Author: Shuichiro Endo
 
 
 usage        : spider.exe -i spider_ip
@@ -73,7 +73,7 @@ example      : spider.exe -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.3  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.4  Author: Shuichiro Endo
 
 
 ----------     spider     ----------
@@ -87,6 +87,7 @@ example      : spider.exe -i 192.168.0.10
  3: show node information
  4: show routing table
  5: edit routing table
+ 6: add node (spider client udp)
  0: exit
 ------------------------------------
 

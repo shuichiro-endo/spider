@@ -90,14 +90,14 @@ namespace spider
 
     void Clientmanager::show_clients_map()
     {
-        std::printf("------------------------------------------------------------------------------------------------------------- client --------------------------------------------------------------------------------------------------------------\n");
-        std::printf("|connection id|client id |server id |client ip                                     |client listen port|client port|server destination ip                         |client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
-        std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("------------------------------------------------------------------------------------------------------------------------------------------- client -------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("|connection id|client id |server id |client ip                                     |client listen port|client port|server destination ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
+        std::printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock(clients_map_mutex);
         for(auto iterator = clients_map.begin(); iterator != clients_map.end(); ++iterator)
         {
-            std::printf("|   %10u|%10u|%10u|%-46s|             %5s|      %5s|%-46s|        %5d|%7d|%7d|         %7d|          %7d|\n",
+            std::printf("|   %10u|%10u|%10u|%-46s|             %5s|      %5s|%-46s|%-46s|      %5s|        %5d|%7d|%7d|         %7d|          %7d|\n",
                         iterator->second->get_connection_id(),
                         iterator->second->get_client_id(),
                         iterator->second->get_server_id(),
@@ -105,6 +105,8 @@ namespace spider
                         iterator->second->get_client_listen_port().c_str(),
                         iterator->second->get_client_port().c_str(),
                         iterator->second->get_server_destination_ip().c_str(),
+                        iterator->second->get_target_ip().c_str(),
+                        iterator->second->get_target_port().c_str(),
                         iterator->second->get_sock(),
                         iterator->second->get_tv_sec(),
                         iterator->second->get_tv_usec(),
@@ -113,7 +115,7 @@ namespace spider
         }
         lock.unlock();
 
-        std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         std::printf("\n");
 
         return;
