@@ -570,8 +570,8 @@ namespace spider
                     while(len > 0)
                     {
                         sen = send(sock,
-                                   buffer,
-                                   rec,
+                                   buffer+send_length,
+                                   len,
                                    0);
                         if(sen == SOCKET_ERROR)
                         {

@@ -563,8 +563,8 @@ namespace spider
                     while(len > 0)
                     {
                         sen = send(sock,
-                                   buffer,
-                                   rec,
+                                   buffer+send_length,
+                                   len,
                                    MSG_NOSIGNAL);
                         if(sen <= 0)
                         {
