@@ -478,7 +478,7 @@ namespace spider
                         printf("[-] forwarder_recv_data recv error: %d\n",
                                errno);
 #endif
-                        return -1;
+                        break;
                     }
                 }else
                 {
@@ -496,6 +496,7 @@ namespace spider
             }
         }
 
+        free(buffer);
         return 0;
     }
 
@@ -593,6 +594,7 @@ namespace spider
             }
         }
 
+        free(buffer);
         return 0;
     }
 

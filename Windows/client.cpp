@@ -500,6 +500,7 @@ namespace spider
             }
         }
 
+        free(buffer);
         return 0;
     }
 
@@ -598,6 +599,7 @@ namespace spider
             }
         }
 
+        free(buffer);
         return 0;
     }
 
