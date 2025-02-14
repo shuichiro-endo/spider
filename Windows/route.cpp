@@ -22,7 +22,7 @@ namespace spider
 
         if(gettimeofday(&this->time, NULL) == -1)
         {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
             std::printf("[-] gettimeofday error\n");
 #endif
             this->time.tv_sec = 0;
