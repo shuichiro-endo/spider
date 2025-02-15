@@ -12,7 +12,8 @@
 
 namespace spider
 {
-    Client::Client(uint32_t connection_id,
+    Client::Client(std::string type,
+                   uint32_t connection_id,
                    uint32_t client_id,
                    uint32_t server_id,
                    std::string client_ip,
@@ -29,6 +30,7 @@ namespace spider
                    std::shared_ptr<Messagemanager> message_manager)
     : Node(client_sock, message_manager)
     {
+        this->type = type;
         this->connection_id = connection_id;
         this->client_id = client_id;
         this->server_id = server_id;
@@ -47,7 +49,8 @@ namespace spider
         this->message_manager = message_manager;
     }
 
-    Client::Client(uint32_t connection_id,
+    Client::Client(std::string type,
+                   uint32_t connection_id,
                    uint32_t client_id,
                    uint32_t server_id,
                    std::string client_ip,
@@ -66,6 +69,7 @@ namespace spider
                    std::shared_ptr<Messagemanager> message_manager)
     : Node(client_sock, message_manager)
     {
+        this->type = type;
         this->connection_id = connection_id;
         this->client_id = client_id;
         this->server_id = server_id;
@@ -89,6 +93,16 @@ namespace spider
     Client::~Client()
     {
 
+    }
+
+    void Client::set_type(std::string type)
+    {
+        this->type = type;
+    }
+
+    std::string Client::get_type()
+    {
+        return type;
     }
 
     void Client::set_connection_id(uint32_t connection_id)

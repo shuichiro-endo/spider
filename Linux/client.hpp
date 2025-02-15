@@ -17,6 +17,7 @@ namespace spider
     class Client : public Node
     {
     private:
+        std::string type;
         uint32_t connection_id;
         uint32_t client_id;
         uint32_t server_id;
@@ -68,7 +69,8 @@ namespace spider
         int32_t forwarder_udp(int addr_length);
 
     public:
-        Client(uint32_t connection_id,
+        Client(std::string type,
+               uint32_t connection_id,
                uint32_t client_id,
                uint32_t server_id,
                std::string client_ip,
@@ -84,7 +86,8 @@ namespace spider
                std::string xor_key_hex_string,
                std::shared_ptr<Messagemanager> message_manager);
 
-        Client(uint32_t connection_id,
+        Client(std::string type,
+               uint32_t connection_id,
                uint32_t client_id,
                uint32_t server_id,
                std::string client_ip,
@@ -103,6 +106,9 @@ namespace spider
                std::shared_ptr<Messagemanager> message_manager);
 
         ~Client();
+
+        void set_type(std::string type);
+        std::string get_type();
 
         void set_connection_id(uint32_t connection_id);
         uint32_t get_connection_id();

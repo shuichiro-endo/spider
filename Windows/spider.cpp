@@ -495,7 +495,8 @@ namespace spider
                         inet_ntoa(client_listen_addr.sin_addr));
 #endif
 
-            client_listen = std::make_shared<Client>(0,
+            client_listen = std::make_shared<Client>("socks5",
+                                                     0,
                                                      0,
                                                      0,
                                                      client_listen_ip,
@@ -534,7 +535,8 @@ namespace spider
                 uint32_t client_id = 0;
                 std::string client_ip = inet_ntoa(client_addr.sin_addr);
                 std::string client_port = std::to_string(ntohs(client_addr.sin_port));
-                std::shared_ptr<Client> client = std::make_shared<Client>(connection_id,
+                std::shared_ptr<Client> client = std::make_shared<Client>("socks5",
+                                                                          connection_id,
                                                                           0,
                                                                           0,
                                                                           client_ip,
@@ -633,7 +635,8 @@ namespace spider
             }
 #endif
 
-            client_listen = std::make_shared<Client>(0,
+            client_listen = std::make_shared<Client>("socks5",
+                                                     0,
                                                      0,
                                                      0,
                                                      client_listen_ip,
@@ -695,7 +698,8 @@ namespace spider
                     client_ip = client_addr6_string_pointer;
                     client_port = std::to_string(ntohs(client_addr6.sin6_port));
                 }
-                std::shared_ptr<Client> client = std::make_shared<Client>(connection_id,
+                std::shared_ptr<Client> client = std::make_shared<Client>("socks5",
+                                                                          connection_id,
                                                                           0,
                                                                           0,
                                                                           client_ip,
@@ -2046,7 +2050,8 @@ namespace spider
         std::pair<uint32_t, uint32_t> client_udp_key;
 
 
-        client_udp = std::make_shared<Client>(0,
+        client_udp = std::make_shared<Client>("udp",
+                                              0,
                                               0,
                                               0,
                                               client_listen_ip,
