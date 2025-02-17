@@ -20,7 +20,7 @@ namespace spider
                    std::string client_ip,
                    std::string client_listen_port,
                    std::string client_port,
-                   std::string server_destination_ip,
+                   std::string destination_spider_ip,
                    SOCKET client_sock,
                    int32_t tv_sec,
                    int32_t tv_usec,
@@ -37,7 +37,7 @@ namespace spider
         this->client_ip = client_ip;
         this->client_listen_port = client_listen_port;
         this->client_port = client_port;
-        this->server_destination_ip = server_destination_ip;
+        this->destination_spider_ip = destination_spider_ip;
         this->tv_sec = tv_sec;
         this->tv_usec = tv_usec;
         this->forwarder_tv_sec = forwarder_tv_sec;
@@ -55,7 +55,7 @@ namespace spider
                    std::string client_ip,
                    std::string client_listen_port,
                    std::string client_port,
-                   std::string server_destination_ip,
+                   std::string destination_spider_ip,
                    std::string target_ip,
                    std::string target_port,
                    SOCKET client_sock,
@@ -74,7 +74,7 @@ namespace spider
         this->client_ip = client_ip;
         this->client_listen_port = client_listen_port;
         this->client_port = client_port;
-        this->server_destination_ip = server_destination_ip;
+        this->destination_spider_ip = destination_spider_ip;
         this->target_ip = target_ip;
         this->target_port = target_port;
         this->tv_sec = tv_sec;
@@ -162,14 +162,14 @@ namespace spider
         return client_port;
     }
 
-    void Client::set_server_destination_ip(std::string server_destination_ip)
+    void Client::set_destination_spider_ip(std::string destination_spider_ip)
     {
-        this->server_destination_ip = server_destination_ip;
+        this->destination_spider_ip = destination_spider_ip;
     }
 
-    std::string Client::get_server_destination_ip()
+    std::string Client::get_destination_spider_ip()
     {
-        return server_destination_ip;
+        return destination_spider_ip;
     }
 
     void Client::set_target_ip(std::string target_ip)
@@ -378,7 +378,7 @@ namespace spider
         socks5_message_data->source_node_type = 'c';
         memcpy(&socks5_message_data->source_ip, client_ip.c_str(), client_ip.size());
         socks5_message_data->destination_node_type = 's';
-        memcpy(&socks5_message_data->destination_ip, server_destination_ip.c_str(), server_destination_ip.size());
+        memcpy(&socks5_message_data->destination_ip, destination_spider_ip.c_str(), destination_spider_ip.size());
         socks5_message_data->tv_sec = tv_sec;
         socks5_message_data->tv_usec = tv_usec;
         socks5_message_data->forwarder_tv_sec = forwarder_tv_sec;

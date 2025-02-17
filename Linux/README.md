@@ -92,13 +92,13 @@ command >
 
 - 1: add node (spider client)
 > [!NOTE]
-> The startup location of the spider server node is determined by the 'server destination ip' when adding the spider client node.
+> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
 
 ```
 command > 1
 [+] add node (spider client)
 client listen port           > 9050
-server destination ip        > 192.168.0.30
+destination spider ip        > 192.168.0.30
 recv/send tv_sec  (timeout 0-60 sec)           > 3
 recv/send tv_usec (timeout 0-1000000 microsec) > 0
 forwarder tv_sec  (timeout 0-3600 sec)         > 3
@@ -106,7 +106,7 @@ forwarder tv_usec (timeout 0-1000000 microsec) > 0
 
 client listen ip        : 192.168.0.25
 client listen port      : 9050
-server destination ip   : 192.168.0.30
+destination spider ip   : 192.168.0.30
 recv/send tv_sec        :       3 sec
 recv/send tv_usec       :       0 microsec
 forwarder_tv_sec        :       3 sec
@@ -151,7 +151,7 @@ ok? (yes:y no:n quit:q) > y
 command > 3
 [+] show node information
 ---------------------------------------------------------------------------------------------------------------------------------------------- client -----------------------------------------------------------------------------------------------------------------------------------------------
-|type  |connection id|client id |server id |client ip                                     |client listen port|client port|server destination ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
+|type  |connection id|client id |server id |client ip                                     |client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 |socks5|   1138453384|         0|         0|192.168.0.25                                  |              9050|           |192.168.0.31                                  |                                              |           |            4|      3|      0|              10|                0|
 |udp   |   2924664153|1512643263|1706946128|192.168.0.25                                  |             10053|           |192.168.0.31                                  |1.1.1.1                                       |         53|            6|      3|      0|              10|                0|
@@ -253,7 +253,7 @@ command > 6
 [+] add node (spider client udp)
 [!] This is not SOCKS5 connection. (UDP over TCP)
 client listen port                             > 10053
-server destination ip                          > 192.168.0.26
+destination spider ip                          > 192.168.0.26
 target ip (ipv4<16, domainname<256, ipv6<46)   > 1.1.1.1
 target port                                    > 53
 recv/send tv_sec  (timeout 0-60 sec)           > 3
@@ -263,7 +263,7 @@ forwarder tv_usec (timeout 0-1000000 microsec) > 0
 
 client listen ip        : 192.168.0.25
 client listen port      : 10053
-server destination ip   : 192.168.0.26
+destination spider ip   : 192.168.0.26
 target ip               : 1.1.1.1
 target port             : 53
 recv/send tv_sec        :       3 sec
@@ -365,7 +365,7 @@ ok? (yes:y no:n quit:q) > y
 
 3. add spider client node (3)
 > [!NOTE]
-> The startup location of the spider server node is determined by the 'server destination ip' when adding the spider client node.
+> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
 
 ```
 ----------     spider     ----------
@@ -383,7 +383,7 @@ ok? (yes:y no:n quit:q) > y
 command > 1
 [+] add node (spider client)
 client listen port           > 9050
-server destination ip        > 192.168.0.26
+destination spider ip        > 192.168.0.26
 recv/send tv_sec  (timeout 0-60 sec)           > 3
 recv/send tv_usec (timeout 0-1000000 microsec) > 0
 forwarder tv_sec  (timeout 0-3600 sec)         > 30
@@ -391,7 +391,7 @@ forwarder tv_usec (timeout 0-1000000 microsec) > 0
 
 client listen ip        : 192.168.0.25
 client listen port      : 9050
-server destination ip   : 192.168.0.26
+destination spider ip   : 192.168.0.26
 recv/send tv_sec        :       3 sec
 recv/send tv_usec       :       0 microsec
 forwarder_tv_sec        :      30 sec
@@ -419,7 +419,7 @@ ok? (yes:y no:n quit:q) > y
 command > 3
 [+] show node information
 --------------------------------------------------------------------------------------------------- client -----------------------------------------------------------------------------------------------------
-|connection id|client id |server id |client ip                                     |client port|server destination ip                         |client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
+|connection id|client id |server id |client ip                                     |client port|destination spider ip                         |client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 |   2654369324|         0|         0|192.168.0.25                                  |       9050|192.168.0.26                                  |            6|      3|      0|              30|                0|
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -91,7 +91,7 @@ namespace spider
     void Clientmanager::show_clients_map()
     {
         std::printf("---------------------------------------------------------------------------------------------------------------------------------------------- client -----------------------------------------------------------------------------------------------------------------------------------------------\n");
-        std::printf("|type  |connection id|client id |server id |client ip                                     |client listen port|client port|server destination ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
+        std::printf("|type  |connection id|client id |server id |client ip                                     |client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
         std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock(clients_map_mutex);
@@ -105,7 +105,7 @@ namespace spider
                         iterator->second->get_client_ip().c_str(),
                         iterator->second->get_client_listen_port().c_str(),
                         iterator->second->get_client_port().c_str(),
-                        iterator->second->get_server_destination_ip().c_str(),
+                        iterator->second->get_destination_spider_ip().c_str(),
                         iterator->second->get_target_ip().c_str(),
                         iterator->second->get_target_port().c_str(),
                         iterator->second->get_sock(),

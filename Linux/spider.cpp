@@ -57,7 +57,7 @@ namespace spider
                              std::shared_ptr<Messagemanager> message_manager,
                              std::string client_listen_ip,
                              std::string client_listen_port,
-                             std::string server_destination_ip,
+                             std::string destination_spider_ip,
                              int32_t tv_sec,
                              int32_t tv_usec,
                              int32_t forwarder_tv_sec,
@@ -116,7 +116,7 @@ namespace spider
                                    std::shared_ptr<Messagemanager> message_manager,
                                    std::string client_listen_ip,
                                    std::string client_listen_port,
-                                   std::string server_destination_ip,
+                                   std::string destination_spider_ip,
                                    std::string target_ip,
                                    std::string target_port,
                                    int32_t tv_sec,
@@ -305,7 +305,7 @@ namespace spider
                              std::shared_ptr<Messagemanager> message_manager,
                              std::string client_listen_ip,
                              std::string client_listen_port,
-                             std::string server_destination_ip,
+                             std::string destination_spider_ip,
                              int32_t tv_sec,
                              int32_t tv_usec,
                              int32_t forwarder_tv_sec,
@@ -466,7 +466,7 @@ namespace spider
                                                      client_listen_ip,
                                                      client_listen_port,
                                                      "",
-                                                     server_destination_ip,
+                                                     destination_spider_ip,
                                                      client_listen_sock,
                                                      tv_sec,
                                                      tv_usec,
@@ -513,7 +513,7 @@ namespace spider
                                                                           client_ip,
                                                                           "",
                                                                           client_port,
-                                                                          server_destination_ip,
+                                                                          destination_spider_ip,
                                                                           client_sock,
                                                                           tv_sec,
                                                                           tv_usec,
@@ -596,7 +596,7 @@ namespace spider
                                                      client_listen_ip,
                                                      client_listen_port,
                                                      "",
-                                                     server_destination_ip,
+                                                     destination_spider_ip,
                                                      client_listen_sock,
                                                      tv_sec,
                                                      tv_usec,
@@ -666,7 +666,7 @@ namespace spider
                                                                           client_ip,
                                                                           "",
                                                                           client_port,
-                                                                          server_destination_ip,
+                                                                          destination_spider_ip,
                                                                           client_sock,
                                                                           tv_sec,
                                                                           tv_usec,
@@ -704,7 +704,7 @@ namespace spider
     {
         std::string client_listen_ip = spider_ip;
         std::string client_listen_port;
-        std::string server_destination_ip;
+        std::string destination_spider_ip;
         int32_t tv_sec = 0;
         int32_t tv_usec = 0;
         int32_t forwarder_tv_sec = 0;
@@ -726,8 +726,8 @@ namespace spider
                 continue;
             }
 
-            std::printf("server destination ip        > ");
-            std::cin >> server_destination_ip;
+            std::printf("destination spider ip        > ");
+            std::cin >> destination_spider_ip;
             if(std::cin.fail())
             {
 #ifdef _DEBUG
@@ -812,7 +812,7 @@ namespace spider
             std::printf("\n");
             std::printf("client listen ip        : %s\n", client_listen_ip.c_str());
             std::printf("client listen port      : %s\n", client_listen_port.c_str());
-            std::printf("server destination ip   : %s\n", server_destination_ip.c_str());
+            std::printf("destination spider ip   : %s\n", destination_spider_ip.c_str());
             std::printf("recv/send tv_sec        : %7d sec\n", tv_sec);
             std::printf("recv/send tv_usec       : %7d microsec\n", tv_usec);
             std::printf("forwarder_tv_sec        : %7d sec\n", forwarder_tv_sec);
@@ -856,7 +856,7 @@ namespace spider
                            message_manager,
                            client_listen_ip,
                            client_listen_port,
-                           server_destination_ip,
+                           destination_spider_ip,
                            tv_sec,
                            tv_usec,
                            forwarder_tv_sec,
@@ -1975,7 +1975,7 @@ namespace spider
                                    std::shared_ptr<Messagemanager> message_manager,
                                    std::string client_listen_ip,
                                    std::string client_listen_port,
-                                   std::string server_destination_ip,
+                                   std::string destination_spider_ip,
                                    std::string target_ip,
                                    std::string target_port,
                                    int32_t tv_sec,
@@ -1999,7 +1999,7 @@ namespace spider
                                               client_listen_ip,
                                               client_listen_port,
                                               "",
-                                              server_destination_ip,
+                                              destination_spider_ip,
                                               target_ip,
                                               target_port,
                                               client_udp_sock,
@@ -2036,7 +2036,7 @@ namespace spider
     {
         std::string client_listen_ip = spider_ip;
         std::string client_listen_port;
-        std::string server_destination_ip;
+        std::string destination_spider_ip;
         std::string target_ip;      // ipv4, domainname, ipv6
         std::string target_port;
         int32_t tv_sec = 0;
@@ -2060,8 +2060,8 @@ namespace spider
                 continue;
             }
 
-            std::printf("server destination ip                          > ");
-            std::cin >> server_destination_ip;
+            std::printf("destination spider ip                          > ");
+            std::cin >> destination_spider_ip;
             if(std::cin.fail())
             {
 #ifdef _DEBUG
@@ -2180,7 +2180,7 @@ namespace spider
             std::printf("\n");
             std::printf("client listen ip        : %s\n", client_listen_ip.c_str());
             std::printf("client listen port      : %s\n", client_listen_port.c_str());
-            std::printf("server destination ip   : %s\n", server_destination_ip.c_str());
+            std::printf("destination spider ip   : %s\n", destination_spider_ip.c_str());
             std::printf("target ip               : %s\n", target_ip.c_str());
             std::printf("target port             : %s\n", target_port.c_str());
             std::printf("recv/send tv_sec        : %7d sec\n", tv_sec);
@@ -2227,7 +2227,7 @@ namespace spider
                            message_manager,
                            client_listen_ip,
                            client_listen_port,
-                           server_destination_ip,
+                           destination_spider_ip,
                            target_ip,
                            target_port,
                            tv_sec,
