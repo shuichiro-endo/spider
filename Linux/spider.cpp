@@ -4,27 +4,6 @@
  * Ver:    0.4
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <iostream>
-#include <limits>
-#include <string>
-#include <memory>
-#include <thread>
-#include <chrono>
-#include <random>
-#include <map>
-#include <unistd.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <limits.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
 #include "spider.hpp"
 #include "socks5.hpp"
 #include "route.hpp"
