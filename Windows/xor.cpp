@@ -51,8 +51,6 @@ namespace spider
 
     char Xor::hex_char_to_int(char c)
     {
-        char ret = 0;
-
         if((c >= '0') && (c <= '9'))
         {
             c = c - '0';
@@ -107,7 +105,7 @@ namespace spider
             return -1;
         }
 
-        return 0;
+        return data_size;
     }
 
     int32_t Xor::decrypt(char *data,
@@ -128,7 +126,7 @@ namespace spider
             return -1;
         }
 
-        return 0;
+        return data_size;
     }
 }
 

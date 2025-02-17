@@ -229,7 +229,7 @@ namespace spider
                         ret = encryption->decrypt(buffer,
                                                   rec,
                                                   buffer_size);
-                        if(ret != 0)
+                        if(ret <= 0)
                         {
 #ifdef _DEBUG
                             std::printf("[-] recv_message decrypt error: %d\n",
@@ -237,6 +237,8 @@ namespace spider
 #endif
                             return -1;
                         }
+
+                        rec = ret;
                     }
                 }else
                 {
@@ -291,7 +293,7 @@ namespace spider
             ret = encryption->encrypt(buffer,
                                       data_size,
                                       SOCKS5_MESSAGE_DATA_SIZE);
-            if(ret != 0)
+            if(ret <= 0)
             {
 #ifdef _DEBUG
                 std::printf("[-] send_message encrypt error: %d\n",
@@ -300,6 +302,8 @@ namespace spider
                 free(socks5_message_data);
                 return -1;
             }
+
+            data_size = ret;
         }
 
 #ifdef _DEBUG
@@ -870,7 +874,7 @@ namespace spider
             ret = encryption->decrypt(buffer,
                                       rec,
                                       buffer_max_length);
-            if(ret != 0)
+            if(ret <= 0)
             {
 #ifdef _DEBUG
                 std::printf("[-] [client -> server] selection request decrypt error: %d\n",
@@ -879,6 +883,8 @@ namespace spider
                 free(buffer);
                 return -1;
             }
+
+            rec = ret;
         }
 
 #ifdef _DEBUG
