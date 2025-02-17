@@ -21,6 +21,8 @@
 #include "server.hpp"
 #include "servermanager.hpp"
 #include "messagemanager.hpp"
+#include "encryption.hpp"
+#include "xor.hpp"
 
 
 namespace spider
@@ -39,14 +41,12 @@ namespace spider
     static void message_manager_transfer_routing_message(std::shared_ptr<Messagemanager> message_manager);
 
     static void message_manager_transfer_socks5_message(std::string spider_ip,
-                                                        bool xor_flag,
-                                                        std::string xor_key_hex_string,
+                                                        std::shared_ptr<Encryption> encryption,
                                                         std::shared_ptr<Servermanager> server_manager,
                                                         std::shared_ptr<Messagemanager> message_manager);
 
     static void message_manager_worker(std::string spider_ip,
-                                       bool xor_flag,
-                                       std::string xor_key_hex_string,
+                                       std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Servermanager> server_manager,
                                        std::shared_ptr<Messagemanager> message_manager);
 
@@ -62,12 +62,10 @@ namespace spider
                              int32_t tv_usec,
                              int32_t forwarder_tv_sec,
                              int32_t forwarder_tv_usec,
-                             bool xor_flag,
-                             std::string xor_key_hex_string);
+                             std::shared_ptr<Encryption> encryption);
 
     static void add_node_spider_client(std::string spider_ip,
-                                       bool xor_flag,
-                                       std::string xor_key_hex_string,
+                                       std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Clientmanager> client_manager,
                                        std::shared_ptr<Messagemanager> message_manager);
 
@@ -125,12 +123,10 @@ namespace spider
                                    int32_t tv_usec,
                                    int32_t forwarder_tv_sec,
                                    int32_t forwarder_tv_usec,
-                                   bool xor_flag,
-                                   std::string xor_key_hex_string);
+                                   std::shared_ptr<Encryption> encryption);
 
     static void add_node_spider_client_udp(std::string spider_ip,
-                                           bool xor_flag,
-                                           std::string xor_key_hex_string,
+                                           std::shared_ptr<Encryption> encryption,
                                            std::shared_ptr<Clientmanager> client_manager,
                                            std::shared_ptr<Messagemanager> message_manager);
 
@@ -212,8 +208,7 @@ namespace spider
     }
 
     static void message_manager_transfer_socks5_message(std::string spider_ip,
-                                                        bool xor_flag,
-                                                        std::string xor_key_hex_string,
+                                                        std::shared_ptr<Encryption> encryption,
                                                         std::shared_ptr<Servermanager> server_manager,
                                                         std::shared_ptr<Messagemanager> message_manager)
     {
@@ -242,8 +237,7 @@ namespace spider
                                                   socks5_message->get_tv_usec(),
                                                   socks5_message->get_forwarder_tv_sec(),
                                                   socks5_message->get_forwarder_tv_usec(),
-                                                  xor_flag,
-                                                  xor_key_hex_string,
+                                                  encryption,
                                                   message_manager);
 
                 do
@@ -271,8 +265,7 @@ namespace spider
     }
 
     static void message_manager_worker(std::string spider_ip,
-                                       bool xor_flag,
-                                       std::string xor_key_hex_string,
+                                       std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Servermanager> server_manager,
                                        std::shared_ptr<Messagemanager> message_manager)
     {
@@ -282,8 +275,7 @@ namespace spider
 
         std::thread message_manager_transfer_socks5_message_thread(message_manager_transfer_socks5_message,
                                                                    spider_ip,
-                                                                   xor_flag,
-                                                                   xor_key_hex_string,
+                                                                   encryption,
                                                                    server_manager,
                                                                    message_manager);
         message_manager_transfer_socks5_message_thread.detach();
@@ -318,8 +310,7 @@ namespace spider
                              int32_t tv_usec,
                              int32_t forwarder_tv_sec,
                              int32_t forwarder_tv_usec,
-                             bool xor_flag,
-                             std::string xor_key_hex_string)
+                             std::shared_ptr<Encryption> encryption)
     {
         int ret = 0;
         uint32_t connection_id = 0;
@@ -481,8 +472,7 @@ namespace spider
                                                      tv_usec,
                                                      forwarder_tv_sec,
                                                      forwarder_tv_usec,
-                                                     xor_flag,
-                                                     xor_key_hex_string,
+                                                     encryption,
                                                      message_manager);
 
             do
@@ -529,8 +519,7 @@ namespace spider
                                                                           tv_usec,
                                                                           forwarder_tv_sec,
                                                                           forwarder_tv_usec,
-                                                                          xor_flag,
-                                                                          xor_key_hex_string,
+                                                                          encryption,
                                                                           message_manager);
 
 
@@ -613,8 +602,7 @@ namespace spider
                                                      tv_usec,
                                                      forwarder_tv_sec,
                                                      forwarder_tv_usec,
-                                                     xor_flag,
-                                                     xor_key_hex_string,
+                                                     encryption,
                                                      message_manager);
 
             do
@@ -684,8 +672,7 @@ namespace spider
                                                                           tv_usec,
                                                                           forwarder_tv_sec,
                                                                           forwarder_tv_usec,
-                                                                          xor_flag,
-                                                                          xor_key_hex_string,
+                                                                          encryption,
                                                                           message_manager);
 
                 do
@@ -711,8 +698,7 @@ namespace spider
     }
 
     static void add_node_spider_client(std::string spider_ip,
-                                       bool xor_flag,
-                                       std::string xor_key_hex_string,
+                                       std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Clientmanager> client_manager,
                                        std::shared_ptr<Messagemanager> message_manager)
     {
@@ -875,8 +861,7 @@ namespace spider
                            tv_usec,
                            forwarder_tv_sec,
                            forwarder_tv_usec,
-                           xor_flag,
-                           xor_key_hex_string);
+                           encryption);
         thread.detach();
 
         return;
@@ -1997,8 +1982,7 @@ namespace spider
                                    int32_t tv_usec,
                                    int32_t forwarder_tv_sec,
                                    int32_t forwarder_tv_usec,
-                                   bool xor_flag,
-                                   std::string xor_key_hex_string)
+                                   std::shared_ptr<Encryption> encryption)
     {
         int32_t ret = 0;
         uint32_t connection_id = 0;
@@ -2023,8 +2007,7 @@ namespace spider
                                               tv_usec,
                                               forwarder_tv_sec,
                                               forwarder_tv_usec,
-                                              xor_flag,
-                                              xor_key_hex_string,
+                                              encryption,
                                               message_manager);
 
         do
@@ -2047,8 +2030,7 @@ namespace spider
     }
 
     static void add_node_spider_client_udp(std::string spider_ip,
-                                           bool xor_flag,
-                                           std::string xor_key_hex_string,
+                                           std::shared_ptr<Encryption> encryption,
                                            std::shared_ptr<Clientmanager> client_manager,
                                            std::shared_ptr<Messagemanager> message_manager)
     {
@@ -2252,9 +2234,8 @@ namespace spider
                            tv_usec,
                            forwarder_tv_sec,
                            forwarder_tv_usec,
-                           xor_flag,
-                           xor_key_hex_string);
-                           thread.detach();
+                           encryption);
+        thread.detach();
 
         return;
     }
@@ -2339,6 +2320,19 @@ int main(int argc,
         exit(-1);
     }
 
+    std::shared_ptr<spider::Encryption> encryption;
+    std::shared_ptr<spider::Xor> encryption_xor;
+
+    if(xor_flag)
+    {
+        encryption_xor = std::make_shared<spider::Xor>(xor_flag,
+                                                       xor_key_hex_string);
+        encryption = encryption_xor;
+    }else
+    {
+        encryption = nullptr;
+    }
+
     std::shared_ptr<spider::Clientmanager> client_manager = std::make_shared<spider::Clientmanager>();
     std::shared_ptr<spider::Servermanager> server_manager = std::make_shared<spider::Servermanager>();
     std::shared_ptr<spider::Pipemanager> pipe_manager = std::make_shared<spider::Pipemanager>();
@@ -2364,8 +2358,7 @@ int main(int argc,
 
     std::thread message_manager_thread(spider::message_manager_worker,
                                        spider_ip,
-                                       xor_flag,
-                                       xor_key_hex_string,
+                                       encryption,
                                        server_manager,
                                        message_manager);
     message_manager_thread.detach();
@@ -2410,8 +2403,7 @@ int main(int argc,
             case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
                 std::printf("[+] add node (spider client)\n");
                 spider::add_node_spider_client(spider_ip,
-                                               xor_flag,
-                                               xor_key_hex_string,
+                                               encryption,
                                                client_manager,
                                                message_manager);
                 break;
@@ -2446,8 +2438,7 @@ int main(int argc,
                 std::printf("[+] add node (spider client udp)\n");
                 std::printf("[!] This is not SOCKS5 connection. (UDP over TCP)\n");
                 spider::add_node_spider_client_udp(spider_ip,
-                                                   xor_flag,
-                                                   xor_key_hex_string,
+                                                   encryption,
                                                    client_manager,
                                                    message_manager);
                 break;

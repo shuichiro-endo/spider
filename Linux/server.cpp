@@ -8,6 +8,7 @@
 #include "server.hpp"
 #include "messagemanager.hpp"
 #include "socks5message.hpp"
+#include "encryption.hpp"
 
 
 namespace spider
@@ -23,8 +24,7 @@ namespace spider
                    int32_t tv_usec,
                    int32_t forwarder_tv_sec,
                    int32_t forwarder_tv_usec,
-                   bool xor_flag,
-                   std::string xor_key_hex_string,
+                   std::shared_ptr<Encryption> encryption,
                    std::shared_ptr<Messagemanager> message_manager)
     : Node(server_sock, message_manager)
     {
@@ -38,8 +38,7 @@ namespace spider
         this->tv_usec = tv_usec;
         this->forwarder_tv_sec = forwarder_tv_sec;
         this->forwarder_tv_usec = forwarder_tv_usec;
-        this->xor_flag = xor_flag;
-        this->xor_key_hex_string = xor_key_hex_string;
+        this->encryption = encryption;
 
         this->sock = server_sock;
         this->target_sock = -1;
@@ -181,119 +180,14 @@ namespace spider
         return forwarder_tv_usec;
     }
 
-    void Server::set_xor_flag(bool xor_flag)
+    void Server::set_encryption(std::shared_ptr<Encryption> encryption)
     {
-        this->xor_flag = xor_flag;
+        this->encryption = encryption;
     }
 
-    bool Server::get_xor_flag()
+    std::shared_ptr<Encryption> Server::get_encryption()
     {
-        return xor_flag;
-    }
-
-    void Server::set_xor_key_hex_string(std::string xor_key_hex_string)
-    {
-        this->xor_key_hex_string = xor_key_hex_string;
-    }
-
-    std::string Server::get_xor_key_hex_string()
-    {
-        return xor_key_hex_string;
-    }
-
-    char Server::hex_char_to_int(char c)
-    {
-        char ret = 0;
-
-        if((c >= '0') && (c <= '9'))
-        {
-            ret = c - '0';
-        }else if((c >= 'a') && (c <= 'f'))
-        {
-            ret = c + 10 - 'a';
-        }else if((c >= 'A') && (c <= 'F'))
-        {
-            ret = c + 10 - 'A';
-        }else
-        {
-            ret = -1;
-        }
-
-        return ret;
-    }
-
-    int Server::hex_string_to_array(const char *hex_string,
-                                    int hex_string_length,
-                                    unsigned char *output,
-                                    int output_size)
-    {
-        char tmp1 = 0;
-        char tmp2 = 0;
-        int output_length = 0;
-
-        if(hex_string_length % 2 != 0){
-#ifdef _DEBUG
-            std::printf("[-] hex string length error\n");
-#endif
-            return -1;
-        }
-
-        if(hex_string_length / 2 > output_size){
-#ifdef _DEBUG
-            std::printf("[-] hex string length error\n");
-#endif
-            return -1;
-        }
-
-        for(int i = 0; i < hex_string_length; i += 2){
-            tmp1 = hex_char_to_int(hex_string[i]);
-            tmp2 = hex_char_to_int(hex_string[i + 1]);
-
-            if(tmp1 == -1 || tmp2 == -1)
-            {
-#ifdef _DEBUG
-                std::printf("[-] hex_char_to_int error\n");
-#endif
-                return -1;
-            }
-
-            tmp1 = tmp1 << 4;
-            output[output_length] = (unsigned char)(tmp1 + tmp2);
-            output_length++;
-        }
-
-        return output_length;
-    }
-
-
-    int32_t Server::encrypt_xor(char *buffer,
-                                int32_t data_size)
-    {
-        int32_t ret = 0;
-        int32_t key_length = xor_key_hex_string.size() / 2;
-        unsigned char *key = (unsigned char *)calloc(key_length,
-                                                     sizeof(char));
-
-        ret = hex_string_to_array(xor_key_hex_string.c_str(),
-                                 xor_key_hex_string.size(),
-                                 key,
-                                 key_length);
-        if(ret < 0)
-        {
-#ifdef _DEBUG
-            std::printf("[-] hex_string_to_array error\n");
-#endif
-            free(key);
-            return -1;
-        }
-
-        for(int32_t i = 0; i < data_size; i++)
-        {
-            buffer[i] = buffer[i] ^ key[i % key_length];
-        }
-
-        free(key);
-        return 0;
+        return encryption;
     }
 
     int32_t Server::recv_message(char *buffer,
@@ -301,6 +195,7 @@ namespace spider
                                  int32_t tv_sec,
                                  int32_t tv_usec)
     {
+        int32_t ret = 0;
         char message_type;
         int32_t rec = 0;
         std::shared_ptr<Socks5message> socks5_message;
@@ -328,10 +223,20 @@ namespace spider
                     print_bytes(buffer, rec);
 #endif
 
-                    if(xor_flag)
+                    if(encryption != nullptr
+                       && encryption->get_flag())
                     {
-                        encrypt_xor(buffer,
-                                    rec);
+                        ret = encryption->decrypt(buffer,
+                                                  rec,
+                                                  buffer_size);
+                        if(ret != 0)
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] recv_message decrypt error: %d\n",
+                                        ret);
+#endif
+                            return -1;
+                        }
                     }
                 }else
                 {
@@ -380,10 +285,21 @@ namespace spider
             return -1;
         }
 
-        if(xor_flag)
+        if(encryption != nullptr
+           && encryption->get_flag())
         {
-            encrypt_xor(buffer,
-                        data_size);
+            ret = encryption->encrypt(buffer,
+                                      data_size,
+                                      SOCKS5_MESSAGE_DATA_SIZE);
+            if(ret != 0)
+            {
+#ifdef _DEBUG
+                std::printf("[-] send_message encrypt error: %d\n",
+                            ret);
+#endif
+                free(socks5_message_data);
+                return -1;
+            }
         }
 
 #ifdef _DEBUG
@@ -941,17 +857,28 @@ namespace spider
         rec = socks5_message->get_data_size();
         if(rec <= 0 || rec > NODE_BUFFER_SIZE){
 #ifdef _DEBUG
-            std::printf("[+] [client -> server] recv selection request error\n");
+            std::printf("[-] [client -> server] recv selection request error\n");
 #endif
             free(buffer);
             return -1;
         }
         std::memcpy(buffer, socks5_message->get_data(), rec);
 
-        if(xor_flag)
+        if(encryption != nullptr
+           && encryption->get_flag())
         {
-            encrypt_xor(buffer,
-                        rec);
+            ret = encryption->decrypt(buffer,
+                                      rec,
+                                      buffer_max_length);
+            if(ret != 0)
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client -> server] selection request decrypt error: %d\n",
+                            ret);
+#endif
+                free(buffer);
+                return -1;
+            }
         }
 
 #ifdef _DEBUG

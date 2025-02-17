@@ -2,7 +2,9 @@ CC       = g++
 CFLAGS   =
 LDFLAGS  = -pthread
 
-SRCS     = route.cpp
+SRCS     = encryption.cpp
+SRCS    += xor.cpp
+SRCS    += route.cpp
 SRCS    += message.cpp
 SRCS    += routingmessagequeue.cpp
 SRCS    += socks5messagequeue.cpp

@@ -12,6 +12,7 @@
 
 namespace spider
 {
+    class Encryption;
     class Messagemanager;
 
     class Server : public Node
@@ -30,22 +31,11 @@ namespace spider
         int32_t tv_usec;
         int32_t forwarder_tv_sec;
         int32_t forwarder_tv_usec;
-        bool xor_flag;
-        std::string xor_key_hex_string;
+        std::shared_ptr<Encryption> encryption;
 
     public:
 
     private:
-        char hex_char_to_int(char c);
-
-        int hex_string_to_array(const char *hex_string,
-                                int hex_string_length,
-                                unsigned char *output,
-                                int output_size);
-
-        int32_t encrypt_xor(char *buffer,
-                            int32_t data_size);
-
         int32_t recv_message(char *buffer,
                              int32_t buffer_size,
                              int32_t tv_sec,
@@ -94,8 +84,7 @@ namespace spider
                int32_t tv_usec,
                int32_t forwarder_tv_sec,
                int32_t forwarder_tv_usec,
-               bool xor_flag,
-               std::string xor_key_hex_string,
+               std::shared_ptr<Encryption> encryption,
                std::shared_ptr<Messagemanager> message_manager);
 
         ~Server();
@@ -139,11 +128,8 @@ namespace spider
         void set_forwarder_tv_usec(int32_t forwarder_tv_usec);
         int32_t get_forwarder_tv_usec();
 
-        void set_xor_flag(bool xor_flag);
-        bool get_xor_flag();
-
-        void set_xor_key_hex_string(std::string xor_key_hex_string);
-        std::string get_xor_key_hex_string();
+        void set_encryption(std::shared_ptr<Encryption> encryption);
+        std::shared_ptr<Encryption> get_encryption();
 
         int32_t do_socks5_connection(std::shared_ptr<Socks5message> socks5_message);
     };
