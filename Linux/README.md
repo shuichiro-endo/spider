@@ -245,6 +245,8 @@ ok? (yes:y no:n quit:q)            > y
 - 6: add node (spider client udp)
 > [!IMPORTANT]
 > This is not SOCKS5 connection. (UDP over TCP)
+> 
+> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
 
 ```
 command > 6
