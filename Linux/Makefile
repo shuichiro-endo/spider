@@ -4,6 +4,7 @@ LDFLAGS  = -pthread
 
 SRCS     = encryption.cpp
 SRCS    += xor.cpp
+SRCS    += aes.cpp
 SRCS    += route.cpp
 SRCS    += message.cpp
 SRCS    += routingmessagequeue.cpp

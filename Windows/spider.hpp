@@ -52,6 +52,8 @@
 #include <map>
 #include <queue>
 #include <semaphore>
+#include <stdint.h>
+#include <stddef.h>
 
 
 #pragma comment(lib, "ws2_32.lib")      // Winsock Library

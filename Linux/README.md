@@ -38,15 +38,17 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.4  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.5  Author: Shuichiro Endo  
 
 
 usage        : ./spider -i spider_ip
              : [-r routing_mode(auto:a self:s)]
-             : [-x (xor encryption)] [-k key(hexstring)]
+             : [-e x (xor encryption)] [-k key(hexstring)]
+             : [-e a (aes-256-cbc encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]
 example      : ./spider -i 192.168.0.10
-             : ./spider -i 192.168.0.10 -x -k deadbeef
              : ./spider -i 192.168.0.10 -r s
+             : ./spider -i 192.168.0.10 -e x -k deadbeef
+             : ./spider -i 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
              : ./spider -i fe80::xxxx:xxxx:xxxx:xxxx%eth0
 
 ```
@@ -68,7 +70,7 @@ example      : ./spider -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.4  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.5  Author: Shuichiro Endo  
 
 
 ----------     spider     ----------
@@ -76,6 +78,9 @@ example      : ./spider -i 192.168.0.10
  routing mode       : auto
  xor encryption     : off
  xor key hex string : 
+ aes encryption     : off
+ aes key hex string : 
+ aes iv hex string  : 
 ---------- spider command ----------
  1: add node (spider client)
  2: add node (spider pipe)

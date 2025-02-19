@@ -29,6 +29,8 @@ namespace spider
         void set_flag(BOOL flag);
         BOOL get_flag();
 
+        void print_bytes(char *buffer, int buffer_length) const;
+
         virtual int32_t encrypt(char *data,
                                 int32_t data_size,
                                 int32_t buffer_size) const = 0;

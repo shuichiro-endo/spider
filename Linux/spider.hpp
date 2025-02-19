@@ -45,6 +45,8 @@
 #include <mutex>
 #include <queue>
 #include <semaphore>
+#include <stdint.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <netdb.h>

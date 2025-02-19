@@ -1,7 +1,7 @@
 /*
  * Title:  spider spider.cpp (Linux)
  * Author: Shuichiro Endo
- * Ver:    0.4
+ * Ver:    0.5
  */
 
 #include "spider.hpp"
@@ -23,6 +23,7 @@
 #include "messagemanager.hpp"
 #include "encryption.hpp"
 #include "xor.hpp"
+#include "aes.hpp"
 
 
 namespace spider
@@ -2251,7 +2252,7 @@ namespace spider
         std::printf("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     \n");
         std::printf("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     \n");
         std::printf("        :*-  :*-   .:.              _//                                   \n");
-        std::printf("        =-    -:                  Linux Ver: 0.4  Author: Shuichiro Endo  \n");
+        std::printf("        =-    -:                  Linux Ver: 0.5  Author: Shuichiro Endo  \n");
         std::printf("\n");
     }
 
@@ -2260,10 +2261,12 @@ namespace spider
         std::printf("\n");
         std::printf("usage        : %s -i spider_ip\n", filename);
         std::printf("             : [-r routing_mode(auto:a self:s)]\n");
-        std::printf("             : [-x (xor encryption)] [-k key(hexstring)]\n");
+        std::printf("             : [-e x (xor encryption)] [-k key(hexstring)]\n");
+        std::printf("             : [-e a (aes-cbc-256 encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]\n");
         std::printf("example      : %s -i 192.168.0.10\n", filename);
-        std::printf("             : %s -i 192.168.0.10 -x -k deadbeef\n", filename);
         std::printf("             : %s -i 192.168.0.10 -r s\n", filename);
+        std::printf("             : %s -i 192.168.0.10 -e x -k deadbeef\n", filename);
+        std::printf("             : %s -i 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
         std::printf("             : %s -i fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("\n");
     }
@@ -2273,12 +2276,18 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:i:r:xk:";
+    const char *optstring = "h:i:r:e:k:v:";
     opterr = 0;
     std::string spider_ip;
     std::string routing_mode = "a";
+    std::string encryption_type;
+    std::string key;
+    std::string iv;
     bool xor_flag = false;
+    bool aes_flag = false;
     std::string xor_key_hex_string;
+    std::string aes_key_hex_string;
+    std::string aes_iv_hex_string;
 
 
     spider::print_title();
@@ -2299,12 +2308,16 @@ int main(int argc,
                 routing_mode = optarg;
                 break;
 
-            case 'x':
-                xor_flag = true;
+            case 'e':
+                encryption_type = optarg;
                 break;
 
             case 'k':
-                xor_key_hex_string = optarg;
+                key = optarg;
+                break;
+
+            case 'v':
+                iv = optarg;
                 break;
 
             default:
@@ -2322,12 +2335,30 @@ int main(int argc,
 
     std::shared_ptr<spider::Encryption> encryption;
     std::shared_ptr<spider::Xor> encryption_xor;
+    std::shared_ptr<spider::Aes> encryption_aes;
 
-    if(xor_flag)
+    if(encryption_type == "x")
     {
+        xor_flag = true;
+        xor_key_hex_string = key;
         encryption_xor = std::make_shared<spider::Xor>(xor_flag,
                                                        xor_key_hex_string);
         encryption = encryption_xor;
+    }else if(encryption_type == "a")
+    {
+        aes_flag = true;
+        aes_key_hex_string = key;
+        aes_iv_hex_string = iv;
+        encryption_aes = std::make_shared<spider::Aes>(aes_flag,
+                                                       aes_key_hex_string,
+                                                       aes_iv_hex_string);
+
+        if(encryption_aes->get_flag() == false)
+        {
+            exit(-1);
+        }
+
+        encryption = encryption_aes;
     }else
     {
         encryption = nullptr;
@@ -2374,6 +2405,9 @@ int main(int argc,
         std::printf(" routing mode       : %s\n", (routing_mode == "s" ? "self" : "auto"));
         std::printf(" xor encryption     : %s\n", (xor_flag ? "on" : "off"));
         std::printf(" xor key hex string : %s\n", xor_key_hex_string.c_str());
+        std::printf(" aes encryption     : %s\n", (aes_flag ? "on" : "off"));
+        std::printf(" aes key hex string : %s\n", aes_key_hex_string.c_str());
+        std::printf(" aes iv hex string  : %s\n", aes_iv_hex_string.c_str());
         std::printf("---------- spider command ----------\n");
         std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
         std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
