@@ -2303,8 +2303,8 @@ namespace spider
         std::printf("\n");
         std::printf("usage        : %s -i spider_ip\n", filename);
         std::printf("             : [-r routing_mode(auto:a self:s)]\n");
-        std::printf("             : [-e x (xor encryption)] [-k key(hexstring)]\n");
-        std::printf("             : [-e a (aes-cbc-256 encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]\n");
+        std::printf("             : [-e x(xor encryption)] [-k key(hexstring)]\n");
+        std::printf("             : [-e a(aes-256-cbc encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]\n");
         std::printf("example      : %s -i 192.168.0.10\n", filename);
         std::printf("             : %s -i 192.168.0.10 -r s\n", filename);
         std::printf("             : %s -i 192.168.0.10 -e x -k deadbeef\n", filename);

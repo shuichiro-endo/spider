@@ -43,8 +43,8 @@ make
 
 usage        : ./spider -i spider_ip
              : [-r routing_mode(auto:a self:s)]
-             : [-e x (xor encryption)] [-k key(hexstring)]
-             : [-e a (aes-256-cbc encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]
+             : [-e x(xor encryption)] [-k key(hexstring)]
+             : [-e a(aes-256-cbc encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]
 example      : ./spider -i 192.168.0.10
              : ./spider -i 192.168.0.10 -r s
              : ./spider -i 192.168.0.10 -e x -k deadbeef
