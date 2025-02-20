@@ -283,7 +283,6 @@ namespace spider
             std::printf("[-] send_message data size error: %d\n",
                         data_size);
 #endif
-            free(socks5_message_data);
             return -1;
         }
 
@@ -299,7 +298,6 @@ namespace spider
                 std::printf("[-] send_message encrypt error: %d\n",
                             ret);
 #endif
-                free(socks5_message_data);
                 return -1;
             }
 
