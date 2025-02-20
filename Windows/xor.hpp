@@ -6,7 +6,6 @@
 #ifndef XOR_H_
 #define XOR_H_
 
-
 #include "spider.hpp"
 
 
@@ -25,9 +24,6 @@ namespace spider
     public:
 
     private:
-        char hex_char_to_int(char c);
-
-        void hex_string_to_array();
 
     public:
         Xor(BOOL flag,

@@ -84,12 +84,6 @@ namespace spider
     public:
 
     private:
-        char hex_char_to_int(char c);
-        void hex_string_to_array(const char *hex_string,
-                                 int32_t hex_string_length,
-                                 unsigned char *buffer,
-                                 int32_t buffer_size);
-
         void key_expansion(unsigned char *round_key,
                            const unsigned char *key);
 

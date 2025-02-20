@@ -22,6 +22,14 @@ namespace spider
 
     private:
 
+    protected:
+        char hex_char_to_int(char c);
+
+        void hex_string_to_array(const char *hex_string,
+                                 int32_t hex_string_length,
+                                 unsigned char *buffer,
+                                 int32_t buffer_size);
+
     public:
         Encryption(bool flag);
         ~Encryption();
