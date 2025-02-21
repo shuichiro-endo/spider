@@ -810,10 +810,10 @@ namespace spider
 #endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_sec = 3;
+                forwarder_tv_sec = 30;
             }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
             {
-                forwarder_tv_sec = 3;
+                forwarder_tv_sec = 30;
             }
 
             std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
@@ -833,7 +833,7 @@ namespace spider
 
             if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
             {
-                forwarder_tv_sec = 3;
+                forwarder_tv_sec = 30;
                 forwarder_tv_usec = 0;
             }
 
@@ -2193,10 +2193,10 @@ namespace spider
 #endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_sec = 3;
+                forwarder_tv_sec = 30;
             }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
             {
-                forwarder_tv_sec = 3;
+                forwarder_tv_sec = 30;
             }
 
             std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
@@ -2216,7 +2216,7 @@ namespace spider
 
             if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
             {
-                forwarder_tv_sec = 3;
+                forwarder_tv_sec = 30;
                 forwarder_tv_usec = 0;
             }
 
