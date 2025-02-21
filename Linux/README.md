@@ -17,6 +17,15 @@ git clone https://github.com/shuichiro-endo/spider.git
 cd spider/Linux
 make
 ```
+> [!NOTE]
+> If you want to display debug messages, please uncomment #define statement (//#define _DEBUG) in spider.hpp.
+> 
+> And then build it.
+- spider.hpp (uncomment #define statement (//#define _DEBUG))
+```
+#define _DEBUG
+```
+
 
 ## Usage
 - help
@@ -98,6 +107,8 @@ command >
 - 1: add node (spider client)
 > [!NOTE]
 > The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
+>
+> Please set the forwarder timeout to a larger value. (The default is 30 seconds.)
 
 ```
 command > 1
@@ -106,7 +117,7 @@ client listen port           > 9050
 destination spider ip        > 192.168.0.30
 recv/send tv_sec  (timeout 0-60 sec)           > 3
 recv/send tv_usec (timeout 0-1000000 microsec) > 0
-forwarder tv_sec  (timeout 0-3600 sec)         > 3
+forwarder tv_sec  (timeout 0-3600 sec)         > 30
 forwarder tv_usec (timeout 0-1000000 microsec) > 0
 
 client listen ip        : 192.168.0.25
@@ -114,7 +125,7 @@ client listen port      : 9050
 destination spider ip   : 192.168.0.30
 recv/send tv_sec        :       3 sec
 recv/send tv_usec       :       0 microsec
-forwarder_tv_sec        :       3 sec
+forwarder_tv_sec        :      30 sec
 forwarder_tv_usec       :       0 microsec
 
 ok? (yes:y no:n quit:q) > y
