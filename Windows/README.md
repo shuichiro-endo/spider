@@ -20,6 +20,15 @@ git clone https://github.com/shuichiro-endo/spider.git
 cd spider/Windows
 compile.bat
 ```
+> [!NOTE]
+> If you want to display debug messages, please uncomment #define statement (//#define DEBUGPRINT) in spider.hpp.
+> 
+> And then build it.
+- spider.hpp (uncomment #define statement (//#define DEBUGPRINT))
+```
+#define DEBUGPRINT
+```
+
 
 ## Usage
 The usage is the same as the Linux version.
