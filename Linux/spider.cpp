@@ -2259,15 +2259,15 @@ namespace spider
     static void usage(char *filename)
     {
         std::printf("\n");
-        std::printf("usage        : %s -i spider_ip\n", filename);
-        std::printf("             : [-r routing_mode(auto:a self:s)]\n");
-        std::printf("             : [-e x(xor encryption)] [-k key(hexstring)]\n");
-        std::printf("             : [-e a(aes-256-cbc encryption)] [-k aeskey(hexstring)] [-v aesiv(hexstring)]\n");
-        std::printf("example      : %s -i 192.168.0.10\n", filename);
-        std::printf("             : %s -i 192.168.0.10 -r s\n", filename);
-        std::printf("             : %s -i 192.168.0.10 -e x -k deadbeef\n", filename);
-        std::printf("             : %s -i 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
-        std::printf("             : %s -i fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
+        std::printf("usage   : %s -i spider_ip\n", filename);
+        std::printf("        : [-r routing_mode(auto:a self:s)]\n");
+        std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
+        std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
+        std::printf("example : %s -i 192.168.0.10\n", filename);
+        std::printf("        : %s -i 192.168.0.10 -r s\n", filename);
+        std::printf("        : %s -i 192.168.0.10 -e x -k deadbeef\n", filename);
+        std::printf("        : %s -i 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
+        std::printf("        : %s -i fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("\n");
     }
 }
