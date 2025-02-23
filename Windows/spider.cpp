@@ -531,9 +531,9 @@ namespace spider
                                        (struct sockaddr *)&client_addr,
                                        (socklen_t *)&client_addr_length);
 #ifdef DEBUGPRINT
-                printf("[+] connected from ip:%s port:%d\n",
-                       inet_ntoa(client_addr.sin_addr),
-                       ntohs(client_addr.sin_port));
+                std::printf("[+] connected from ip:%s port:%d\n",
+                            inet_ntoa(client_addr.sin_addr),
+                            ntohs(client_addr.sin_port));
 #endif
 
                 uint32_t client_id = 0;
@@ -1462,9 +1462,9 @@ namespace spider
                     continue;
                 }
 #ifdef DEBUGPRINT
-                printf("[+] connected from ip:%s port:%d\n",
-                       inet_ntoa(pipe_addr.sin_addr),
-                       ntohs(pipe_addr.sin_port));
+                std::printf("[+] connected from ip:%s port:%d\n",
+                            inet_ntoa(pipe_addr.sin_addr),
+                            ntohs(pipe_addr.sin_port));
 #endif
 
                 std::string pipe_destination_ip = inet_ntoa(pipe_addr.sin_addr);

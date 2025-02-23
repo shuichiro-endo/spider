@@ -243,8 +243,8 @@ namespace spider
                 }else
                 {
 #ifdef _DEBUG
-                    printf("[-] recv_message recv error: %d\n",
-                           rec);
+                    std::printf("[-] recv_message recv error: %d\n",
+                                rec);
 #endif
                     return -1;
                 }
@@ -504,8 +504,8 @@ namespace spider
                     }else
                     {
 #ifdef _DEBUG
-                        printf("[-] forwarder_send_data recv error: %d\n",
-                               errno);
+                        std::printf("[-] forwarder_send_data recv error: %d\n",
+                                    errno);
 #endif
                         break;
                     }
@@ -752,8 +752,8 @@ namespace spider
                         }else
                         {
 #ifdef _DEBUG
-                            printf("[-] forwarder_recv_data recvfrom error: %d\n",
-                                   errno);
+                            std::printf("[-] forwarder_recv_data recvfrom error: %d\n",
+                                        errno);
 #endif
 //                            break;
                         }

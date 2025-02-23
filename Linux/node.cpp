@@ -175,8 +175,8 @@ namespace spider
                     }else
                     {
 #ifdef _DEBUG
-                        printf("[-] recv error: %d\n",
-                               errno);
+                        std::printf("[-] recv error: %d\n",
+                                    errno);
 #endif
                         return -1;
                     }

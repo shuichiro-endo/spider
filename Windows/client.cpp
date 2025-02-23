@@ -315,8 +315,8 @@ namespace spider
                 }else
                 {
 #ifdef DEBUGPRINT
-                    printf("[-] recv_message recv error: %d\n",
-                           rec);
+                    std::printf("[-] recv_message recv error: %d\n",
+                                rec);
 #endif
                     return -1;
                 }
@@ -876,7 +876,7 @@ namespace spider
         forwarder();
 
 #ifdef DEBUGPRINT
-        printf("[+] worker exit\n");
+        std::printf("[+] worker exit\n");
 #endif
 
         free(buffer);
@@ -966,8 +966,8 @@ namespace spider
                     }else
                     {
 #ifdef DEBUGPRINT
-                        printf("[-] forwarder_udp_recv_send_data recvfrom error: %d\n",
-                               ret);
+                        std::printf("[-] forwarder_udp_recv_send_data recvfrom error: %d\n",
+                                    ret);
 #endif
 //                        break;
                     }
@@ -1504,7 +1504,7 @@ namespace spider
         forwarder_udp(addr_length);
 
 #ifdef DEBUGPRINT
-        printf("[+] worker exit\n");
+        std::printf("[+] worker exit\n");
 #endif
 
         closesocket(sock);

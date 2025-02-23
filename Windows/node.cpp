@@ -132,7 +132,7 @@ namespace spider
             if(t >= (tv_sec * 1000000 + tv_usec))
             {
 #ifdef DEBUGPRINT
-                printf("[-] recv_data timeout\n");
+                std::printf("[-] recv_data timeout\n");
 #endif
                 return -1;
             }
