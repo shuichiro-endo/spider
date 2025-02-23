@@ -98,25 +98,49 @@ namespace spider
 
     void Pipemanager::show_pipes_map()
     {
-        std::printf("----------------------------------------------------------------------------- pipe -------------------------------------------------------------------------------\n");
-        std::printf("|pipe id   |mode|pipe ip                                       |pipe listen port|pipe destination ip                           |pipe destination port|pipe socket|\n");
-        std::printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("---------------------------------------------------------------------------------------------------- pipe ------------------------------------------------------------------------------------------------------\n");
+        std::printf("|pipe id   |mode|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|\n");
+        std::printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock_pipes_map(pipes_map_mutex);
         for(auto iterator = pipes_map.begin(); iterator != pipes_map.end(); ++iterator)
         {
-            std::printf("|%10u|%c   |%-46s|           %5s|%-46s|                %5s|      %5d|\n",
+            std::string pipe_ip_scope_id;
+            std::string pipe_destination_ip_scope_id;
+
+            if(if_nametoindex(iterator->second->get_pipe_ip_scope_id().c_str()) > 0)
+            {
+                pipe_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_pipe_ip_scope_id().c_str()));
+            }else
+            {
+                pipe_ip_scope_id = "";
+            }
+
+            if(if_nametoindex(iterator->second->get_pipe_destination_ip_scope_id().c_str()) > 0)
+            {
+                pipe_destination_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_pipe_destination_ip_scope_id().c_str()));
+            }else
+            {
+                pipe_destination_ip_scope_id = "";
+            }
+
+
+            std::printf("|%10u|%c   |%-46s|%-10s (%3s)|           %5s|%-46s|%-10s             (%3s)|                %5s|      %5d|\n",
                         iterator->second->get_pipe_id(),
                         iterator->second->get_mode(),
                         iterator->second->get_pipe_ip().c_str(),
+                        iterator->second->get_pipe_ip_scope_id().c_str(),
+                        pipe_ip_scope_id.c_str(),
                         iterator->second->get_pipe_listen_port().c_str(),
                         iterator->second->get_pipe_destination_ip().c_str(),
+                        iterator->second->get_pipe_destination_ip_scope_id().c_str(),
+                        pipe_destination_ip_scope_id.c_str(),
                         iterator->second->get_pipe_destination_port().c_str(),
                         iterator->second->get_sock());
         }
         lock_pipes_map.unlock();
 
-        std::printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         std::printf("\n");
 
         return;

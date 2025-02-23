@@ -18,7 +18,9 @@ namespace spider
     Pipe::Pipe(uint32_t pipe_id,
                char mode,
                std::string pipe_ip,
+               std::string pipe_ip_scope_id,
                std::string pipe_destination_ip,
+               std::string pipe_destination_ip_scope_id,
                std::string pipe_destination_port,
                SOCKET pipe_sock,
                std::shared_ptr<Messagemanager> message_manager)
@@ -27,7 +29,9 @@ namespace spider
         this->pipe_id = pipe_id;
         this->mode = mode;
         this->pipe_ip = pipe_ip;
+        this->pipe_ip_scope_id = pipe_ip_scope_id;
         this->pipe_destination_ip = pipe_destination_ip;
+        this->pipe_destination_ip_scope_id = pipe_destination_ip_scope_id;
         this->pipe_destination_port = pipe_destination_port;
         this->routing_messages_queue = std::make_unique<Routingmessagequeue>();
     }
@@ -35,6 +39,7 @@ namespace spider
     Pipe::Pipe(uint32_t pipe_id,
                char mode,
                std::string pipe_ip,
+               std::string pipe_ip_scope_id,
                std::string pipe_listen_port,
                SOCKET pipe_sock,
                std::shared_ptr<Messagemanager> message_manager)
@@ -43,6 +48,7 @@ namespace spider
         this->pipe_id = pipe_id;
         this->mode = mode;
         this->pipe_ip = pipe_ip;
+        this->pipe_ip_scope_id = pipe_ip_scope_id;
         this->pipe_listen_port = pipe_listen_port;
         this->routing_messages_queue = std::make_unique<Routingmessagequeue>();
     }
@@ -82,6 +88,16 @@ namespace spider
         return pipe_ip;
     }
 
+    void Pipe::set_pipe_ip_scope_id(std::string pipe_ip_scope_id)
+    {
+        this->pipe_ip_scope_id = pipe_ip_scope_id;
+    }
+
+    std::string Pipe::get_pipe_ip_scope_id()
+    {
+        return pipe_ip_scope_id;
+    }
+
     void Pipe::set_pipe_listen_port(std::string pipe_listen_port)
     {
         this->pipe_listen_port = pipe_listen_port;
@@ -100,6 +116,16 @@ namespace spider
     std::string Pipe::get_pipe_destination_ip()
     {
         return pipe_destination_ip;
+    }
+
+    void Pipe::set_pipe_destination_ip_scope_id(std::string pipe_destination_ip_scope_id)
+    {
+        this->pipe_destination_ip_scope_id = pipe_destination_ip_scope_id;
+    }
+
+    std::string Pipe::get_pipe_destination_ip_scope_id()
+    {
+        return pipe_destination_ip_scope_id;
     }
 
     void Pipe::set_pipe_destination_port(std::string pipe_destination_port)

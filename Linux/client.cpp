@@ -18,6 +18,7 @@ namespace spider
                    uint32_t client_id,
                    uint32_t server_id,
                    std::string client_ip,
+                   std::string client_ip_scope_id,
                    std::string client_listen_port,
                    std::string client_port,
                    std::string destination_spider_ip,
@@ -35,6 +36,7 @@ namespace spider
         this->client_id = client_id;
         this->server_id = server_id;
         this->client_ip = client_ip;
+        this->client_ip_scope_id = client_ip_scope_id;
         this->client_listen_port = client_listen_port;
         this->client_port = client_port;
         this->destination_spider_ip = destination_spider_ip;
@@ -53,6 +55,7 @@ namespace spider
                    uint32_t client_id,
                    uint32_t server_id,
                    std::string client_ip,
+                   std::string client_ip_scope_id,
                    std::string client_listen_port,
                    std::string client_port,
                    std::string destination_spider_ip,
@@ -72,6 +75,7 @@ namespace spider
         this->client_id = client_id;
         this->server_id = server_id;
         this->client_ip = client_ip;
+        this->client_ip_scope_id = client_ip_scope_id;
         this->client_listen_port = client_listen_port;
         this->client_port = client_port;
         this->destination_spider_ip = destination_spider_ip;
@@ -140,6 +144,16 @@ namespace spider
     std::string Client::get_client_ip()
     {
         return client_ip;
+    }
+
+    void Client::set_client_ip_scope_id(std::string client_ip_scope_id)
+    {
+        this->client_ip_scope_id = client_ip_scope_id;
+    }
+
+    std::string Client::get_client_ip_scope_id()
+    {
+        return client_ip_scope_id;
     }
 
     void Client::set_client_listen_port(std::string client_listen_port)
@@ -464,8 +478,8 @@ namespace spider
                     }else
                     {
 #ifdef _DEBUG
-                        printf("[-] forwarder_recv_data recv error: %d\n",
-                               errno);
+                        std::printf("[-] forwarder_recv_data recv error: %d\n",
+                                    errno);
 #endif
                         break;
                     }
@@ -856,7 +870,7 @@ namespace spider
         forwarder();
 
 #ifdef _DEBUG
-        printf("[+] worker exit\n");
+        std::printf("[+] worker exit\n");
 #endif
 
         free(buffer);
@@ -943,8 +957,8 @@ namespace spider
                     }else
                     {
 #ifdef _DEBUG
-                        printf("[-] forwarder_recv_data recvfrom error: %d\n",
-                               errno);
+                        std::printf("[-] forwarder_recv_data recvfrom error: %d\n",
+                                    errno);
 #endif
 //                        break;
                     }
@@ -1400,7 +1414,11 @@ namespace spider
             std::memcpy(&client_addr6.sin6_port,
                         &tmp_ipv6->sin6_port,
                         2);
-            client_addr6.sin6_scope_id = tmp_ipv6->sin6_scope_id;
+
+            if(client_ip_scope_id.size() != 0)
+            {
+                client_addr6.sin6_scope_id = if_nametoindex(client_ip_scope_id.c_str());
+            }
 
             freeaddrinfo(client_addr_info);
 
@@ -1469,7 +1487,7 @@ namespace spider
         forwarder_udp(addr_length);
 
 #ifdef _DEBUG
-        printf("[+] worker exit\n");
+        std::printf("[+] worker exit\n");
 #endif
 
         close(sock);

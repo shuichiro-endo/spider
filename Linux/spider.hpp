@@ -52,6 +52,7 @@
 #include <netdb.h>
 #include <limits.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>

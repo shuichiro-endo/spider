@@ -90,19 +90,31 @@ namespace spider
 
     void Clientmanager::show_clients_map()
     {
-        std::printf("---------------------------------------------------------------------------------------------------------------------------------------------- client -----------------------------------------------------------------------------------------------------------------------------------------------\n");
-        std::printf("|type  |connection id|client id |server id |client ip                                     |client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
-        std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("-------------------------------------------------------------------------------------------------------------------------------------------------------- client --------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("|type  |connection id|client id |server id |client ip                                     |client ip scope id|client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n");
+        std::printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock(clients_map_mutex);
         for(auto iterator = clients_map.begin(); iterator != clients_map.end(); ++iterator)
         {
-            std::printf("|%-6s|   %10u|%10u|%10u|%-46s|             %5s|      %5s|%-46s|%-46s|      %5s|        %5d|%7d|%7d|         %7d|          %7d|\n",
+            std::string client_ip_scope_id;
+
+            if(if_nametoindex(iterator->second->get_client_ip_scope_id().c_str()) > 0)
+            {
+                client_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_client_ip_scope_id().c_str()));
+            }else
+            {
+                client_ip_scope_id = "";
+            }
+
+            std::printf("|%-6s|   %10u|%10u|%10u|%-46s|%-10s   (%3s)|             %5s|      %5s|%-46s|%-46s|      %5s|        %5d|%7d|%7d|         %7d|          %7d|\n",
                         iterator->second->get_type().c_str(),
                         iterator->second->get_connection_id(),
                         iterator->second->get_client_id(),
                         iterator->second->get_server_id(),
                         iterator->second->get_client_ip().c_str(),
+                        iterator->second->get_client_ip_scope_id().c_str(),
+                        client_ip_scope_id.c_str(),
                         iterator->second->get_client_listen_port().c_str(),
                         iterator->second->get_client_port().c_str(),
                         iterator->second->get_destination_spider_ip().c_str(),
@@ -116,7 +128,7 @@ namespace spider
         }
         lock.unlock();
 
-        std::printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         std::printf("\n");
 
         return;

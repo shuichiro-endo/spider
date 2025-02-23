@@ -22,9 +22,11 @@ namespace spider
         uint32_t pipe_id;
         char mode;                          // client:c server:s
         std::string pipe_ip;
-        std::string pipe_listen_port;       // mode:server
-        std::string pipe_destination_ip;    // mode:client
-        std::string pipe_destination_port;  // mode:client
+        std::string pipe_ip_scope_id;
+        std::string pipe_listen_port;
+        std::string pipe_destination_ip;
+        std::string pipe_destination_ip_scope_id;
+        std::string pipe_destination_port;
         std::unique_ptr<Routingmessagequeue> routing_messages_queue;
 
     public:
@@ -36,7 +38,9 @@ namespace spider
         Pipe(uint32_t pipe_id,
              char mode,
              std::string pipe_ip,
+             std::string pipe_ip_scope_id,
              std::string pipe_destination_ip,
+             std::string pipe_destination_ip_scope_id,
              std::string pipe_destination_port,
              int32_t pipe_sock,
              std::shared_ptr<Messagemanager> message_manager);
@@ -44,6 +48,7 @@ namespace spider
         Pipe(uint32_t pipe_id,
              char mode,
              std::string pipe_ip,
+             std::string pipe_ip_scope_id,
              std::string pipe_listen_port,
              int32_t pipe_sock,
              std::shared_ptr<Messagemanager> message_manager);
@@ -59,11 +64,17 @@ namespace spider
         void set_pipe_ip(std::string pipe_ip);
         std::string get_pipe_ip();
 
+        void set_pipe_ip_scope_id(std::string pipe_ip_scope_id);
+        std::string get_pipe_ip_scope_id();
+
         void set_pipe_listen_port(std::string pipe_listen_port);
         std::string get_pipe_listen_port();
 
         void set_pipe_destination_ip(std::string pipe_destination_ip);
         std::string get_pipe_destination_ip();
+
+        void set_pipe_destination_ip_scope_id(std::string pipe_destination_ip_scope_id);
+        std::string get_pipe_destination_ip_scope_id();
 
         void set_pipe_destination_port(std::string pipe_destination_port);
         std::string get_pipe_destination_port();
