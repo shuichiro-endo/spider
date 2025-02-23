@@ -70,7 +70,7 @@ example : spider.exe -4 192.168.0.10
 
 ### run
 > [!NOTE]
-> The -i option sets the IP address of the network interface.
+> The -4 and -6 option set the IP address of the network interface.
 > 
 > Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
 
