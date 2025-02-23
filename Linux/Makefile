@@ -2,7 +2,8 @@ CC       = g++
 CFLAGS   =
 LDFLAGS  = -pthread
 
-SRCS     = encryption.cpp
+SRCS    += spiderip.cpp
+SRCS    += encryption.cpp
 SRCS    += xor.cpp
 SRCS    += aes.cpp
 SRCS    += route.cpp

@@ -4,6 +4,7 @@
  */
 
 #include "spider.hpp"
+#include "spiderip.hpp"
 #include "routingmanager.hpp"
 #include "route.hpp"
 #include "message.hpp"
@@ -15,7 +16,7 @@
 
 namespace spider
 {
-    Routingmanager::Routingmanager(std::string spider_ip,
+    Routingmanager::Routingmanager(std::shared_ptr<Spiderip> spider_ip,
                                    std::shared_ptr<Pipemanager> pipe_manager,
                                    std::shared_ptr<Messagemanager> message_manager)
     {
@@ -32,12 +33,12 @@ namespace spider
 
     }
 
-    void Routingmanager::set_spider_ip(std::string spider_ip)
+    void Routingmanager::set_spider_ip(std::shared_ptr<Spiderip> spider_ip)
     {
         this->spider_ip;
     }
 
-    std::string Routingmanager::get_spider_ip()
+    std::shared_ptr<Spiderip> Routingmanager::get_spider_ip()
     {
         return spider_ip;
     }
@@ -45,11 +46,23 @@ namespace spider
     void Routingmanager::init_routing_table()
     {
         // self
-        std::shared_ptr<Route> route = std::make_shared<Route>('-',
-                                                               spider_ip,
-                                                               0,
-                                                               0);
-        this->add_route(route);
+        if(!spider_ip->get_spider_ipv4().empty())
+        {
+            std::shared_ptr<Route> route = std::make_shared<Route>('-',
+                                                                   spider_ip->get_spider_ipv4(),
+                                                                   0,
+                                                                   0);
+            this->add_route(route);
+        }
+
+        if(!spider_ip->get_spider_ipv6().empty())
+        {
+            std::shared_ptr<Route> route = std::make_shared<Route>('-',
+                                                                   spider_ip->get_spider_ipv6(),
+                                                                   0,
+                                                                   0);
+            this->add_route(route);
+        }
     }
 
     void Routingmanager::show_routing_table()
@@ -151,7 +164,8 @@ namespace spider
                     route_data = (struct route_data *)data;
                     mode = 'a';
                     ip = route_data->ip;
-                    if(ip == spider_ip)
+                    if(ip == spider_ip->get_spider_ipv4()
+                       || ip == spider_ip->get_spider_ipv6())
                     {
                         continue;
                     }
@@ -208,7 +222,7 @@ namespace spider
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
             if(iterator->second->get_mode() != 's'
-               && iterator->second->get_ip() != spider_ip
+               && (iterator->second->get_ip() != spider_ip->get_spider_ipv4() || iterator->second->get_ip() != spider_ip->get_spider_ipv6())
                && iterator->second->get_metric() != 0)
             {
                 struct timeval t = iterator->second->get_time();

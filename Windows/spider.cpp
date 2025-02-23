@@ -7,6 +7,7 @@
 #define NOMINMAX
 
 #include "spider.hpp"
+#include "spiderip.hpp"
 #include "socks5.hpp"
 #include "route.hpp"
 #include "message.hpp"
@@ -47,12 +48,12 @@ namespace spider
 
     static void message_manager_transfer_routing_message(std::shared_ptr<Messagemanager> message_manager);
 
-    static void message_manager_transfer_socks5_message(std::string spider_ip,
+    static void message_manager_transfer_socks5_message(std::shared_ptr<Spiderip> spider_ip,
                                                         std::shared_ptr<Encryption> encryption,
                                                         std::shared_ptr<Servermanager> server_manager,
                                                         std::shared_ptr<Messagemanager> message_manager);
 
-    static void message_manager_worker(std::string spider_ip,
+    static void message_manager_worker(std::shared_ptr<Spiderip> spider_ip,
                                        std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Servermanager> server_manager,
                                        std::shared_ptr<Messagemanager> message_manager);
@@ -72,8 +73,7 @@ namespace spider
                              int32_t forwarder_tv_usec,
                              std::shared_ptr<Encryption> encryption);
 
-    static void add_node_spider_client(std::string spider_ip,
-                                       std::string spider_ip_scope_id,
+    static void add_node_spider_client(std::shared_ptr<Spiderip> spider_ip,
                                        std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Clientmanager> client_manager,
                                        std::shared_ptr<Messagemanager> message_manager);
@@ -109,8 +109,7 @@ namespace spider
                            std::string pipe_listen_ip_scope_id,
                            std::string pipe_listen_port);
 
-    static void add_node_spider_pipe(std::string spider_ip,
-                                     std::string spider_ip_scope_id,
+    static void add_node_spider_pipe(std::shared_ptr<Spiderip> spider_ip,
                                      std::shared_ptr<Pipemanager> pipe_manager,
                                      std::shared_ptr<Messagemanager> message_manager);
 
@@ -120,7 +119,7 @@ namespace spider
 
     static void show_routing_table(std::shared_ptr<Routingmanager> routing_manager);
 
-    static void edit_routing_table(std::string spider_ip,
+    static void edit_routing_table(std::shared_ptr<Spiderip> spider_ip,
                                    std::shared_ptr<Pipemanager> pipe_manager,
                                    std::shared_ptr<Routingmanager> routing_manager);
 
@@ -138,8 +137,7 @@ namespace spider
                                    int32_t forwarder_tv_usec,
                                    std::shared_ptr<Encryption> encryption);
 
-    static void add_node_spider_client_udp(std::string spider_ip,
-                                           std::string spider_ip_scope_id,
+    static void add_node_spider_client_udp(std::shared_ptr<Spiderip> spider_ip,
                                            std::shared_ptr<Encryption> encryption,
                                            std::shared_ptr<Clientmanager> client_manager,
                                            std::shared_ptr<Messagemanager> message_manager);
@@ -225,12 +223,13 @@ namespace spider
         return;
     }
 
-    static void message_manager_transfer_socks5_message(std::string spider_ip,
+    static void message_manager_transfer_socks5_message(std::shared_ptr<Spiderip> spider_ip,
                                                         std::shared_ptr<Encryption> encryption,
                                                         std::shared_ptr<Servermanager> server_manager,
                                                         std::shared_ptr<Messagemanager> message_manager)
     {
         int ret = 0;
+        std::string spider_ip_server;
         std::shared_ptr<Socks5message> socks5_message = nullptr;
         std::shared_ptr<Server> server;
         uint32_t connection_id = 0;
@@ -242,12 +241,20 @@ namespace spider
             socks5_message = message_manager->transfer_socks5_message();
             if(socks5_message != nullptr)  // generate server
             {
+                if(socks5_message->get_destination_ip().find(":") == std::string::npos) // ipv4
+                {
+                    spider_ip_server = spider_ip->get_spider_ipv4();
+                }else   // ipv6
+                {
+                    spider_ip_server = spider_ip->get_spider_ipv6();
+                }
+
                 connection_id = socks5_message->get_connection_id();
                 client_id = socks5_message->get_client_id();
                 server = std::make_shared<Server>(connection_id,
                                                   client_id,
                                                   0,
-                                                  spider_ip,
+                                                  spider_ip_server,
                                                   "0",
                                                   socks5_message->get_source_ip(),
                                                   INVALID_SOCKET,
@@ -282,7 +289,7 @@ namespace spider
         return;
     }
 
-    static void message_manager_worker(std::string spider_ip,
+    static void message_manager_worker(std::shared_ptr<Spiderip> spider_ip,
                                        std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Servermanager> server_manager,
                                        std::shared_ptr<Messagemanager> message_manager)
@@ -736,14 +743,13 @@ namespace spider
         return 0;
     }
 
-    static void add_node_spider_client(std::string spider_ip,
-                                       std::string spider_ip_scope_id,
+    static void add_node_spider_client(std::shared_ptr<Spiderip> spider_ip,
                                        std::shared_ptr<Encryption> encryption,
                                        std::shared_ptr<Clientmanager> client_manager,
                                        std::shared_ptr<Messagemanager> message_manager)
     {
-        std::string client_listen_ip = spider_ip;
-        std::string client_listen_ip_scope_id = spider_ip_scope_id;
+        std::string client_listen_ip;
+        std::string client_listen_ip_scope_id;
         std::string client_listen_port;
         std::string destination_spider_ip;
         int32_t tv_sec = 0;
@@ -755,6 +761,34 @@ namespace spider
 
         while(1)
         {
+            std::printf("client listen ip             > ");
+            std::cin >> client_listen_ip;
+            if(std::cin.fail())
+            {
+#ifdef _DEBUG
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(client_listen_ip != spider_ip->get_spider_ipv4()
+               && client_listen_ip != spider_ip->get_spider_ipv6())
+            {
+#ifdef _DEBUG
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(client_listen_ip == spider_ip->get_spider_ipv6())
+            {
+                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+            }
+
             std::printf("client listen port           > ");
             std::cin >> client_listen_port;
             if(std::cin.fail())
@@ -852,7 +886,7 @@ namespace spider
 
             std::printf("\n");
             std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
-            if(client_listen_ip_scope_id.size() > 0)
+            if(!client_listen_ip_scope_id.empty())
             {
                 std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
             }
@@ -1640,14 +1674,13 @@ namespace spider
         return 0;
     }
 
-    static void add_node_spider_pipe(std::string spider_ip,
-                                     std::string spider_ip_scope_id,
+    static void add_node_spider_pipe(std::shared_ptr<Spiderip> spider_ip,
                                      std::shared_ptr<Pipemanager> pipe_manager,
                                      std::shared_ptr<Messagemanager> message_manager)
     {
         char mode;  // client:c server:s
-        std::string pipe_ip = spider_ip;
-        std::string pipe_ip_scope_id = spider_ip_scope_id;
+        std::string pipe_ip;
+        std::string pipe_ip_scope_id;
         std::string pipe_destination_ip;
         std::string pipe_destination_port;
         std::string pipe_listen_port;
@@ -1670,6 +1703,34 @@ namespace spider
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                std::printf("pipe ip                     > ");
+                std::cin >> pipe_ip;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(pipe_ip != spider_ip->get_spider_ipv4()
+                   && pipe_ip != spider_ip->get_spider_ipv6())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(pipe_ip == spider_ip->get_spider_ipv6())
+                {
+                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+                }
 
                 std::printf("pipe destination ip         > ");
                 std::cin >> pipe_destination_ip;
@@ -1698,7 +1759,7 @@ namespace spider
                 std::printf("\n");
                 std::printf("mode                    : %c\n", mode);
                 std::printf("pipe ip                 : %s\n", pipe_ip.c_str());
-                if(pipe_ip_scope_id.size() > 0)
+                if(!pipe_ip_scope_id.empty())
                 {
                     std::printf("pipe ip scope id        : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
                 }
@@ -1753,6 +1814,34 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
+                std::printf("pipe ip                     > ");
+                std::cin >> pipe_ip;
+                if(std::cin.fail())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(pipe_ip != spider_ip->get_spider_ipv4()
+                   && pipe_ip != spider_ip->get_spider_ipv6())
+                {
+#ifdef _DEBUG
+                    std::printf("[-] input error\n");
+#endif
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(pipe_ip == spider_ip->get_spider_ipv6())
+                {
+                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+                }
+
                 std::printf("pipe listen port            > ");
                 std::cin >> pipe_listen_port;
                 if(std::cin.fail())
@@ -1768,7 +1857,7 @@ namespace spider
                 std::printf("\n");
                 std::printf("mode                    : %c\n", mode);
                 std::printf("pipe ip                 : %s\n", pipe_ip.c_str());
-                if(pipe_ip_scope_id.size() > 0)
+                if(!pipe_ip_scope_id.empty())
                 {
                     std::printf("pipe ip scope id        : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
                 }
@@ -1850,7 +1939,7 @@ namespace spider
         return;
     }
 
-    void edit_routing_table(std::string spider_ip,
+    void edit_routing_table(std::shared_ptr<Spiderip> spider_ip,
                             std::shared_ptr<Pipemanager> pipe_manager,
                             std::shared_ptr<Routingmanager> routing_manager)
     {
@@ -1893,7 +1982,8 @@ namespace spider
                     continue;
                 }
 
-                if(ip == spider_ip)
+                if(ip == spider_ip->get_spider_ipv4()
+                   || ip == spider_ip->get_spider_ipv6())
                 {
 #ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
@@ -1997,7 +2087,8 @@ namespace spider
                     continue;
                 }
 
-                if(ip == spider_ip)
+                if(ip == spider_ip->get_spider_ipv4()
+                   || ip == spider_ip->get_spider_ipv6())
                 {
 #ifdef DEBUGPRINT
                     std::printf("[-] input error\n");
@@ -2120,14 +2211,13 @@ namespace spider
         return;
     }
 
-    static void add_node_spider_client_udp(std::string spider_ip,
-                                           std::string spider_ip_scope_id,
+    static void add_node_spider_client_udp(std::shared_ptr<Spiderip> spider_ip,
                                            std::shared_ptr<Encryption> encryption,
                                            std::shared_ptr<Clientmanager> client_manager,
                                            std::shared_ptr<Messagemanager> message_manager)
     {
-        std::string client_listen_ip = spider_ip;
-        std::string client_listen_ip_scope_id = spider_ip_scope_id;
+        std::string client_listen_ip;
+        std::string client_listen_ip_scope_id;
         std::string client_listen_port;
         std::string destination_spider_ip;
         std::string target_ip;      // ipv4, domainname, ipv6
@@ -2141,6 +2231,34 @@ namespace spider
 
         while(1)
         {
+            std::printf("client listen ip                               > ");
+            std::cin >> client_listen_ip;
+            if(std::cin.fail())
+            {
+#ifdef _DEBUG
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(client_listen_ip != spider_ip->get_spider_ipv4()
+               && client_listen_ip != spider_ip->get_spider_ipv6())
+            {
+#ifdef _DEBUG
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(client_listen_ip == spider_ip->get_spider_ipv6())
+            {
+                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+            }
+
             std::printf("client listen port                             > ");
             std::cin >> client_listen_port;
             if(std::cin.fail())
@@ -2170,6 +2288,17 @@ namespace spider
             if(std::cin.fail())
             {
 #ifdef DEBUGPRINT
+                std::printf("[-] input error\n");
+#endif
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if((destination_spider_ip.find(":") == std::string::npos && target_ip.find(":") != std::string::npos)       // destination_spider_ip:ipv4  target_ip:ipv6
+               || (destination_spider_ip.find(":") != std::string::npos && target_ip.find(":") == std::string::npos))   // destination_spider_ip:ipv6  target_ip:ipv4
+            {
+#ifdef _DEBUG
                 std::printf("[-] input error\n");
 #endif
                 std::cin.clear();
@@ -2272,7 +2401,7 @@ namespace spider
 
             std::printf("\n");
             std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
-            if(client_listen_ip_scope_id.size() > 0)
+            if(!client_listen_ip_scope_id.empty())
             {
                 std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
             }
@@ -2356,15 +2485,16 @@ namespace spider
     static void usage(char *filename)
     {
         std::printf("\n");
-        std::printf("usage   : %s -i spider_ip\n", filename);
+        std::printf("usage   : %s [-4 spider_ipv4] [-6 spider_ipv6]\n", filename);
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
-        std::printf("example : %s -i 192.168.0.10\n", filename);
-        std::printf("        : %s -i 192.168.0.10 -r s\n", filename);
-        std::printf("        : %s -i 192.168.0.10 -e x -k deadbeef\n", filename);
-        std::printf("        : %s -i 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
-        std::printf("        : %s -i fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
+        std::printf("example : %s -4 192.168.0.10\n", filename);
+        std::printf("        : %s -6 fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
+        std::printf("        : %s -4 192.168.0.10 -6 fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
+        std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
+        std::printf("        : %s -4 192.168.0.10 -e x -k deadbeef\n", filename);
+        std::printf("        : %s -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
         std::printf("\n");
     }
 
@@ -2413,12 +2543,10 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:i:r:e:k:v:";
+    const char *optstring = "h:4:6:r:e:k:v:";
     int opterr = 0;
-    std::string spider_ip;
-    std::string spider_ip_scope_id;
-    char addr6_string[INET6_ADDRSTRLEN + 1] = {0};
-    char *addr6_string_pointer = addr6_string;
+    std::string spider_ipv4;
+    std::string spider_ipv6;
     std::string routing_mode = "a";
     std::string encryption_type;
     std::string key;
@@ -2440,8 +2568,12 @@ int main(int argc,
                 spider::usage(argv[0]);
                 exit(-1);
 
-            case 'i':
-                spider_ip = optarg;
+            case '4':
+                spider_ipv4 = optarg;
+                break;
+
+            case '6':
+                spider_ipv6 = optarg;
                 break;
 
             case 'r':
@@ -2466,21 +2598,16 @@ int main(int argc,
         }
     }
 
-    if(spider_ip.empty())
+    if(spider_ipv4.empty()
+       && spider_ipv6.empty())
     {
-        std::printf("[-] spider ip is empty\n");
+        std::printf("[-] spider ipv4 and ipv6 are empty\n");
         spider::usage(argv[0]);
         exit(-1);
     }
 
-    if(spider_ip.find("%") != std::string::npos)    // scope_id
-    {
-        spider_ip_scope_id = strstr(spider_ip.c_str(), "%") + 1;
-        memcpy(addr6_string_pointer,
-               spider_ip.c_str(),
-               spider_ip.size() - spider_ip_scope_id.size() - 1);
-        spider_ip = addr6_string_pointer;
-    }
+    std::shared_ptr<spider::Spiderip> spider_ip = std::make_shared<spider::Spiderip>(spider_ipv4,
+                                                                                     spider_ipv6);
 
     std::shared_ptr<spider::Encryption> encryption;
     std::shared_ptr<spider::Xor> encryption_xor;
@@ -2562,17 +2689,24 @@ int main(int argc,
     {
         std::printf("\n");
         std::printf("----------     spider     ----------\n");
-        std::printf(" spider ip          : %s\n", spider_ip.c_str());
-        if(spider_ip_scope_id.size() > 0)
+        if(!spider_ip->get_spider_ipv4().empty())
         {
-            std::printf(" spider ip scope id : %s (%d)\n", spider_ip_scope_id.c_str(), if_nametoindex(spider_ip_scope_id.c_str()));
+            std::printf(" spider ipv4          : %s\n", spider_ip->get_spider_ipv4().c_str());
         }
-        std::printf(" routing mode       : %s\n", (routing_mode == "s" ? "self" : "auto"));
-        std::printf(" xor encryption     : %s\n", (xor_flag ? "on" : "off"));
-        std::printf(" xor key hex string : %s\n", xor_key_hex_string.c_str());
-        std::printf(" aes encryption     : %s\n", (aes_flag ? "on" : "off"));
-        std::printf(" aes key hex string : %s\n", aes_key_hex_string.c_str());
-        std::printf(" aes iv hex string  : %s\n", aes_iv_hex_string.c_str());
+        if(!spider_ip->get_spider_ipv6().empty())
+        {
+            std::printf(" spider ipv6          : %s\n", spider_ip->get_spider_ipv6().c_str());
+            if(!spider_ip->get_spider_ipv6_scope_id().empty())
+            {
+                std::printf(" spider ipv6 scope id : %s (%d)\n", spider_ip->get_spider_ipv6_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_scope_id().c_str()));
+            }
+        }
+        std::printf(" routing mode         : %s\n", (routing_mode == "s" ? "self" : "auto"));
+        std::printf(" xor encryption       : %s\n", (xor_flag ? "on" : "off"));
+        std::printf(" xor key hex string   : %s\n", xor_key_hex_string.c_str());
+        std::printf(" aes encryption       : %s\n", (aes_flag ? "on" : "off"));
+        std::printf(" aes key hex string   : %s\n", aes_key_hex_string.c_str());
+        std::printf(" aes iv hex string    : %s\n", aes_iv_hex_string.c_str());
         std::printf("---------- spider command ----------\n");
         std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
         std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
@@ -2602,7 +2736,6 @@ int main(int argc,
             case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
                 std::printf("[+] add node (spider client)\n");
                 spider::add_node_spider_client(spider_ip,
-                                               spider_ip_scope_id,
                                                encryption,
                                                client_manager,
                                                message_manager);
@@ -2611,7 +2744,6 @@ int main(int argc,
             case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE:
                 std::printf("[+] add node (spider pipe)\n");
                 spider::add_node_spider_pipe(spider_ip,
-                                             spider_ip_scope_id,
                                              pipe_manager,
                                              message_manager);
                 break;
@@ -2639,7 +2771,6 @@ int main(int argc,
                 std::printf("[+] add node (spider client udp)\n");
                 std::printf("[!] This is not SOCKS5 connection. (UDP over TCP)\n");
                 spider::add_node_spider_client_udp(spider_ip,
-                                                   spider_ip_scope_id,
                                                    encryption,
                                                    client_manager,
                                                    message_manager);

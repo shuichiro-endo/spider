@@ -11,6 +11,7 @@
 
 namespace spider
 {
+    class Spiderip;
     class Clientmanager;
     class Servermanager;
     class Pipemanager;
@@ -23,7 +24,7 @@ namespace spider
     class Messagemanager
     {
     private:
-        std::string spider_ip;
+        std::shared_ptr<Spiderip> spider_ip;
         std::shared_ptr<Clientmanager> client_manager;
         std::shared_ptr<Servermanager> server_manager;
         std::shared_ptr<Pipemanager> pipe_manager;
@@ -42,13 +43,16 @@ namespace spider
                                                                  int32_t tv_usec);
 
     public:
-        Messagemanager(std::string spider_ip,
+        Messagemanager(std::shared_ptr<Spiderip> spider_ip,
                        std::shared_ptr<Clientmanager> client_manager,
                        std::shared_ptr<Servermanager> server_manager,
                        std::shared_ptr<Pipemanager> pipe_manager,
                        std::shared_ptr<Routingmanager> routing_manager);
 
         ~Messagemanager();
+
+        void set_spider_ip(std::shared_ptr<Spiderip> spider_ip);
+        std::shared_ptr<Spiderip> get_spider_ip();
 
         void push_routing_message(std::shared_ptr<Routingmessage> routing_message);
         int32_t push_timeout_routing_message(std::shared_ptr<Routingmessage> routing_message,

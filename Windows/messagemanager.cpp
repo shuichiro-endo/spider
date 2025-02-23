@@ -4,6 +4,7 @@
  */
 
 #include "spider.hpp"
+#include "spiderip.hpp"
 #include "messagemanager.hpp"
 #include "clientmanager.hpp"
 #include "servermanager.hpp"
@@ -21,7 +22,7 @@
 
 namespace spider
 {
-    Messagemanager::Messagemanager(std::string spider_ip,
+    Messagemanager::Messagemanager(std::shared_ptr<Spiderip> spider_ip,
                                    std::shared_ptr<Clientmanager> client_manager,
                                    std::shared_ptr<Servermanager> server_manager,
                                    std::shared_ptr<Pipemanager> pipe_manager,
@@ -39,6 +40,16 @@ namespace spider
     Messagemanager::~Messagemanager()
     {
 
+    }
+
+    void Messagemanager::set_spider_ip(std::shared_ptr<Spiderip> spider_ip)
+    {
+        this->spider_ip = spider_ip;
+    }
+
+    std::shared_ptr<Spiderip> Messagemanager::get_spider_ip()
+    {
+        return spider_ip;
     }
 
     void Messagemanager::push_routing_message(std::shared_ptr<Routingmessage> routing_message)
@@ -141,7 +152,8 @@ namespace spider
             message_type = socks5_message->get_message_type();
             if(message_type == 's')  // socks5 message
             {
-                if(spider_ip == socks5_message->get_destination_ip())
+                if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip()
+                   || spider_ip->get_spider_ipv6() == socks5_message->get_destination_ip())
                 {
                     connection_id = socks5_message->get_connection_id();
                     client_id = socks5_message->get_client_id();

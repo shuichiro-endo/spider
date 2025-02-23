@@ -11,6 +11,7 @@
 
 namespace spider
 {
+    class Spiderip;
     class Route;
     class Routingmessage;
     class Routingmessagequeue;
@@ -21,7 +22,7 @@ namespace spider
     class Routingmanager
     {
     private:
-        std::string spider_ip;
+        std::shared_ptr<Spiderip> spider_ip;
         std::shared_ptr<Pipemanager> pipe_manager;
         std::shared_ptr<Messagemanager> message_manager;
         std::map<std::string, std::shared_ptr<Route>> routes_map;
@@ -34,14 +35,14 @@ namespace spider
         std::shared_ptr<Routingmessage> pop_routing_message();
 
     public:
-        Routingmanager(std::string spider_ip,
+        Routingmanager(std::shared_ptr<Spiderip> spider_ip,
                        std::shared_ptr<Pipemanager> pipe_manager,
                        std::shared_ptr<Messagemanager> message_manager);
 
         ~Routingmanager();
 
-        void set_spider_ip(std::string spider_ip);
-        std::string get_spider_ip();
+        void set_spider_ip(std::shared_ptr<Spiderip> spider_ip);
+        std::shared_ptr<Spiderip> get_spider_ip();
 
         void init_routing_table();
 
