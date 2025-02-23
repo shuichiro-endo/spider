@@ -47,7 +47,7 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.6  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.7  Author: Shuichiro Endo  
 
 
 usage   : ./spider -i spider_ip
@@ -79,7 +79,7 @@ example : ./spider -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.6  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.7  Author: Shuichiro Endo  
 
 
 ----------     spider     ----------

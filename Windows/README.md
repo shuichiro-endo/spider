@@ -52,7 +52,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.6  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.7  Author: Shuichiro Endo
 
 
 usage   : spider.exe -i spider_ip
@@ -84,7 +84,7 @@ example : spider.exe -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.6  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.7  Author: Shuichiro Endo
 
 
 ----------     spider     ----------
