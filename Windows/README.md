@@ -33,7 +33,7 @@ compile.bat
 ## Usage
 The usage is the same as the Linux version.
 
-- help
+### help
 > [!NOTE]
 > In auto mode with the -r option, routing information is automatically exchanged between spiders.
 > 
@@ -52,29 +52,30 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.7  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.8  Author: Shuichiro Endo
 
 
-usage   : spider.exe -i spider_ip
+usage   : spider.exe [-4 spider_ipv4] [-6 spider_ipv6]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
-example : spider.exe -i 192.168.0.10
-        : spider.exe -i 192.168.0.10 -r s
-        : spider.exe -i 192.168.0.10 -e x -k deadbeef
-        : spider.exe -i 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
-        : spider.exe -i fe80::xxxx:xxxx:xxxx:xxxx%14
+example : spider.exe -4 192.168.0.10
+        : spider.exe -6 fe80::xxxx:xxxx:xxxx:xxxx%14
+        : spider.exe -4 192.168.0.10 -6 fe80::xxxx:xxxx:xxxx:xxxx%14
+        : spider.exe -4 192.168.0.10 -r s
+        : spider.exe -4 192.168.0.10 -e x -k deadbeef
+        : spider.exe -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
 
 ```
 
-- run
+### run
 > [!NOTE]
 > The -i option sets the IP address of the network interface.
 > 
 > Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
 
 ```
-> spider.exe -i 192.168.0.31
+> spider.exe -4 192.168.0.31 -6 fe80::ca60:dc71:546d:8235%14
 
                  -.                                 _//
            .=  :*=--::                       _/     _//
@@ -84,17 +85,19 @@ example : spider.exe -i 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 0.7  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 0.8  Author: Shuichiro Endo
 
 
 ----------     spider     ----------
- spider ip          : 192.168.0.31
- routing mode       : auto
- xor encryption     : off
- xor key hex string :
- aes encryption     : off
- aes key hex string :
- aes iv hex string  :
+ spider ipv4          : 192.168.0.31
+ spider ipv6          : fe80::ca60:dc71:546d:8235
+ spider ipv6 scope id : 14 (0)
+ routing mode         : auto
+ xor encryption       : off
+ xor key hex string   :
+ aes encryption       : off
+ aes key hex string   :
+ aes iv hex string    :
 ---------- spider command ----------
  1: add node (spider client)
  2: add node (spider pipe)
