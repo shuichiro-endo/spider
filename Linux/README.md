@@ -48,7 +48,7 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.8  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.9  Author: Shuichiro Endo  
 
 
 usage   : ./spider [-4 spider_ipv4] [-6 spider_ipv6]
@@ -81,7 +81,7 @@ example : ./spider -4 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 0.8  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 0.9  Author: Shuichiro Endo  
 
 
 ----------     spider     ----------
