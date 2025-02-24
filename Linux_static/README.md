@@ -5,8 +5,9 @@ socks5 proxy tunnel tool
 ## Installation
 ### Install dependencies
 - g++ (C++20)
+- make
 - cmake
-- [c-ares](https://github.com/c-ares/c-ares)
+- [c-ares](https://github.com/c-ares/c-ares) (ares_getaddrinfo function: The alternative to the glibc's getaddrinfo function.)
 
 ### Install
 #### c-ares
@@ -50,7 +51,7 @@ make
 ```
 
 #### spider
-1. download files
+1. download spider
 ```
 git clone https://github.com/shuichiro-endo/spider.git
 ```

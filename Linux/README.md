@@ -5,6 +5,7 @@ socks5 proxy tunnel tool
 ## Installation
 ### Install dependencies
 - g++ (C++20)
+- make
 
 ### Install
 1. download files
