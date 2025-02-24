@@ -163,6 +163,8 @@ ok? (yes:y no:n quit:q) > y
 
 ### 2: add node (spider pipe)
 1. pipe (server)
+> [!NOTE]
+> The pipe server can be connected by only one pipe client at a time.
 - ipv4
 ```
 command > 2
@@ -196,8 +198,6 @@ ok? (yes:y no:n quit:q) > y
 ```
 
 2. pipe (client)
-> [!NOTE]
-> The pipe server can be connected by only one pipe client at a time.
 - ipv4
 ```
 command > 2
