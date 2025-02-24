@@ -168,11 +168,11 @@ ok? (yes:y no:n quit:q) > y
 command > 2
 [+] add node (spider pipe)
 mode (client:c server:s)    > s
-pipe ip                     > 192.168.0.25
+pipe listen ip              > 192.168.0.25
 pipe listen port            > 1025
 
 mode                    : s
-pipe ip                 : 192.168.0.25
+pipe listen ip          : 192.168.0.25
 pipe listen port        : 1025
 
 ok? (yes:y no:n quit:q) > y
@@ -183,12 +183,12 @@ ok? (yes:y no:n quit:q) > y
 command > 2
 [+] add node (spider pipe)
 mode (client:c server:s)    > s
-pipe ip                     > fe80::a00:27ff:fe25:c316
+pipe listen ip              > fe80::a00:27ff:fe25:c316
 pipe listen port            > 1026
 
 mode                    : s
-pipe ip                 : fe80::a00:27ff:fe25:c316
-pipe ip scope id        : enp0s3 (2)
+pipe listen ip          : fe80::a00:27ff:fe25:c316
+pipe listen ip scope id : enp0s3 (2)
 pipe listen port        : 1026
 
 ok? (yes:y no:n quit:q) > y
@@ -525,11 +525,11 @@ ok? (yes:y no:n quit:q) > y
 command > 2
 [+] add node (spider pipe)
 mode (client:c server:s)    > s
-pipe ip                     > 192.168.0.25
+pipe listen ip              > 192.168.0.25
 pipe listen port            > 1025
 
 mode                    : s
-pipe ip                 : 192.168.0.25
+pipe listen ip          : 192.168.0.25
 pipe listen port        : 1025
 
 ok? (yes:y no:n quit:q) > y

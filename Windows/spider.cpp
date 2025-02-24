@@ -1814,7 +1814,7 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("pipe ip                     > ");
+                std::printf("pipe listen ip              > ");
                 std::cin >> pipe_ip;
                 if(std::cin.fail())
                 {
@@ -1856,10 +1856,10 @@ namespace spider
 
                 std::printf("\n");
                 std::printf("mode                    : %c\n", mode);
-                std::printf("pipe ip                 : %s\n", pipe_ip.c_str());
+                std::printf("pipe listen ip          : %s\n", pipe_ip.c_str());
                 if(!pipe_ip_scope_id.empty())
                 {
-                    std::printf("pipe ip scope id        : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    std::printf("pipe listen ip scope id : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
                 }
                 std::printf("pipe listen port        : %s\n", pipe_listen_port.c_str());
                 std::printf("\n");
