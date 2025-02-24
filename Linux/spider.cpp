@@ -738,9 +738,7 @@ namespace spider
             std::cin >> client_listen_ip;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -749,9 +747,7 @@ namespace spider
             if(client_listen_ip != spider_ip->get_spider_ipv4()
                && client_listen_ip != spider_ip->get_spider_ipv6())
             {
-#ifdef _DEBUG
-                std::printf("[-] input error\n");
-#endif
+                std::printf("[-] please input spider ipv4 or ipv6\n");
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -766,9 +762,7 @@ namespace spider
             std::cin >> client_listen_port;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -778,9 +772,7 @@ namespace spider
             std::cin >> destination_spider_ip;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -790,9 +782,7 @@ namespace spider
             std::cin >> tv_sec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 tv_sec = 3;
@@ -805,9 +795,7 @@ namespace spider
             std::cin >> tv_usec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 tv_usec = 0;
@@ -825,9 +813,7 @@ namespace spider
             std::cin >> forwarder_tv_sec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 forwarder_tv_sec = 30;
@@ -840,9 +826,7 @@ namespace spider
             std::cin >> forwarder_tv_usec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 forwarder_tv_usec = 0;
@@ -875,9 +859,7 @@ namespace spider
             std::cin >> check;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -1652,9 +1634,7 @@ namespace spider
             std::cin >> mode;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -1667,9 +1647,7 @@ namespace spider
                 std::cin >> pipe_ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1678,9 +1656,7 @@ namespace spider
                 if(pipe_ip != spider_ip->get_spider_ipv4()
                    && pipe_ip != spider_ip->get_spider_ipv6())
                 {
-#ifdef _DEBUG
-                    std::printf("[-] input error\n");
-#endif
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1695,9 +1671,7 @@ namespace spider
                 std::cin >> pipe_destination_ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1707,9 +1681,7 @@ namespace spider
                 std::cin >> pipe_destination_port;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1730,9 +1702,7 @@ namespace spider
                 std::cin >> check;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1777,9 +1747,7 @@ namespace spider
                 std::cin >> pipe_ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1788,9 +1756,7 @@ namespace spider
                 if(pipe_ip != spider_ip->get_spider_ipv4()
                    && pipe_ip != spider_ip->get_spider_ipv6())
                 {
-#ifdef _DEBUG
-                    std::printf("[-] input error\n");
-#endif
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1805,9 +1771,7 @@ namespace spider
                 std::cin >> pipe_listen_port;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1827,9 +1791,7 @@ namespace spider
                 std::cin >> check;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1918,9 +1880,7 @@ namespace spider
             std::cin >> edit_mode;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -1933,9 +1893,7 @@ namespace spider
                 std::cin >> ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1944,9 +1902,7 @@ namespace spider
                 if(ip == spider_ip->get_spider_ipv4()
                    || ip == spider_ip->get_spider_ipv6())
                 {
-#ifdef _DEBUG
-                    std::printf("[-] input error\n");
-#endif
+                    std::printf("[-] cannot input spider ipv4 and ipv6\n");
                     continue;
                 }
 
@@ -1954,9 +1910,7 @@ namespace spider
                 std::cin >> metric;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1964,9 +1918,7 @@ namespace spider
 
                 if(metric == 0 || metric > UINT8_MAX)
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     continue;
                 }
 
@@ -1976,9 +1928,7 @@ namespace spider
                 std::cin >> pipe_id;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -1995,9 +1945,7 @@ namespace spider
                 std::cin >> check;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -2038,9 +1986,7 @@ namespace spider
                 std::cin >> ip;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -2049,9 +1995,7 @@ namespace spider
                 if(ip == spider_ip->get_spider_ipv4()
                    || ip == spider_ip->get_spider_ipv6())
                 {
-#ifdef _DEBUG
-                    std::printf("[-] input error\n");
-#endif
+                    std::printf("[-] cannot input spider ipv4 and ipv6\n");
                     continue;
                 }
 
@@ -2064,9 +2008,7 @@ namespace spider
                 std::cin >> check;
                 if(std::cin.fail())
                 {
-#ifdef _DEBUG
                     std::printf("[-] input error\n");
-#endif
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
@@ -2194,9 +2136,7 @@ namespace spider
             std::cin >> client_listen_ip;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -2205,9 +2145,7 @@ namespace spider
             if(client_listen_ip != spider_ip->get_spider_ipv4()
                && client_listen_ip != spider_ip->get_spider_ipv6())
             {
-#ifdef _DEBUG
-                std::printf("[-] input error\n");
-#endif
+                std::printf("[-] please input spider ipv4 or ipv6\n");
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -2222,9 +2160,7 @@ namespace spider
             std::cin >> client_listen_port;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -2234,9 +2170,7 @@ namespace spider
             std::cin >> destination_spider_ip;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -2246,30 +2180,24 @@ namespace spider
             std::cin >> target_ip;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
             }
-
+/*
             if((destination_spider_ip.find(":") == std::string::npos && target_ip.find(":") != std::string::npos)       // destination_spider_ip:ipv4  target_ip:ipv6
                || (destination_spider_ip.find(":") != std::string::npos && target_ip.find(":") == std::string::npos))   // destination_spider_ip:ipv6  target_ip:ipv4
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
             }
-
+*/
             if(target_ip.size() >= 256)
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -2279,9 +2207,7 @@ namespace spider
             std::cin >> target_port;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
@@ -2291,9 +2217,7 @@ namespace spider
             std::cin >> tv_sec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 tv_sec = 3;
@@ -2306,9 +2230,7 @@ namespace spider
             std::cin >> tv_usec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 tv_usec = 0;
@@ -2326,9 +2248,7 @@ namespace spider
             std::cin >> forwarder_tv_sec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 forwarder_tv_sec = 30;
@@ -2341,9 +2261,7 @@ namespace spider
             std::cin >> forwarder_tv_usec;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 forwarder_tv_usec = 0;
@@ -2379,9 +2297,7 @@ namespace spider
             std::cin >> check;
             if(std::cin.fail())
             {
-#ifdef _DEBUG
                 std::printf("[-] input error\n");
-#endif
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
