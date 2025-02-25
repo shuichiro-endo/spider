@@ -56,7 +56,7 @@ usage   : ./spider [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_uniq
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
 example : ./spider -4 192.168.0.10
         : ./spider -6 2001::xxxx:xxxx:xxxx:xxxx
-        : ./spider -u fd80::xxxx:xxxx:xxxx:xxxx
+        : ./spider -u fd00::xxxx:xxxx:xxxx:xxxx
         : ./spider -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
         : ./spider -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd80::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
         : ./spider -4 192.168.0.10 -r s

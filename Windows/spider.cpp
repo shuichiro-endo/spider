@@ -2410,7 +2410,7 @@ namespace spider
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
         std::printf("example : %s -4 192.168.0.10\n", filename);
         std::printf("        : %s -6 2001::xxxx:xxxx:xxxx:xxxx\n", filename);
-        std::printf("        : %s -u fd80::xxxx:xxxx:xxxx:xxxx\n", filename);
+        std::printf("        : %s -u fd00::xxxx:xxxx:xxxx:xxxx\n", filename);
         std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
         std::printf("        : %s -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd80::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
         std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
