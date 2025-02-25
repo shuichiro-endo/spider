@@ -243,7 +243,8 @@ namespace spider
             {
                 connection_id = socks5_message->get_connection_id();
                 client_id = socks5_message->get_client_id();
-                server = std::make_shared<Server>(connection_id,
+                server = std::make_shared<Server>(spider_ip,
+                                                  connection_id,
                                                   client_id,
                                                   0,
                                                   socks5_message->get_destination_ip(),

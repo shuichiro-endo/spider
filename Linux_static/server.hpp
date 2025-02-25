@@ -12,6 +12,7 @@
 
 namespace spider
 {
+    class Spiderip;
     class Encryption;
     class Messagemanager;
     class Caresmanager;
@@ -19,6 +20,7 @@ namespace spider
     class Server : public Node
     {
     private:
+        std::shared_ptr<Spiderip> spider_ip;
         uint32_t connection_id;
         uint32_t client_id;
         uint32_t server_id;
@@ -75,7 +77,8 @@ namespace spider
                               int target_addr_lengthh);
 
     public:
-        Server(uint32_t connection_id,
+        Server(std::shared_ptr<Spiderip> spider_ip,
+               uint32_t connection_id,
                uint32_t client_id,
                uint32_t server_id,
                std::string server_ip,
@@ -91,6 +94,9 @@ namespace spider
                std::shared_ptr<spider::Caresmanager> cares_manager);
 
         ~Server();
+
+        void set_spider_ip(std::shared_ptr<Spiderip> spider_ip);
+        std::shared_ptr<Spiderip> get_spider_ip();
 
         void set_connection_id(uint32_t connection_id);
         uint32_t get_connection_id();

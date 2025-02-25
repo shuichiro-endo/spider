@@ -4,6 +4,7 @@
  */
 
 #include "spider.hpp"
+#include "spiderip.hpp"
 #include "socks5.hpp"
 #include "server.hpp"
 #include "messagemanager.hpp"
@@ -13,7 +14,8 @@
 
 namespace spider
 {
-    Server::Server(uint32_t connection_id,
+    Server::Server(std::shared_ptr<Spiderip> spider_ip,
+                   uint32_t connection_id,
                    uint32_t client_id,
                    uint32_t server_id,
                    std::string server_ip,
@@ -28,6 +30,7 @@ namespace spider
                    std::shared_ptr<Messagemanager> message_manager)
     : Node(server_sock, message_manager)
     {
+        this->spider_ip = spider_ip;
         this->connection_id = connection_id;
         this->client_id = client_id;
         this->server_id = server_id;
@@ -48,6 +51,16 @@ namespace spider
     Server::~Server()
     {
 
+    }
+
+    void Server::set_spider_ip(std::shared_ptr<Spiderip> spider_ip)
+    {
+        this->spider_ip = spider_ip;
+    }
+
+    std::shared_ptr<Spiderip> Server::get_spider_ip()
+    {
+        return spider_ip;
     }
 
     void Server::set_connection_id(uint32_t connection_id)
@@ -864,6 +877,8 @@ namespace spider
 
         char target_addr6_string[INET6_ADDR_STRING_LENGTH + 1] = {0};
         char *target_addr6_string_pointer = target_addr6_string;
+
+        std::string ipv6_link_local_prefix = "fe80::";
 
 
         // socks SELECTION_REQUEST [client -> server]
@@ -1692,12 +1707,19 @@ namespace spider
                 {
                     target_ip = target_addr6_string_pointer;
                     target_port = std::to_string(ntohs(target_addr6.sin6_port));
+
+                    ret = target_ip.rfind(ipv6_link_local_prefix, 0);
+                    if(ret == 0)     // ipv6 link local address
+                    {
+                        target_addr6.sin6_scope_id = (uint32_t)std::stoi(spider_ip->get_spider_ipv6_link_local_scope_id());
+                        target_ip = target_addr6_string_pointer + std::string("%") + std::to_string(target_addr6.sin6_scope_id);
+                    }
                 }
 
                 if(cmd == 0x1)  // CONNECT
                 {
 #ifdef DEBUGPRINT
-                    std::printf("[+] [server -> target] Connecting ip: %s port: %s\n",
+                    std::printf("[+] [server -> target] connecting ip: %s port: %s\n",
                                 target_ip.c_str(),
                                 target_port.c_str());
 #endif
@@ -1914,12 +1936,19 @@ namespace spider
             {
                 target_ip = target_addr6_string_pointer;
                 target_port = std::to_string(ntohs(target_addr6.sin6_port));
+
+                ret = target_ip.rfind(ipv6_link_local_prefix, 0);
+                if(ret == 0)     // ipv6 link local address
+                {
+                    target_addr6.sin6_scope_id = (uint32_t)std::stoi(spider_ip->get_spider_ipv6_link_local_scope_id());
+                    target_ip = target_addr6_string_pointer + std::string("%") + std::to_string(target_addr6.sin6_scope_id);
+                }
             }
 
             if(cmd == 0x1)  // CONNECT
             {
 #ifdef DEBUGPRINT
-                std::printf("[+] [server -> target] Connecting ip: %s port: %s\n",
+                std::printf("[+] [server -> target] connecting ip: %s port: %s\n",
                             target_ip.c_str(),
                             target_port.c_str());
 #endif
