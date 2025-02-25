@@ -1,7 +1,7 @@
 /*
  * Title:  spider spider.cpp (Linux static)
  * Author: Shuichiro Endo
- * Ver:    0.9
+ * Ver:    0.10
  */
 
 #include "spider.hpp"
@@ -2224,7 +2224,7 @@ namespace spider
         std::printf("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     \n");
         std::printf("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     \n");
         std::printf("        :*-  :*-   .:.              _//                                   \n");
-        std::printf("        =-    -:           Linux static Ver: 0.9  Author: Shuichiro Endo  \n");
+        std::printf("        =-    -:          Linux static Ver: 0.10  Author: Shuichiro Endo  \n");
         std::printf("\n");
     }
 
