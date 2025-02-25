@@ -434,7 +434,7 @@ namespace spider
 
             if(client_listen_ip_scope_id.size() != 0)
             {
-                client_listen_addr6.sin6_scope_id = if_nametoindex(client_listen_ip_scope_id.c_str());
+                client_listen_addr6.sin6_scope_id = (uint32_t)std::stoi(client_listen_ip_scope_id);
             }
 
             freeaddrinfo(client_listen_addr_info);
@@ -866,7 +866,7 @@ namespace spider
             std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
             if(!client_listen_ip_scope_id.empty())
             {
-                std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
+                std::printf("client listen ip scope id : %s\n", client_listen_ip_scope_id.c_str());
             }
             std::printf("client listen port        : %s\n", client_listen_port.c_str());
             std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
@@ -1132,7 +1132,7 @@ namespace spider
 
             if(pipe_ip_scope_id.size() > 0)
             {
-                pipe_dest_addr6.sin6_scope_id = if_nametoindex(pipe_ip_scope_id.c_str());
+                pipe_dest_addr6.sin6_scope_id = (uint32_t)std::stoi(pipe_ip_scope_id);
             }
 
             freeaddrinfo(pipe_dest_addr_info);
@@ -1381,7 +1381,7 @@ namespace spider
 
             if(pipe_listen_ip_scope_id.size() != 0)
             {
-                pipe_listen_addr6.sin6_scope_id = if_nametoindex(pipe_listen_ip_scope_id.c_str());
+                pipe_listen_addr6.sin6_scope_id = (uint32_t)std::stoi(pipe_listen_ip_scope_id);
             }
 
             freeaddrinfo(pipe_listen_addr_info);
@@ -1729,7 +1729,7 @@ namespace spider
                 std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
                 if(!pipe_ip_scope_id.empty())
                 {
-                    std::printf("pipe ip scope id          : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    std::printf("pipe ip scope id          : %s\n", pipe_ip_scope_id.c_str());
                 }
                 std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
                 std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
@@ -1821,7 +1821,7 @@ namespace spider
                 std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
                 if(!pipe_ip_scope_id.empty())
                 {
-                    std::printf("pipe listen ip scope id   : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    std::printf("pipe listen ip scope id   : %s\n", pipe_ip_scope_id.c_str());
                 }
                 std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
                 std::printf("\n");
@@ -2325,7 +2325,7 @@ namespace spider
             std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
             if(!client_listen_ip_scope_id.empty())
             {
-                std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
+                std::printf("client listen ip scope id : %s\n", client_listen_ip_scope_id.c_str());
             }
             std::printf("client listen port        : %s\n", client_listen_port.c_str());
             std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
@@ -2642,7 +2642,7 @@ int main(int argc,
             std::printf(" spider ipv6 link local          : %s\n", spider_ip->get_spider_ipv6_link_local().c_str());
             if(!spider_ip->get_spider_ipv6_link_local_scope_id().empty())
             {
-                std::printf(" spider ipv6 linl local scope id : %s (%d)\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_link_local_scope_id().c_str()));
+                std::printf(" spider ipv6 linl local scope id : %s\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str());
             }
         }
         std::printf(" routing mode                    : %s\n", (routing_mode == "s" ? "self" : "auto"));

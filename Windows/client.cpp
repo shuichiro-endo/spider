@@ -1433,7 +1433,7 @@ namespace spider
 
             if(client_ip_scope_id.size() != 0)
             {
-                client_addr6.sin6_scope_id = if_nametoindex(client_ip_scope_id.c_str());
+                client_addr6.sin6_scope_id = (uint32_t)std::stoi(client_ip_scope_id);
             }
 
             freeaddrinfo(client_addr_info);

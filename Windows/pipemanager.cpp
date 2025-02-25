@@ -105,36 +105,14 @@ namespace spider
         std::unique_lock<std::mutex> lock_pipes_map(pipes_map_mutex);
         for(auto iterator = pipes_map.begin(); iterator != pipes_map.end(); ++iterator)
         {
-            std::string pipe_ip_scope_id;
-            std::string pipe_destination_ip_scope_id;
-
-            if(if_nametoindex(iterator->second->get_pipe_ip_scope_id().c_str()) > 0)
-            {
-                pipe_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_pipe_ip_scope_id().c_str()));
-            }else
-            {
-                pipe_ip_scope_id = "";
-            }
-
-            if(if_nametoindex(iterator->second->get_pipe_destination_ip_scope_id().c_str()) > 0)
-            {
-                pipe_destination_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_pipe_destination_ip_scope_id().c_str()));
-            }else
-            {
-                pipe_destination_ip_scope_id = "";
-            }
-
-
-            std::printf("|%10u|%c   |%-46s|%-10s (%3s)|           %5s|%-46s|%-10s             (%3s)|                %5s|      %5d|\n",
+            std::printf("|%10u|%c   |%-46s|%-10s      |           %5s|%-46s|%-10s                  |                %5s|      %5d|\n",
                         iterator->second->get_pipe_id(),
                         iterator->second->get_mode(),
                         iterator->second->get_pipe_ip().c_str(),
                         iterator->second->get_pipe_ip_scope_id().c_str(),
-                        pipe_ip_scope_id.c_str(),
                         iterator->second->get_pipe_listen_port().c_str(),
                         iterator->second->get_pipe_destination_ip().c_str(),
                         iterator->second->get_pipe_destination_ip_scope_id().c_str(),
-                        pipe_destination_ip_scope_id.c_str(),
                         iterator->second->get_pipe_destination_port().c_str(),
                         iterator->second->get_sock());
         }
