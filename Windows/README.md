@@ -52,7 +52,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 0.10  Author: Shuichiro Endo
+        =-    -:               Windows Ver: 0.11  Author: Shuichiro Endo
 
 
 usage   : spider.exe [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
@@ -87,13 +87,13 @@ example : spider.exe -4 192.168.0.10
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 0.10  Author: Shuichiro Endo
+        =-    -:               Windows Ver: 0.11  Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
  spider ipv4                     : 192.168.0.31
  spider ipv6 link local          : fe80::ca60:dc71:546d:8235
- spider ipv6 linl local scope id : 14 (0)
+ spider ipv6 linl local scope id : 14
  routing mode                    : auto
  xor encryption                  : off
  xor key hex string              :
