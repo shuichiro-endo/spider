@@ -1607,11 +1607,11 @@ namespace spider
                 if(target_addr6.sin6_scope_id > 0)
                 {
                     target_ip = target_addr6_string_pointer + std::string("%") + std::to_string(target_addr6.sin6_scope_id);
-                    target_port = ntohs(target_addr6.sin6_port);
+                    target_port = std::to_string(ntohs(target_addr6.sin6_port));
                 }else
                 {
                     target_ip = target_addr6_string_pointer;
-                    target_port = ntohs(target_addr6.sin6_port);
+                    target_port = std::to_string(ntohs(target_addr6.sin6_port));
                 }
 
                 if(cmd == 0x1)  // CONNECT
@@ -1794,11 +1794,11 @@ namespace spider
             if(target_addr6.sin6_scope_id > 0)
             {
                 target_ip = target_addr6_string_pointer + std::string("%") + std::to_string(target_addr6.sin6_scope_id);
-                target_port = ntohs(target_addr6.sin6_port);
+                target_port = std::to_string(ntohs(target_addr6.sin6_port));
             }else
             {
                 target_ip = target_addr6_string_pointer;
-                target_port = ntohs(target_addr6.sin6_port);
+                target_port = std::to_string(ntohs(target_addr6.sin6_port));
             }
 
             if(cmd == 0x1)  // CONNECT
