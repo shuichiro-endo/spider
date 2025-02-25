@@ -1197,12 +1197,12 @@ namespace spider
                       pipe_dest_addr6_string_pointer,
                       INET6_ADDR_STRING_LENGTH);
             if(pipe_dest_addr6.sin6_scope_id > 0){
-                std::printf("[-] connecting to ip:%s%%%d port:%d\n",
+                std::printf("[+] connecting to ip:%s%%%d port:%d\n",
                             pipe_dest_addr6_string_pointer,
                             pipe_dest_addr6.sin6_scope_id,
                             ntohs(pipe_dest_addr6.sin6_port));
             }else{
-                std::printf("[-] connecting to ip:%s port:%d\n",
+                std::printf("[+] connecting to ip:%s port:%d\n",
                             pipe_dest_addr6_string_pointer,
                             ntohs(pipe_dest_addr6.sin6_port));
             }
