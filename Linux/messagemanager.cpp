@@ -153,7 +153,9 @@ namespace spider
             if(message_type == 's')  // socks5 message
             {
                 if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip()
-                   || spider_ip->get_spider_ipv6() == socks5_message->get_destination_ip())
+                   || spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip()
+                   || spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip()
+                   || spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
                 {
                     connection_id = socks5_message->get_connection_id();
                     client_id = socks5_message->get_client_id();

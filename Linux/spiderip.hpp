@@ -15,8 +15,10 @@ namespace spider
     {
     private:
         std::string spider_ipv4;
-        std::string spider_ipv6;
-        std::string spider_ipv6_scope_id;
+        std::string spider_ipv6_global;
+        std::string spider_ipv6_unique_local;
+        std::string spider_ipv6_link_local;
+        std::string spider_ipv6_link_local_scope_id;
 
         char addr6_string[INET6_ADDRSTRLEN + 1] = {0};
         char *addr6_string_pointer = addr6_string;
@@ -27,17 +29,25 @@ namespace spider
 
     public:
         Spiderip(std::string spider_ipv4,
-                 std::string spider_ipv6);
+                 std::string spider_ipv6_global,
+                 std::string spider_ipv6_unique_local,
+                 std::string spider_ipv6_link_local);
         ~Spiderip();
 
         void set_spider_ipv4(std::string spider_ipv4);
         std::string get_spider_ipv4();
 
-        void set_spider_ipv6(std::string spider_ipv6);
-        std::string get_spider_ipv6();
+        void set_spider_ipv6_global(std::string spider_ipv6_global);
+        std::string get_spider_ipv6_global();
 
-        void set_spider_ipv6_scope_id(std::string spider_ipv6_scope_id);
-        std::string get_spider_ipv6_scope_id();
+        void set_spider_ipv6_unique_local(std::string spider_ipv6_unique_local);
+        std::string get_spider_ipv6_unique_local();
+
+        void set_spider_ipv6_link_local(std::string spider_ipv6_link_local);
+        std::string get_spider_ipv6_link_local();
+
+        void set_spider_ipv6_link_local_scope_id(std::string spider_ipv6_link_local_scope_id);
+        std::string get_spider_ipv6_link_local_scope_id();
     };
 }
 

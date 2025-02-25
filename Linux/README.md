@@ -27,7 +27,6 @@ make
 #define _DEBUG
 ```
 
-
 ## Usage
 ### help
 > [!NOTE]
@@ -51,13 +50,15 @@ make
         =-    -:                  Linux Ver: 0.9  Author: Shuichiro Endo  
 
 
-usage   : ./spider [-4 spider_ipv4] [-6 spider_ipv6]
+usage   : ./spider [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
 example : ./spider -4 192.168.0.10
-        : ./spider -6 fe80::xxxx:xxxx:xxxx:xxxx%eth0
-        : ./spider -4 192.168.0.10 -6 fe80::xxxx:xxxx:xxxx:xxxx%eth0
+        : ./spider -6 2001::xxxx:xxxx:xxxx:xxxx
+        : ./spider -u fd80::xxxx:xxxx:xxxx:xxxx
+        : ./spider -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
+        : ./spider -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd80::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
         : ./spider -4 192.168.0.10 -r s
         : ./spider -4 192.168.0.10 -e x -k deadbeef
         : ./spider -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
@@ -71,7 +72,7 @@ example : ./spider -4 192.168.0.10
 > Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
 
 ```
-> ./spider -4 192.168.0.25 -6 fe80::a00:27ff:febe:3a77%enp0s3
+> ./spider -4 192.168.0.25 -l fe80::a00:27ff:febe:3a77%enp0s3
 
                  -.                                 _//                   
            .=  :*=--::                       _/     _//                   
@@ -84,17 +85,17 @@ example : ./spider -4 192.168.0.10
         =-    -:                  Linux Ver: 0.9  Author: Shuichiro Endo  
 
 
-----------     spider     ----------
- spider ipv4          : 192.168.0.25
- spider ipv6          : fe80::a00:27ff:febe:3a77
- spider ipv6 scope id : enp0s3 (2)
- routing mode         : auto
- xor encryption       : off
- xor key hex string   : 
- aes encryption       : off
- aes key hex string   : 
- aes iv hex string    : 
----------- spider command ----------
+--------------------------------- spider ---------------------------------
+ spider ipv4                     : 192.168.0.25
+ spider ipv6 link local          : fe80::a00:27ff:febe:3a77
+ spider ipv6 linl local scope id : enp0s3 (2)
+ routing mode                    : auto
+ xor encryption                  : off
+ xor key hex string              : 
+ aes encryption                  : off
+ aes key hex string              : 
+ aes iv hex string               : 
+----------------------------- spider command -----------------------------
  1: add node (spider client)
  2: add node (spider pipe)
  3: show node information
@@ -102,9 +103,9 @@ example : ./spider -4 192.168.0.10
  5: edit routing table
  6: add node (spider client udp)
  0: exit
-------------------------------------
+--------------------------------------------------------------------------
 
-command >
+command > 
 
 ```
 

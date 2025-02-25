@@ -55,10 +55,28 @@ namespace spider
             this->add_route(route);
         }
 
-        if(!spider_ip->get_spider_ipv6().empty())
+        if(!spider_ip->get_spider_ipv6_global().empty())
         {
             std::shared_ptr<Route> route = std::make_shared<Route>('-',
-                                                                   spider_ip->get_spider_ipv6(),
+                                                                   spider_ip->get_spider_ipv6_global(),
+                                                                   0,
+                                                                   0);
+            this->add_route(route);
+        }
+
+        if(!spider_ip->get_spider_ipv6_unique_local().empty())
+        {
+            std::shared_ptr<Route> route = std::make_shared<Route>('-',
+                                                                   spider_ip->get_spider_ipv6_unique_local(),
+                                                                   0,
+                                                                   0);
+            this->add_route(route);
+        }
+
+        if(!spider_ip->get_spider_ipv6_link_local().empty())
+        {
+            std::shared_ptr<Route> route = std::make_shared<Route>('-',
+                                                                   spider_ip->get_spider_ipv6_link_local(),
                                                                    0,
                                                                    0);
             this->add_route(route);
@@ -164,7 +182,9 @@ namespace spider
                     mode = 'a';
                     ip = route_data->ip;
                     if(ip == spider_ip->get_spider_ipv4()
-                       || ip == spider_ip->get_spider_ipv6())
+                       || ip == spider_ip->get_spider_ipv6_global()
+                       || ip == spider_ip->get_spider_ipv6_unique_local()
+                       || ip == spider_ip->get_spider_ipv6_link_local())
                     {
                         continue;
                     }
@@ -220,7 +240,10 @@ namespace spider
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
             if(iterator->second->get_mode() != 's'
-               && (iterator->second->get_ip() != spider_ip->get_spider_ipv4() || iterator->second->get_ip() != spider_ip->get_spider_ipv6())
+               && (iterator->second->get_ip() != spider_ip->get_spider_ipv4()
+                  || iterator->second->get_ip() != spider_ip->get_spider_ipv6_global()
+                  || iterator->second->get_ip() != spider_ip->get_spider_ipv6_unique_local()
+                  || iterator->second->get_ip() != spider_ip->get_spider_ipv6_link_local())
                && iterator->second->get_metric() != 0)
             {
                 struct timeval t = iterator->second->get_time();

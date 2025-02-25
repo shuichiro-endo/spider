@@ -229,7 +229,6 @@ namespace spider
                                                         std::shared_ptr<Messagemanager> message_manager)
     {
         int ret = 0;
-        std::string spider_ip_server;
         std::shared_ptr<Socks5message> socks5_message = nullptr;
         std::shared_ptr<Server> server;
         uint32_t connection_id = 0;
@@ -241,20 +240,12 @@ namespace spider
             socks5_message = message_manager->transfer_socks5_message();
             if(socks5_message != nullptr)  // generate server
             {
-                if(socks5_message->get_destination_ip().find(":") == std::string::npos) // ipv4
-                {
-                    spider_ip_server = spider_ip->get_spider_ipv4();
-                }else   // ipv6
-                {
-                    spider_ip_server = spider_ip->get_spider_ipv6();
-                }
-
                 connection_id = socks5_message->get_connection_id();
                 client_id = socks5_message->get_client_id();
                 server = std::make_shared<Server>(connection_id,
                                                   client_id,
                                                   0,
-                                                  spider_ip_server,
+                                                  socks5_message->get_destination_ip(),
                                                   "0",
                                                   socks5_message->get_source_ip(),
                                                   INVALID_SOCKET,
@@ -772,7 +763,9 @@ namespace spider
             }
 
             if(client_listen_ip != spider_ip->get_spider_ipv4()
-               && client_listen_ip != spider_ip->get_spider_ipv6())
+               && client_listen_ip != spider_ip->get_spider_ipv6_global()
+               && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+               && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
             {
                 std::printf("[-] please input spider ipv4 or ipv6\n");
                 std::cin.clear();
@@ -780,9 +773,9 @@ namespace spider
                 continue;
             }
 
-            if(client_listen_ip == spider_ip->get_spider_ipv6())
+            if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
             {
-                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
             }
 
             std::printf("client listen port           > ");
@@ -1695,7 +1688,9 @@ namespace spider
                 }
 
                 if(pipe_ip != spider_ip->get_spider_ipv4()
-                   && pipe_ip != spider_ip->get_spider_ipv6())
+                   && pipe_ip != spider_ip->get_spider_ipv6_global()
+                   && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && pipe_ip != spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] please input spider ipv4 or ipv6\n");
                     std::cin.clear();
@@ -1703,9 +1698,9 @@ namespace spider
                     continue;
                 }
 
-                if(pipe_ip == spider_ip->get_spider_ipv6())
+                if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
                 {
-                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
                 }
 
                 std::printf("pipe destination ip         > ");
@@ -1795,7 +1790,9 @@ namespace spider
                 }
 
                 if(pipe_ip != spider_ip->get_spider_ipv4()
-                   && pipe_ip != spider_ip->get_spider_ipv6())
+                   && pipe_ip != spider_ip->get_spider_ipv6_global()
+                   && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && pipe_ip != spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] please input spider ipv4 or ipv6\n");
                     std::cin.clear();
@@ -1803,9 +1800,9 @@ namespace spider
                     continue;
                 }
 
-                if(pipe_ip == spider_ip->get_spider_ipv6())
+                if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
                 {
-                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
                 }
 
                 std::printf("pipe listen port            > ");
@@ -1941,7 +1938,9 @@ namespace spider
                 }
 
                 if(ip == spider_ip->get_spider_ipv4()
-                   || ip == spider_ip->get_spider_ipv6())
+                   || ip == spider_ip->get_spider_ipv6_global()
+                   || ip == spider_ip->get_spider_ipv6_unique_local()
+                   || ip == spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] cannot input spider ipv4 and ipv6\n");
                     continue;
@@ -2034,7 +2033,9 @@ namespace spider
                 }
 
                 if(ip == spider_ip->get_spider_ipv4()
-                   || ip == spider_ip->get_spider_ipv6())
+                   || ip == spider_ip->get_spider_ipv6_global()
+                   || ip == spider_ip->get_spider_ipv6_unique_local()
+                   || ip == spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] cannot input spider ipv4 and ipv6\n");
                     continue;
@@ -2184,7 +2185,9 @@ namespace spider
             }
 
             if(client_listen_ip != spider_ip->get_spider_ipv4()
-               && client_listen_ip != spider_ip->get_spider_ipv6())
+               && client_listen_ip != spider_ip->get_spider_ipv6_global()
+               && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+               && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
             {
                 std::printf("[-] please input spider ipv4 or ipv6\n");
                 std::cin.clear();
@@ -2192,9 +2195,9 @@ namespace spider
                 continue;
             }
 
-            if(client_listen_ip == spider_ip->get_spider_ipv6())
+            if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
             {
-                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_scope_id();
+                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
             }
 
             std::printf("client listen port                             > ");
@@ -2401,13 +2404,15 @@ namespace spider
     static void usage(char *filename)
     {
         std::printf("\n");
-        std::printf("usage   : %s [-4 spider_ipv4] [-6 spider_ipv6]\n", filename);
+        std::printf("usage   : %s [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n", filename);
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
         std::printf("example : %s -4 192.168.0.10\n", filename);
-        std::printf("        : %s -6 fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
-        std::printf("        : %s -4 192.168.0.10 -6 fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
+        std::printf("        : %s -6 2001::xxxx:xxxx:xxxx:xxxx\n", filename);
+        std::printf("        : %s -u fd80::xxxx:xxxx:xxxx:xxxx\n", filename);
+        std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
+        std::printf("        : %s -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd80::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
         std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e x -k deadbeef\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
@@ -2459,10 +2464,12 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:4:6:r:e:k:v:";
+    const char *optstring = "h:4:6:u:l:r:e:k:v:";
     int opterr = 0;
     std::string spider_ipv4;
-    std::string spider_ipv6;
+    std::string spider_ipv6_global;
+    std::string spider_ipv6_unique_local;
+    std::string spider_ipv6_link_local;
     std::string routing_mode = "a";
     std::string encryption_type;
     std::string key;
@@ -2489,7 +2496,15 @@ int main(int argc,
                 break;
 
             case '6':
-                spider_ipv6 = optarg;
+                spider_ipv6_global = optarg;
+                break;
+
+            case 'u':
+                spider_ipv6_unique_local = optarg;
+                break;
+
+            case 'l':
+                spider_ipv6_link_local = optarg;
                 break;
 
             case 'r':
@@ -2515,7 +2530,9 @@ int main(int argc,
     }
 
     if(spider_ipv4.empty()
-       && spider_ipv6.empty())
+       && spider_ipv6_global.empty()
+       && spider_ipv6_unique_local.empty()
+       && spider_ipv6_link_local.empty())
     {
         std::printf("[-] spider ipv4 and ipv6 are empty\n");
         spider::usage(argv[0]);
@@ -2523,7 +2540,9 @@ int main(int argc,
     }
 
     std::shared_ptr<spider::Spiderip> spider_ip = std::make_shared<spider::Spiderip>(spider_ipv4,
-                                                                                     spider_ipv6);
+                                                                                     spider_ipv6_global,
+                                                                                     spider_ipv6_unique_local,
+                                                                                     spider_ipv6_link_local);
 
     std::shared_ptr<spider::Encryption> encryption;
     std::shared_ptr<spider::Xor> encryption_xor;
@@ -2604,26 +2623,34 @@ int main(int argc,
     while(1)
     {
         std::printf("\n");
-        std::printf("----------     spider     ----------\n");
+        std::printf("--------------------------------- spider ---------------------------------\n");
         if(!spider_ip->get_spider_ipv4().empty())
         {
-            std::printf(" spider ipv4          : %s\n", spider_ip->get_spider_ipv4().c_str());
+            std::printf(" spider ipv4                     : %s\n", spider_ip->get_spider_ipv4().c_str());
         }
-        if(!spider_ip->get_spider_ipv6().empty())
+        if(!spider_ip->get_spider_ipv6_global().empty())
         {
-            std::printf(" spider ipv6          : %s\n", spider_ip->get_spider_ipv6().c_str());
-            if(!spider_ip->get_spider_ipv6_scope_id().empty())
+            std::printf(" spider ipv6 global              : %s\n", spider_ip->get_spider_ipv6_global().c_str());
+        }
+        if(!spider_ip->get_spider_ipv6_unique_local().empty())
+        {
+            std::printf(" spider ipv6 unique local        : %s\n", spider_ip->get_spider_ipv6_unique_local().c_str());
+        }
+        if(!spider_ip->get_spider_ipv6_link_local().empty())
+        {
+            std::printf(" spider ipv6 link local          : %s\n", spider_ip->get_spider_ipv6_link_local().c_str());
+            if(!spider_ip->get_spider_ipv6_link_local_scope_id().empty())
             {
-                std::printf(" spider ipv6 scope id : %s (%d)\n", spider_ip->get_spider_ipv6_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_scope_id().c_str()));
+                std::printf(" spider ipv6 linl local scope id : %s (%d)\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_link_local_scope_id().c_str()));
             }
         }
-        std::printf(" routing mode         : %s\n", (routing_mode == "s" ? "self" : "auto"));
-        std::printf(" xor encryption       : %s\n", (xor_flag ? "on" : "off"));
-        std::printf(" xor key hex string   : %s\n", xor_key_hex_string.c_str());
-        std::printf(" aes encryption       : %s\n", (aes_flag ? "on" : "off"));
-        std::printf(" aes key hex string   : %s\n", aes_key_hex_string.c_str());
-        std::printf(" aes iv hex string    : %s\n", aes_iv_hex_string.c_str());
-        std::printf("---------- spider command ----------\n");
+        std::printf(" routing mode                    : %s\n", (routing_mode == "s" ? "self" : "auto"));
+        std::printf(" xor encryption                  : %s\n", (xor_flag ? "on" : "off"));
+        std::printf(" xor key hex string              : %s\n", xor_key_hex_string.c_str());
+        std::printf(" aes encryption                  : %s\n", (aes_flag ? "on" : "off"));
+        std::printf(" aes key hex string              : %s\n", aes_key_hex_string.c_str());
+        std::printf(" aes iv hex string               : %s\n", aes_iv_hex_string.c_str());
+        std::printf("----------------------------- spider command -----------------------------\n");
         std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
         std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
         std::printf(" %d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
@@ -2631,7 +2658,7 @@ int main(int argc,
         std::printf(" %d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
         std::printf(" %d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
         std::printf(" %d: exit\n", SPIDER_COMMAND_EXIT);
-        std::printf("------------------------------------\n");
+        std::printf("--------------------------------------------------------------------------\n");
         std::printf("\n");
         std::printf("command > ");
 
