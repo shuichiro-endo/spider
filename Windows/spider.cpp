@@ -752,7 +752,7 @@ namespace spider
 
         while(1)
         {
-            std::printf("client listen ip             > ");
+            std::printf("client listen ip                               > ");
             std::cin >> client_listen_ip;
             if(std::cin.fail())
             {
@@ -778,7 +778,7 @@ namespace spider
                 client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
             }
 
-            std::printf("client listen port           > ");
+            std::printf("client listen port                             > ");
             std::cin >> client_listen_port;
             if(std::cin.fail())
             {
@@ -788,7 +788,7 @@ namespace spider
                 continue;
             }
 
-            std::printf("destination spider ip        > ");
+            std::printf("destination spider ip                          > ");
             std::cin >> destination_spider_ip;
             if(std::cin.fail())
             {
@@ -875,7 +875,7 @@ namespace spider
             std::printf("forwarder_tv_usec         : %7d microsec\n", forwarder_tv_usec);
             std::printf("\n");
 
-            std::printf("ok? (yes:y no:n quit:q) > ");
+            std::printf("ok? (yes:y no:n quit:q)                        > ");
             std::cin >> check;
             if(std::cin.fail())
             {
@@ -1664,7 +1664,7 @@ namespace spider
 
         while(1)
         {
-            std::printf("mode (client:c server:s)    > ");
+            std::printf("mode (client:c server:s)                       > ");
             std::cin >> mode;
             if(std::cin.fail())
             {
@@ -1677,7 +1677,7 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("pipe ip                     > ");
+                std::printf("pipe ip                                        > ");
                 std::cin >> pipe_ip;
                 if(std::cin.fail())
                 {
@@ -1703,7 +1703,7 @@ namespace spider
                     pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
                 }
 
-                std::printf("pipe destination ip         > ");
+                std::printf("pipe destination ip                            > ");
                 std::cin >> pipe_destination_ip;
                 if(std::cin.fail())
                 {
@@ -1713,7 +1713,7 @@ namespace spider
                     continue;
                 }
 
-                std::printf("pipe destination port       > ");
+                std::printf("pipe destination port                          > ");
                 std::cin >> pipe_destination_port;
                 if(std::cin.fail())
                 {
@@ -1724,17 +1724,17 @@ namespace spider
                 }
 
                 std::printf("\n");
-                std::printf("mode                    : %c\n", mode);
-                std::printf("pipe ip                 : %s\n", pipe_ip.c_str());
+                std::printf("mode                      : %c\n", mode);
+                std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
                 if(!pipe_ip_scope_id.empty())
                 {
-                    std::printf("pipe ip scope id        : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    std::printf("pipe ip scope id          : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
                 }
-                std::printf("pipe destination ip     : %s\n", pipe_destination_ip.c_str());
-                std::printf("pipe destination port   : %s\n", pipe_destination_port.c_str());
+                std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
+                std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
                 std::printf("\n");
 
-                std::printf("ok? (yes:y no:n quit:q) > ");
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
                 std::cin >> check;
                 if(std::cin.fail())
                 {
@@ -1779,7 +1779,7 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("pipe listen ip              > ");
+                std::printf("pipe listen ip                                 > ");
                 std::cin >> pipe_ip;
                 if(std::cin.fail())
                 {
@@ -1805,7 +1805,7 @@ namespace spider
                     pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
                 }
 
-                std::printf("pipe listen port            > ");
+                std::printf("pipe listen port                               > ");
                 std::cin >> pipe_listen_port;
                 if(std::cin.fail())
                 {
@@ -1816,16 +1816,16 @@ namespace spider
                 }
 
                 std::printf("\n");
-                std::printf("mode                    : %c\n", mode);
-                std::printf("pipe listen ip          : %s\n", pipe_ip.c_str());
+                std::printf("mode                      : %c\n", mode);
+                std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
                 if(!pipe_ip_scope_id.empty())
                 {
-                    std::printf("pipe listen ip scope id : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    std::printf("pipe listen ip scope id   : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
                 }
-                std::printf("pipe listen port        : %s\n", pipe_listen_port.c_str());
+                std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
                 std::printf("\n");
 
-                std::printf("ok? (yes:y no:n quit:q) > ");
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
                 std::cin >> check;
                 if(std::cin.fail())
                 {
@@ -1914,7 +1914,7 @@ namespace spider
             routing_manager->show_routing_table();
             std::printf("\n");
 
-            std::printf("edit mode (add:a delete:d quit:q)  > ");
+            std::printf("edit mode (add:a delete:d quit:q)              > ");
             std::cin >> edit_mode;
             if(std::cin.fail())
             {
@@ -1927,7 +1927,7 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("ip address                         > ");
+                std::printf("ip address                                     > ");
                 std::cin >> ip;
                 if(std::cin.fail())
                 {
@@ -1946,7 +1946,7 @@ namespace spider
                     continue;
                 }
 
-                std::printf("metric (0 < metric <= %d)         > ", UINT8_MAX);
+                std::printf("metric (0 < metric <= %3d)                     > ", UINT8_MAX);
                 std::cin >> metric;
                 if(std::cin.fail())
                 {
@@ -1964,7 +1964,7 @@ namespace spider
 
                 pipe_manager->show_pipes_map();
 
-                std::printf("pipe id                             > ");
+                std::printf("pipe id                                        > ");
                 std::cin >> pipe_id;
                 if(std::cin.fail())
                 {
@@ -1975,13 +1975,13 @@ namespace spider
                 }
 
                 std::printf("\n");
-                std::printf("edit mode       : %c\n", edit_mode);
-                std::printf("ip address      : %s\n", ip.c_str());
-                std::printf("metric          : %u\n", metric);
-                std::printf("pipe id         : %10u\n", pipe_id);
+                std::printf("edit mode                 : %c\n", edit_mode);
+                std::printf("ip address                : %s\n", ip.c_str());
+                std::printf("metric                    : %u\n", metric);
+                std::printf("pipe id                   : %10u\n", pipe_id);
                 std::printf("\n");
 
-                std::printf("ok? (yes:y no:n quit:q)             > ");
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
                 std::cin >> check;
                 if(std::cin.fail())
                 {
@@ -2022,7 +2022,7 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("ip address                         > ");
+                std::printf("ip address                                     > ");
                 std::cin >> ip;
                 if(std::cin.fail())
                 {
@@ -2042,11 +2042,11 @@ namespace spider
                 }
 
                 std::printf("\n");
-                std::printf("edit mode       : %c\n", edit_mode);
-                std::printf("ip address      : %s\n", ip.c_str());
+                std::printf("edit mode                 : %c\n", edit_mode);
+                std::printf("ip address                : %s\n", ip.c_str());
                 std::printf("\n");
 
-                std::printf("ok? (yes:y no:n quit:q)            > ");
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
                 std::cin >> check;
                 if(std::cin.fail())
                 {
@@ -2337,7 +2337,7 @@ namespace spider
             std::printf("FORWARDER_UDP_TIMEOUT     : %7d sec\n", FORWARDER_UDP_TIMEOUT);
             std::printf("\n");
 
-            std::printf("ok? (yes:y no:n quit:q) > ");
+            std::printf("ok? (yes:y no:n quit:q)                        > ");
             std::cin >> check;
             if(std::cin.fail())
             {
