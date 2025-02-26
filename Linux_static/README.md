@@ -146,8 +146,10 @@ make
 ```
 #define _DEBUG
 ```
-5. check spider file
+5. check if it is a statically linked binary
 ```
+file spider
+
 ldd spider
 ```
 
