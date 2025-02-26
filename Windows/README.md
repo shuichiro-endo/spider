@@ -93,7 +93,7 @@ example : spider.exe -4 192.168.0.10
 --------------------------------- spider ---------------------------------
  spider ipv4                     : 192.168.0.31
  spider ipv6 link local          : fe80::ca60:dc71:546d:8235
- spider ipv6 linl local scope id : 14
+ spider ipv6 link local scope id : 14
  routing mode                    : auto
  xor encryption                  : off
  xor key hex string              :

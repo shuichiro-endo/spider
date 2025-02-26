@@ -88,7 +88,7 @@ example : ./spider -4 192.168.0.10
 --------------------------------- spider ---------------------------------
  spider ipv4                     : 192.168.0.25
  spider ipv6 link local          : fe80::a00:27ff:febe:3a77
- spider ipv6 linl local scope id : enp0s3 (2)
+ spider ipv6 link local scope id : enp0s3 (2)
  routing mode                    : auto
  xor encryption                  : off
  xor key hex string              : 

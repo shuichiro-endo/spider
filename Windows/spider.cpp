@@ -2642,7 +2642,7 @@ int main(int argc,
             std::printf(" spider ipv6 link local          : %s\n", spider_ip->get_spider_ipv6_link_local().c_str());
             if(!spider_ip->get_spider_ipv6_link_local_scope_id().empty())
             {
-                std::printf(" spider ipv6 linl local scope id : %s\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str());
+                std::printf(" spider ipv6 link local scope id : %s\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str());
             }
         }
         std::printf(" routing mode                    : %s\n", (routing_mode == "s" ? "self" : "auto"));
