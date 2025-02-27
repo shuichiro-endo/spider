@@ -1390,7 +1390,8 @@ namespace spider
             if(ret == -1)
             {
 #ifdef _DEBUG
-                std::printf("[-] bind error\n");
+                std::printf("[-] bind error: %d\n",
+                            errno);
 #endif
                 close(sock);
                 free(buffer);

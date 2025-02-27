@@ -1406,7 +1406,8 @@ namespace spider
             if(ret == SOCKET_ERROR)
             {
 #ifdef DEBUGPRINT
-                std::printf("[-] bind error\n");
+                std::printf("[-] bind error: %d\n",
+                            WSAGetLastError());
 #endif
                 closesocket(sock);
                 free(buffer);

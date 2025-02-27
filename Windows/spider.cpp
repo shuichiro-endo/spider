@@ -382,10 +382,8 @@ namespace spider
                               &client_listen_addr_info);
             if(ret != 0)
             {
-#ifdef DEBUGPRINT
                 std::printf("[-] cannot resolv the address: %s\n",
                             client_listen_ip.c_str());
-#endif
                 return -1;
             }
         }else   // ipv6 address
@@ -397,10 +395,8 @@ namespace spider
                               &client_listen_addr_info);
             if(ret != 0)
             {
-#ifdef DEBUGPRINT
                 std::printf("[-] cannot resolv the address: %s\n",
                             client_listen_ip.c_str());
-#endif
                 return -1;
             }
         }
@@ -440,9 +436,7 @@ namespace spider
             freeaddrinfo(client_listen_addr_info);
         }else
         {
-#ifdef DEBUGPRINT
             std::printf("[-] not implemented\n");
-#endif
             freeaddrinfo(client_listen_addr_info);
             return -1;
         }
@@ -454,9 +448,8 @@ namespace spider
                                         0);
             if(client_listen_sock == INVALID_SOCKET)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] socket error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] socket error: %d\n",
+                            WSAGetLastError());
                 return -1;
             }
 
@@ -473,9 +466,8 @@ namespace spider
                        sizeof(client_listen_addr));
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] bind error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] bind error: %d\n",
+                            WSAGetLastError());
                 closesocket(client_listen_sock);
                 return -1;
             }
@@ -485,18 +477,15 @@ namespace spider
                    5);
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] listen error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] listen error: %d\n",
+                            WSAGetLastError());
                 closesocket(client_listen_sock);
                 return -1;
             }
 
-#ifdef DEBUGPRINT
             std::printf("[+] listening port %d on %s\n",
                         ntohs(client_listen_addr.sin_port),
                         inet_ntoa(client_listen_addr.sin_addr));
-#endif
 
             client_listen = std::make_shared<Client>("socks5",
                                                      0,
@@ -580,9 +569,8 @@ namespace spider
                                         0);
             if(client_listen_sock == INVALID_SOCKET)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] socket error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] socket error: %d\n",
+                            WSAGetLastError());
                 return -1;
             }
 
@@ -599,9 +587,8 @@ namespace spider
                        sizeof(client_listen_addr6));
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] bind error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] bind error: %d\n",
+                            WSAGetLastError());
                 closesocket(client_listen_sock);
                 return -1;
             }
@@ -611,9 +598,8 @@ namespace spider
                    5);
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] listen error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] listen error: %d\n",
+                            WSAGetLastError());
                 closesocket(client_listen_sock);
                 return -1;
             }
@@ -623,7 +609,6 @@ namespace spider
                       client_listen_addr6_string_pointer,
                       INET6_ADDR_STRING_LENGTH);
 
-#ifdef DEBUGPRINT
             if(client_listen_addr6.sin6_scope_id > 0)
             {
                 std::printf("[+] listening port %d on %s%%%d\n",
@@ -636,7 +621,6 @@ namespace spider
                             ntohs(client_listen_addr6.sin6_port),
                             client_listen_addr6_string_pointer);
             }
-#endif
 
             client_listen = std::make_shared<Client>("socks5",
                                                      0,
@@ -920,6 +904,8 @@ namespace spider
                            encryption);
         thread.detach();
 
+        std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+
         return;
     }
 
@@ -1080,10 +1066,8 @@ namespace spider
                               &pipe_dest_addr_info);
             if(ret != 0)
             {
-#ifdef DEBUGPRINT
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_destination_ip.c_str());
-#endif
                 return -1;
             }
         }else   // ipv6 address
@@ -1095,10 +1079,8 @@ namespace spider
                               &pipe_dest_addr_info);
             if(ret != 0)
             {
-#ifdef DEBUGPRINT
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_destination_ip.c_str());
- #endif
                 return -1;
             }
         }
@@ -1138,9 +1120,7 @@ namespace spider
             freeaddrinfo(pipe_dest_addr_info);
         }else
         {
-#ifdef DEBUGPRINT
             std::printf("[-] not implemented\n");
-#endif
             freeaddrinfo(pipe_dest_addr_info);
             return -1;
         }
@@ -1152,32 +1132,29 @@ namespace spider
                                  0);
             if(pipe_sock == INVALID_SOCKET)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] socket error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] socket error: %d\n",
+                            WSAGetLastError());
                 return -1;
             }
 
-#ifdef DEBUGPRINT
             std::printf("[+] connecting to ip:%s port:%d\n",
                    inet_ntoa(pipe_dest_addr.sin_addr),
                    ntohs(pipe_dest_addr.sin_port));
-#endif
+
             // connect
             ret = connect(pipe_sock,
                           (struct sockaddr *)&pipe_dest_addr,
                           sizeof(pipe_dest_addr));
             if(ret < 0){
-#ifdef DEBUGPRINT
-                std::printf("[-] connect failed:%d\n", ret);
-#endif
+                std::printf("[-] connect failed:%d\n",
+                            ret);
                 closesocket(pipe_sock);
                 return -1;
             }
 
-#ifdef DEBUGPRINT
-            std::printf("[+] connected to ip:%s port:%d\n", inet_ntoa(pipe_dest_addr.sin_addr), ntohs(pipe_dest_addr.sin_port));
-#endif
+            std::printf("[+] connected to ip:%s port:%d\n",
+                        inet_ntoa(pipe_dest_addr.sin_addr),
+                        ntohs(pipe_dest_addr.sin_port));
         }else if(family == AF_INET6)    // IPv6
         {
             pipe_sock = socket(AF_INET6,
@@ -1185,13 +1162,11 @@ namespace spider
                                  0);
             if(pipe_sock == INVALID_SOCKET)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] socket error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] socket error: %d\n",
+                            WSAGetLastError());
                 return -1;
             }
 
-#ifdef DEBUGPRINT
             inet_ntop(AF_INET6,
                       &pipe_dest_addr6.sin6_addr,
                       pipe_dest_addr6_string_pointer,
@@ -1206,20 +1181,18 @@ namespace spider
                             pipe_dest_addr6_string_pointer,
                             ntohs(pipe_dest_addr6.sin6_port));
             }
-#endif
+
             // connect
             ret = connect(pipe_sock,
                           (struct sockaddr *)&pipe_dest_addr6,
                           sizeof(pipe_dest_addr6));
             if(ret != 0){
-#ifdef DEBUGPRINT
-                std::printf("[-] connect failed: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] connect failed: %d\n",
+                            WSAGetLastError());
                 closesocket(pipe_sock);
                 return -1;
             }
 
-#ifdef DEBUGPRINT
             inet_ntop(AF_INET6,
                       &pipe_dest_addr6.sin6_addr,
                       pipe_dest_addr6_string_pointer,
@@ -1234,14 +1207,11 @@ namespace spider
                             pipe_dest_addr6_string_pointer,
                             ntohs(pipe_dest_addr6.sin6_port));
             }
-#endif
 
             pipe_destination_ip_scope_id = std::to_string(pipe_dest_addr6.sin6_scope_id);
         }else
         {
-#ifdef DEBUGPRINT
             std::printf("[-] not implemented\n");
-#endif
             return -1;
         }
 
@@ -1329,10 +1299,8 @@ namespace spider
                               &pipe_listen_addr_info);
             if(ret != 0)
             {
-#ifdef DEBUGPRINT
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_listen_ip.c_str());
-#endif
                 return -1;
             }
         }else   // ipv6 address
@@ -1344,10 +1312,8 @@ namespace spider
                               &pipe_listen_addr_info);
             if(ret != 0)
             {
-#ifdef DEBUGPRINT
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_listen_ip.c_str());
-#endif
                 return -1;
             }
         }
@@ -1387,9 +1353,7 @@ namespace spider
             freeaddrinfo(pipe_listen_addr_info);
         }else
         {
-#ifdef DEBUGPRINT
             std::printf("[-] not implemented\n");
-#endif
             freeaddrinfo(pipe_listen_addr_info);
             return -1;
         }
@@ -1401,9 +1365,8 @@ namespace spider
                                         0);
             if(pipe_listen_sock == INVALID_SOCKET)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] socket error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] socket error: %d\n",
+                            WSAGetLastError());
                 return -1;
             }
 
@@ -1420,9 +1383,8 @@ namespace spider
                        sizeof(pipe_listen_addr));
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] bind error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] bind error: %d\n",
+                            WSAGetLastError());
                 closesocket(pipe_listen_sock);
                 return -1;
             }
@@ -1432,18 +1394,15 @@ namespace spider
                          5);
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] listen error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] listen error: %d\n",
+                            WSAGetLastError());
                 closesocket(pipe_listen_sock);
                 return -1;
             }
 
-#ifdef DEBUGPRINT
             std::printf("[+] listening port %d on %s\n",
                         ntohs(pipe_listen_addr.sin_port),
                         inet_ntoa(pipe_listen_addr.sin_addr));
-#endif
 
             pipe_listen = std::make_shared<Pipe>(0,
                                                  mode,
@@ -1508,9 +1467,8 @@ namespace spider
             pipe_listen_sock = socket(AF_INET6, SOCK_STREAM, 0);
             if(pipe_listen_sock == INVALID_SOCKET)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] socket error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] socket error: %d\n",
+                            WSAGetLastError());
                 return -1;
             }
 
@@ -1527,9 +1485,8 @@ namespace spider
                        sizeof(pipe_listen_addr6));
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] bind error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] bind error: %d\n",
+                            WSAGetLastError());
                 closesocket(pipe_listen_sock);
                 return -1;
             }
@@ -1539,9 +1496,8 @@ namespace spider
                          5);
             if(ret == SOCKET_ERROR)
             {
-#ifdef DEBUGPRINT
-                std::printf("[-] listen error: %d\n", WSAGetLastError());
-#endif
+                std::printf("[-] listen error: %d\n",
+                            WSAGetLastError());
                 closesocket(pipe_listen_sock);
                 return -1;
             }
@@ -1551,7 +1507,6 @@ namespace spider
                       pipe_listen_addr6_string_pointer,
                       INET6_ADDR_STRING_LENGTH);
 
-#ifdef DEBUGPRINT
             if(pipe_listen_addr6.sin6_scope_id > 0)
             {
                 std::printf("[+] listening port %d on %s%%%d\n",
@@ -1564,7 +1519,6 @@ namespace spider
                             ntohs(pipe_listen_addr6.sin6_port),
                             pipe_listen_addr6_string_pointer);
             }
-#endif
 
             pipe_listen = std::make_shared<Pipe>(0,
                                                  mode,
@@ -1758,6 +1712,8 @@ namespace spider
                                        pipe_destination_port);
                     thread.detach();
 
+                    std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
+
                     break;
                 }else if(check == 'n')
                 {
@@ -1847,6 +1803,8 @@ namespace spider
                                        pipe_ip_scope_id,
                                        pipe_listen_port);
                     thread.detach();
+
+                    std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
 
                     break;
                 }else if(check == 'n')

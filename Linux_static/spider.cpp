@@ -378,10 +378,8 @@ namespace spider
                                                NULL);
             if(ret != 0)
             {
-#ifdef _DEBUG
                 std::printf("[-] cannot resolv the address: %s\n",
                             client_listen_ip.c_str());
-#endif
                 return -1;
             }
 
@@ -401,9 +399,8 @@ namespace spider
                        sizeof(client_listen_addr));
             if(ret == -1)
             {
-#ifdef _DEBUG
-                std::printf("[-] bind error\n");
-#endif
+                std::printf("[-] bind error: %d\n",
+                            errno);
                 close(client_listen_sock);
                 return -1;
             }
@@ -411,11 +408,10 @@ namespace spider
             // listen
             listen(client_listen_sock,
                    5);
-#ifdef _DEBUG
+
             std::printf("[+] listening port %d on %s\n",
                         ntohs(client_listen_addr.sin_port),
                         inet_ntoa(client_listen_addr.sin_addr));
-#endif
 
             client_listen = std::make_shared<Client>("socks5",
                                                      0,
@@ -507,10 +503,8 @@ namespace spider
                                                &client_listen_addr6);
             if(ret != 0)
             {
-#ifdef _DEBUG
                 std::printf("[-] cannot resolv the address: %s\n",
                             client_listen_ip.c_str());
-#endif
                 return -1;
             }
 
@@ -535,9 +529,8 @@ namespace spider
                        sizeof(client_listen_addr6));
             if(ret == -1)
             {
-#ifdef _DEBUG
-                std::printf("[-] bind error\n");
-#endif
+                std::printf("[-] bind error: %d\n",
+                            errno);
                 close(client_listen_sock);
                 return -1;
             }
@@ -551,7 +544,6 @@ namespace spider
                       client_listen_addr6_string_pointer,
                       INET6_ADDRSTRLEN);
 
-#ifdef _DEBUG
             if(client_listen_addr6.sin6_scope_id > 0)
             {
                 std::printf("[+] listening port %d on %s%%%d\n",
@@ -564,7 +556,6 @@ namespace spider
                             ntohs(client_listen_addr6.sin6_port),
                             client_listen_addr6_string_pointer);
             }
-#endif
 
             client_listen = std::make_shared<Client>("socks5",
                                                      0,
@@ -858,6 +849,8 @@ namespace spider
                            encryption);
         thread.detach();
 
+        std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+
         return;
     }
 
@@ -1010,10 +1003,8 @@ namespace spider
                                                NULL);
             if(ret != 0)
             {
-#ifdef _DEBUG
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_destination_ip.c_str());
-#endif
                 return -1;
             }
 
@@ -1029,26 +1020,21 @@ namespace spider
                   F_SETFL,
                   flags);
 
-#ifdef _DEBUG
             std::printf("[+] connecting to ip:%s port:%d\n",
                    inet_ntoa(pipe_dest_addr.sin_addr),
                    ntohs(pipe_dest_addr.sin_port));
-#endif
+
             // connect
             ret = connect(pipe_sock,
                           (struct sockaddr *)&pipe_dest_addr,
                           sizeof(pipe_dest_addr));
             if(ret < 0){
-#ifdef _DEBUG
                 std::printf("[-] connect failed:%d\n", ret);
-#endif
                 close(pipe_sock);
                 return -1;
             }
 
-#ifdef _DEBUG
             std::printf("[+] connected to ip:%s port:%d\n", inet_ntoa(pipe_dest_addr.sin_addr), ntohs(pipe_dest_addr.sin_port));
-#endif
         }else   // ipv6 address
         {
             ret = cares_manager->get_addr_info(pipe_destination_ip.c_str(),
@@ -1058,10 +1044,8 @@ namespace spider
                                                &pipe_dest_addr6);
             if(ret != 0)
             {
-#ifdef _DEBUG
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_destination_ip.c_str());
- #endif
                 return -1;
             }
 
@@ -1082,7 +1066,6 @@ namespace spider
                   F_SETFL,
                   flags);
 
-#ifdef _DEBUG
             inet_ntop(AF_INET6,
                       &pipe_dest_addr6.sin6_addr,
                       pipe_dest_addr6_string_pointer,
@@ -1097,20 +1080,17 @@ namespace spider
                             pipe_dest_addr6_string_pointer,
                             ntohs(pipe_dest_addr6.sin6_port));
             }
-#endif
+
             // connect
             ret = connect(pipe_sock,
                           (struct sockaddr *)&pipe_dest_addr6,
                           sizeof(pipe_dest_addr6));
             if(ret < 0){
-#ifdef _DEBUG
                 std::printf("[-] connect failed:%d\n", ret);
-#endif
                 close(pipe_sock);
                 return -1;
             }
 
-#ifdef _DEBUG
             inet_ntop(AF_INET6,
                       &pipe_dest_addr6.sin6_addr,
                       pipe_dest_addr6_string_pointer,
@@ -1125,7 +1105,6 @@ namespace spider
                             pipe_dest_addr6_string_pointer,
                             ntohs(pipe_dest_addr6.sin6_port));
             }
-#endif
 
             pipe_destination_ip_scope_id = std::to_string(pipe_dest_addr6.sin6_scope_id);
         }
@@ -1206,10 +1185,8 @@ namespace spider
                                                NULL);
             if(ret != 0)
             {
-#ifdef _DEBUG
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_listen_ip.c_str());
-#endif
                 return -1;
             }
 
@@ -1229,9 +1206,8 @@ namespace spider
                        sizeof(pipe_listen_addr));
             if(ret == -1)
             {
-#ifdef _DEBUG
-                std::printf("[-] bind error\n");
-#endif
+                std::printf("[-] bind error: %d\n",
+                            errno);
                 close(pipe_listen_sock);
                 return -1;
             }
@@ -1239,11 +1215,10 @@ namespace spider
             // listen
             listen(pipe_listen_sock,
                    5);
-#ifdef _DEBUG
+
             std::printf("[+] listening port %d on %s\n",
                         ntohs(pipe_listen_addr.sin_port),
                         inet_ntoa(pipe_listen_addr.sin_addr));
-#endif
 
             pipe_listen = std::make_shared<Pipe>(0,
                                                  mode,
@@ -1271,11 +1246,10 @@ namespace spider
                     close(pipe_sock);
                     continue;
                 }
-#ifdef _DEBUG
+
                 std::printf("[+] connected from ip:%s port:%d\n",
                             inet_ntoa(pipe_addr.sin_addr),
                             ntohs(pipe_addr.sin_port));
-#endif
 
                 flags = fcntl(pipe_sock,
                               F_GETFL,
@@ -1320,10 +1294,8 @@ namespace spider
                                                &pipe_listen_addr6);
             if(ret != 0)
             {
-#ifdef _DEBUG
                 std::printf("[-] cannot resolv the address: %s\n",
                             pipe_listen_ip.c_str());
-#endif
                 return -1;
             }
 
@@ -1346,9 +1318,8 @@ namespace spider
                        sizeof(pipe_listen_addr6));
             if(ret == -1)
             {
-#ifdef _DEBUG
-                std::printf("[-] bind error\n");
-#endif
+                std::printf("[-] bind error: %d\n",
+                            errno);
                 close(pipe_listen_sock);
                 return -1;
             }
@@ -1362,7 +1333,6 @@ namespace spider
                       pipe_listen_addr6_string_pointer,
                       INET6_ADDRSTRLEN);
 
-#ifdef _DEBUG
             if(pipe_listen_addr6.sin6_scope_id > 0)
             {
                 std::printf("[+] listening port %d on %s%%%d\n",
@@ -1375,7 +1345,6 @@ namespace spider
                             ntohs(pipe_listen_addr6.sin6_port),
                             pipe_listen_addr6_string_pointer);
             }
-#endif
 
             pipe_listen = std::make_shared<Pipe>(0,
                                                  mode,
@@ -1410,7 +1379,7 @@ namespace spider
                           &pipe_addr6.sin6_addr,
                           pipe_addr6_string_pointer,
                           INET6_ADDRSTRLEN);
-#ifdef _DEBUG
+
                 if(pipe_addr6.sin6_scope_id > 0)
                 {
                     std::printf("[+] connected from ip:%s%%%d port:%d\n",
@@ -1423,7 +1392,6 @@ namespace spider
                                 pipe_addr6_string_pointer,
                                 ntohs(pipe_addr6.sin6_port));
                 }
-#endif
 
                 flags = fcntl(pipe_sock,
                               F_GETFL,
@@ -1580,6 +1548,8 @@ namespace spider
                                        pipe_destination_port);
                     thread.detach();
 
+                    std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
+
                     break;
                 }else if(check == 'n')
                 {
@@ -1670,6 +1640,8 @@ namespace spider
                                        pipe_ip_scope_id,
                                        pipe_listen_port);
                     thread.detach();
+
+                    std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
 
                     break;
                 }else if(check == 'n')
