@@ -23,6 +23,10 @@
 
 #define FORWARDER_UDP_TIMEOUT 300
 
+#define SOCKS5_AUTHENTICATION_METHOD 0x0; // 0x0:No Authentication Required  0x2:Username/Password Authentication
+#define SOCKS5_USERNAME "socks5user"
+#define SOCKS5_PASSWORD "supersecretpassword"
+
 #define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT      1
 #define SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE        2
 #define SPIDER_COMMAND_SHOW_NODE_INFORMATION       3

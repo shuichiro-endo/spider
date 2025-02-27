@@ -812,9 +812,9 @@ namespace spider
         bool socks5_connect_flag = true;
         bool socks5_connect_udp_flag = false;
 
-        static char authentication_method = 0x0; // 0x0:No Authentication Required  0x2:Username/Password Authentication
-        char username[256] = "socks5user";
-        char password[256] = "supersecretpassword";
+        static char authentication_method = SOCKS5_AUTHENTICATION_METHOD; // 0x0:No Authentication Required  0x2:Username/Password Authentication
+        char username[256] = SOCKS5_USERNAME;
+        char password[256] = SOCKS5_PASSWORD;
 
         int32_t rec;
         int32_t sen;

@@ -1073,9 +1073,9 @@ namespace spider
 
     int32_t Client::do_socks5_connection_udp()
     {
-        static char authentication_method = 0x0; // 0x0:No Authentication Required  0x2:Username/Password Authentication
-        char username[256] = "socks5user";
-        char password[256] = "supersecretpassword";
+        static char authentication_method = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
+        char username[256] = SOCKS5_USERNAME;
+        char password[256] = SOCKS5_PASSWORD;
         uint8_t username_length = std::strlen(username);
         uint8_t password_length = std::strlen(password);
 
@@ -1193,8 +1193,8 @@ namespace spider
             std::memcpy(username_password_authentication_request->uname,
                         username,
                         username_length);
-            username_password_authentication_request->plen = password_length;
-            std::memcpy(username_password_authentication_request->passwd,
+            *(username_password_authentication_request->uname + username_length) = password_length;
+            std::memcpy(username_password_authentication_request->uname + username_length + 1,
                         password,
                         password_length);
 
