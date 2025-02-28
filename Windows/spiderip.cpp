@@ -21,17 +21,48 @@ namespace spider
 
         if(!spider_ipv6_link_local.empty())    // scope_id
         {
-            this->spider_ipv6_link_local_scope_id = strstr(this->spider_ipv6_link_local.c_str(), "%") + 1;
-            memcpy(this->addr6_string_pointer,
-                   this->spider_ipv6_link_local.c_str(),
-                   this->spider_ipv6_link_local.size() - this->spider_ipv6_link_local_scope_id.size() - 1);
-            this->spider_ipv6_link_local = this->addr6_string_pointer;
+            if(spider_ipv6_link_local.find("%") == std::string::npos)
+            {
+                std::printf("[-] ipv6 link local address does not include a scope id\n");
+
+                init_flag = false;
+            }else
+            {
+                this->spider_ipv6_link_local_scope_id = strstr(this->spider_ipv6_link_local.c_str(), "%") + 1;
+                if(this->spider_ipv6_link_local_scope_id.empty())
+                {
+                    std::printf("[-] ipv6 link local address does not include a scope id\n");
+
+                    init_flag = false;
+                }else
+                {
+                    memcpy(this->addr6_string_pointer,
+                           this->spider_ipv6_link_local.c_str(),
+                           this->spider_ipv6_link_local.size() - this->spider_ipv6_link_local_scope_id.size() - 1);
+                    this->spider_ipv6_link_local = this->addr6_string_pointer;
+
+                    init_flag = true;
+                }
+            }
+        }else
+        {
+            init_flag = true;
         }
     }
 
     Spiderip::~Spiderip()
     {
 
+    }
+
+    void Spiderip::set_init_flag(BOOL init_flag)
+    {
+        this->init_flag = init_flag;
+    }
+
+    BOOL Spiderip::get_init_flag()
+    {
+        return init_flag;
     }
 
     void Spiderip::set_spider_ipv4(std::string spider_ipv4)

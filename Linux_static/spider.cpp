@@ -2327,6 +2327,11 @@ int main(int argc,
                                                                                      spider_ipv6_global,
                                                                                      spider_ipv6_unique_local,
                                                                                      spider_ipv6_link_local);
+    if(spider_ip->get_init_flag() == false)
+    {
+        spider::usage(argv[0]);
+        exit(-1);
+    }
 
     std::shared_ptr<spider::Encryption> encryption;
     std::shared_ptr<spider::Xor> encryption_xor;

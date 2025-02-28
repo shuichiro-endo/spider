@@ -14,6 +14,7 @@ namespace spider
     class Spiderip
     {
     private:
+        bool init_flag = false;
         std::string spider_ipv4;
         std::string spider_ipv6_global;
         std::string spider_ipv6_unique_local;
@@ -33,6 +34,9 @@ namespace spider
                  std::string spider_ipv6_unique_local,
                  std::string spider_ipv6_link_local);
         ~Spiderip();
+
+        void set_init_flag(bool init_flag);
+        bool get_init_flag();
 
         void set_spider_ipv4(std::string spider_ipv4);
         std::string get_spider_ipv4();
