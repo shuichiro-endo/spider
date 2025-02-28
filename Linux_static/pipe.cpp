@@ -159,11 +159,8 @@ namespace spider
         fd_set readfds;
         int nfds = -1;
         struct timeval tv;
-        struct timeval start;
-        struct timeval end;
-        long tv_sec = 3;
+        long tv_sec = 3600;
         long tv_usec = 0;
-        long t = 0;
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         char *tmp = (char *)calloc(NODE_BUFFER_SIZE,
@@ -185,41 +182,8 @@ namespace spider
         int32_t remaining_size = 0;
 
 
-        ret = gettimeofday(&start, NULL);
-        if(ret == -1)
-        {
-#ifdef _DEBUG
-            std::printf("[-] recv_message gettimeofday error\n");
-#endif
-            free(tmp);
-            free(buffer);
-            return -1;
-        }
-
         while(1)
         {
-            ret = gettimeofday(&end, NULL);
-            if(ret == -1)
-            {
-#ifdef _DEBUG
-                std::printf("[-] recv_message gettimeofday error\n");
-#endif
-                free(tmp);
-                free(buffer);
-                return -1;
-            }
-
-            t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
-            if(t >= (tv_sec * 1000000 + tv_usec))
-            {
-#ifdef _DEBUG
-                std::printf("[-] recv_message timeout\n");
-#endif
-                free(tmp);
-                free(buffer);
-                return 0;
-            }
-
             FD_ZERO(&readfds);
             FD_SET(sock,
                    &readfds);
@@ -441,11 +405,8 @@ namespace spider
         fd_set writefds;
         int nfds = -1;
         struct timeval tv;
-        struct timeval start;
-        struct timeval end;
-        long tv_sec = 3;
+        long tv_sec = 3600;
         long tv_usec = 0;
-        long t = 0;
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
 
@@ -463,40 +424,9 @@ namespace spider
 //        print_bytes(buffer, len);
 #endif
 
-        ret = gettimeofday(&start,
-                           NULL);
-        if(ret == -1)
-        {
-#ifdef _DEBUG
-            std::printf("[-] send_routing_message gettimeofday error\n");
-#endif
-            free(buffer);
-            return -1;
-        }
 
         while(len > 0)
         {
-            ret = gettimeofday(&end,
-                               NULL);
-            if(ret == -1)
-            {
-#ifdef _DEBUG
-                std::printf("[-] send_routing_message gettimeofday error\n");
-#endif
-                free(buffer);
-                return -1;
-            }
-
-            t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
-            if(t >= (tv_sec * 1000000 + tv_usec))
-            {
-#ifdef _DEBUG
-                std::printf("[-] send_routing_message timeout\n");
-#endif
-                free(buffer);
-                return 0;
-            }
-
             FD_ZERO(&writefds);
             FD_SET(sock,
                    &writefds);
@@ -563,11 +493,8 @@ namespace spider
         fd_set writefds;
         int nfds = -1;
         struct timeval tv;
-        struct timeval start;
-        struct timeval end;
-        long tv_sec = 3;
+        long tv_sec = 3600;
         long tv_usec = 0;
-        long t = 0;
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
 
@@ -581,40 +508,9 @@ namespace spider
 //        print_bytes(buffer, len);
 #endif
 
-        ret = gettimeofday(&start,
-                           NULL);
-        if(ret == -1)
-        {
-#ifdef _DEBUG
-            std::printf("[-] send_socks5_message gettimeofday error\n");
-#endif
-            free(buffer);
-            return -1;
-        }
 
         while(len > 0)
         {
-            ret = gettimeofday(&end,
-                               NULL);
-            if(ret == -1)
-            {
-#ifdef _DEBUG
-                std::printf("[-] send_socks5_message gettimeofday error\n");
-#endif
-                free(buffer);
-                return -1;
-            }
-
-            t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
-            if(t >= (tv_sec * 1000000 + tv_usec))
-            {
-#ifdef _DEBUG
-                std::printf("[-] send_socks5_message timeout\n");
-#endif
-                free(buffer);
-                return 0;
-            }
-
             FD_ZERO(&writefds);
             FD_SET(sock,
                    &writefds);

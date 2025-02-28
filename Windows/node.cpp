@@ -91,9 +91,6 @@ namespace spider
         int32_t rec = 0;
         fd_set readfds;
         struct timeval tv;
-        struct timeval start;
-        struct timeval end;
-        long t = 0;
 
 
         if(buffer_size > NODE_BUFFER_SIZE)
@@ -108,35 +105,8 @@ namespace spider
                     0,
                     buffer_size);
 
-        ret = gettimeofday(&start, NULL);
-        if(ret == -1)
-        {
-#ifdef DEBUGPRINT
-            std::printf("[-] gettimeofday error\n");
-#endif
-            return -1;
-        }
-
         while(1)
         {
-            ret = gettimeofday(&end, NULL);
-            if(ret == -1)
-            {
-#ifdef DEBUGPRINT
-                std::printf("[-] gettimeofday error\n");
-#endif
-                return -1;
-            }
-
-            t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
-            if(t >= (tv_sec * 1000000 + tv_usec))
-            {
-#ifdef DEBUGPRINT
-                std::printf("[-] recv_data timeout\n");
-#endif
-                return -1;
-            }
-
             FD_ZERO(&readfds);
             FD_SET(sock,
                    &readfds);
@@ -204,9 +174,6 @@ namespace spider
         int32_t len = 0;
         fd_set writefds;
         struct timeval tv;
-        struct timeval start;
-        struct timeval end;
-        long t = 0;
 
 
         if(data_size > NODE_BUFFER_SIZE)
@@ -218,37 +185,9 @@ namespace spider
         }
 
         len = data_size;
-        ret = gettimeofday(&start,
-                           NULL);
-        if(ret == -1)
-        {
-#ifdef DEBUGPRINT
-            std::printf("[-] gettimeofday error\n");
-#endif
-            return -1;
-        }
 
         while(len > 0)
         {
-            ret = gettimeofday(&end,
-                               NULL);
-            if(ret == -1)
-            {
-#ifdef DEBUGPRINT
-                std::printf("[-] gettimeofday error\n");
-#endif
-                return -1;
-            }
-
-            t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
-            if(t >= (tv_sec * 1000000 + tv_usec))
-            {
-#ifdef DEBUGPRINT
-                std::printf("[-] send_data timeout\n");
-#endif
-                return -1;
-            }
-
             FD_ZERO(&writefds);
             FD_SET(sock,
                    &writefds);
