@@ -92,9 +92,11 @@ namespace spider
                                          std::shared_ptr<Pipe> pipe);
 
     static void pipe_worker(std::shared_ptr<Pipemanager> pipe_manager,
-                           std::shared_ptr<Pipe> pipe);
+                            std::shared_ptr<Pipe> pipe);
 
-    static int connect_pipe(std::shared_ptr<Pipemanager> pipe_manager,
+    static int connect_pipe(std::shared_ptr<Spiderip> spider_ip,
+                            std::shared_ptr<Pipemanager> pipe_manager,
+                            std::shared_ptr<Routingmanager> routing_manager,
                             std::shared_ptr<Messagemanager> message_manager,
                             char mode,
                             std::string pipe_ip,
@@ -102,7 +104,9 @@ namespace spider
                             std::string pipe_destination_ip,
                             std::string pipe_destination_port);
 
-    static int listen_pipe(std::shared_ptr<Pipemanager> pipe_manager,
+    static int listen_pipe(std::shared_ptr<Spiderip> spider_ip,
+                           std::shared_ptr<Pipemanager> pipe_manager,
+                           std::shared_ptr<Routingmanager> routing_manager,
                            std::shared_ptr<Messagemanager> message_manager,
                            char mode,
                            std::string pipe_listen_ip,
@@ -111,6 +115,7 @@ namespace spider
 
     static void add_node_spider_pipe(std::shared_ptr<Spiderip> spider_ip,
                                      std::shared_ptr<Pipemanager> pipe_manager,
+                                     std::shared_ptr<Routingmanager> routing_manager,
                                      std::shared_ptr<Messagemanager> message_manager);
 
     static void show_node_information(std::shared_ptr<Clientmanager> client_manager,
@@ -1016,7 +1021,9 @@ namespace spider
         return;
     }
 
-    static int connect_pipe(std::shared_ptr<Pipemanager> pipe_manager,
+    static int connect_pipe(std::shared_ptr<Spiderip> spider_ip,
+                            std::shared_ptr<Pipemanager> pipe_manager,
+                            std::shared_ptr<Routingmanager> routing_manager,
                             std::shared_ptr<Messagemanager> message_manager,
                             char mode,
                             std::string pipe_ip,
@@ -1215,7 +1222,8 @@ namespace spider
             return -1;
         }
 
-        pipe = std::make_shared<Pipe>(0,
+        pipe = std::make_shared<Pipe>(spider_ip,
+                                      0,
                                       mode,
                                       pipe_ip,
                                       pipe_ip_scope_id,
@@ -1223,6 +1231,7 @@ namespace spider
                                       pipe_destination_ip_scope_id,
                                       pipe_destination_port,
                                       pipe_sock,
+                                      routing_manager,
                                       message_manager);
 
         do
@@ -1240,7 +1249,9 @@ namespace spider
         return 0;
     }
 
-    static int listen_pipe(std::shared_ptr<Pipemanager> pipe_manager,
+    static int listen_pipe(std::shared_ptr<Spiderip> spider_ip,
+                           std::shared_ptr<Pipemanager> pipe_manager,
+                           std::shared_ptr<Routingmanager> routing_manager,
                            std::shared_ptr<Messagemanager> message_manager,
                            char mode,
                            std::string pipe_listen_ip,
@@ -1404,12 +1415,14 @@ namespace spider
                         ntohs(pipe_listen_addr.sin_port),
                         inet_ntoa(pipe_listen_addr.sin_addr));
 
-            pipe_listen = std::make_shared<Pipe>(0,
+            pipe_listen = std::make_shared<Pipe>(spider_ip,
+                                                 0,
                                                  mode,
                                                  pipe_listen_ip,
                                                  "",
                                                  pipe_listen_port,
                                                  pipe_listen_sock,
+                                                 routing_manager,
                                                  message_manager);
 
             do
@@ -1438,7 +1451,8 @@ namespace spider
 
                 std::string pipe_destination_ip = inet_ntoa(pipe_addr.sin_addr);
                 std::string pipe_destination_port = std::to_string(ntohs(pipe_addr.sin_port));
-                std::shared_ptr<Pipe> pipe = std::make_shared<Pipe>(0,
+                std::shared_ptr<Pipe> pipe = std::make_shared<Pipe>(spider_ip,
+                                                                    0,
                                                                     '-',
                                                                     pipe_listen_ip,
                                                                     "",
@@ -1446,6 +1460,7 @@ namespace spider
                                                                     "",
                                                                     pipe_destination_port,
                                                                     pipe_sock,
+                                                                    routing_manager,
                                                                     message_manager);
 
                 do
@@ -1520,12 +1535,14 @@ namespace spider
                             pipe_listen_addr6_string_pointer);
             }
 
-            pipe_listen = std::make_shared<Pipe>(0,
+            pipe_listen = std::make_shared<Pipe>(spider_ip,
+                                                 0,
                                                  mode,
                                                  pipe_listen_ip,
                                                  pipe_listen_ip_scope_id,
                                                  pipe_listen_port,
                                                  pipe_listen_sock,
+                                                 routing_manager,
                                                  message_manager);
 
             do
@@ -1573,7 +1590,8 @@ namespace spider
                 pipe_destination_ip = pipe_addr6_string_pointer;
                 pipe_destination_ip_scope_id = std::to_string(pipe_addr6.sin6_scope_id);
                 pipe_destination_port = std::to_string(ntohs(pipe_addr6.sin6_port));
-                std::shared_ptr<Pipe> pipe = std::make_shared<Pipe>(0,
+                std::shared_ptr<Pipe> pipe = std::make_shared<Pipe>(spider_ip,
+                                                                    0,
                                                                     '-',
                                                                     pipe_listen_ip,
                                                                     pipe_listen_ip_scope_id,
@@ -1581,6 +1599,7 @@ namespace spider
                                                                     pipe_destination_ip_scope_id,
                                                                     pipe_destination_port,
                                                                     pipe_sock,
+                                                                    routing_manager,
                                                                     message_manager);
 
                 do
@@ -1606,6 +1625,7 @@ namespace spider
 
     static void add_node_spider_pipe(std::shared_ptr<Spiderip> spider_ip,
                                      std::shared_ptr<Pipemanager> pipe_manager,
+                                     std::shared_ptr<Routingmanager> routing_manager,
                                      std::shared_ptr<Messagemanager> message_manager)
     {
         char mode;  // client:c server:s
@@ -1703,7 +1723,9 @@ namespace spider
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
                     std::thread thread(connect_pipe,
+                                       spider_ip,
                                        pipe_manager,
+                                       routing_manager,
                                        message_manager,
                                        mode,
                                        pipe_ip,
@@ -1796,7 +1818,9 @@ namespace spider
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
                     std::thread thread(listen_pipe,
+                                       spider_ip,
                                        pipe_manager,
+                                       routing_manager,
                                        message_manager,
                                        mode,
                                        pipe_ip,
@@ -2647,6 +2671,7 @@ int main(int argc,
                 std::printf("[+] add node (spider pipe)\n");
                 spider::add_node_spider_pipe(spider_ip,
                                              pipe_manager,
+                                             routing_manager,
                                              message_manager);
                 break;
 

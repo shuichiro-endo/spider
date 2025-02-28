@@ -12,6 +12,8 @@
 
 namespace spider
 {
+    class Spiderip;
+    class Routingmanager;
     class Messagemanager;
     class Routingmessage;
     class Routingmessagequeue;
@@ -19,6 +21,7 @@ namespace spider
     class Pipe : public Node
     {
     private:
+        std::shared_ptr<Spiderip> spider_ip;
         uint32_t pipe_id;
         char mode;                          // client:c server:s
         std::string pipe_ip;
@@ -27,6 +30,7 @@ namespace spider
         std::string pipe_destination_ip;
         std::string pipe_destination_ip_scope_id;
         std::string pipe_destination_port;
+        std::shared_ptr<Routingmanager> routing_manager;
         std::unique_ptr<Routingmessagequeue> routing_messages_queue;
 
     public:
@@ -35,7 +39,8 @@ namespace spider
         std::shared_ptr<Routingmessage> pop_routing_message();
 
     public:
-        Pipe(uint32_t pipe_id,
+        Pipe(std::shared_ptr<Spiderip> spider_ip,
+             uint32_t pipe_id,
              char mode,
              std::string pipe_ip,
              std::string pipe_ip_scope_id,
@@ -43,17 +48,23 @@ namespace spider
              std::string pipe_destination_ip_scope_id,
              std::string pipe_destination_port,
              SOCKET pipe_sock,
+             std::shared_ptr<Routingmanager> routing_manager,
              std::shared_ptr<Messagemanager> message_manager);
 
-        Pipe(uint32_t pipe_id,
+        Pipe(std::shared_ptr<Spiderip> spider_ip,
+             uint32_t pipe_id,
              char mode,
              std::string pipe_ip,
              std::string pipe_ip_scope_id,
              std::string pipe_listen_port,
              SOCKET pipe_sock,
+             std::shared_ptr<Routingmanager> routing_manager,
              std::shared_ptr<Messagemanager> message_manager);
 
         ~Pipe();
+
+        void set_spider_ip(std::shared_ptr<Spiderip> spider_ip);
+        std::shared_ptr<Spiderip> get_spider_ip();
 
         void set_pipe_id(uint32_t pipe_id);
         uint32_t get_pipe_id();

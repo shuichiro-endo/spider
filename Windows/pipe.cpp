@@ -4,18 +4,21 @@
  */
 
 #include "spider.hpp"
+#include "spiderip.hpp"
 #include "pipe.hpp"
 #include "message.hpp"
 #include "routingmessage.hpp"
 #include "socks5message.hpp"
 #include "routingmessagequeue.hpp"
 #include "socks5messagequeue.hpp"
+#include "routingmanager.hpp"
 #include "messagemanager.hpp"
 
 
 namespace spider
 {
-    Pipe::Pipe(uint32_t pipe_id,
+    Pipe::Pipe(std::shared_ptr<Spiderip> spider_ip,
+               uint32_t pipe_id,
                char mode,
                std::string pipe_ip,
                std::string pipe_ip_scope_id,
@@ -23,9 +26,11 @@ namespace spider
                std::string pipe_destination_ip_scope_id,
                std::string pipe_destination_port,
                SOCKET pipe_sock,
+               std::shared_ptr<Routingmanager> routing_manager,
                std::shared_ptr<Messagemanager> message_manager)
     : Node(pipe_sock, message_manager)
     {
+        this->spider_ip = spider_ip;
         this->pipe_id = pipe_id;
         this->mode = mode;
         this->pipe_ip = pipe_ip;
@@ -33,29 +38,44 @@ namespace spider
         this->pipe_destination_ip = pipe_destination_ip;
         this->pipe_destination_ip_scope_id = pipe_destination_ip_scope_id;
         this->pipe_destination_port = pipe_destination_port;
+        this->routing_manager = routing_manager;
         this->routing_messages_queue = std::make_unique<Routingmessagequeue>();
     }
 
-    Pipe::Pipe(uint32_t pipe_id,
+    Pipe::Pipe(std::shared_ptr<Spiderip> spider_ip,
+               uint32_t pipe_id,
                char mode,
                std::string pipe_ip,
                std::string pipe_ip_scope_id,
                std::string pipe_listen_port,
                SOCKET pipe_sock,
+               std::shared_ptr<Routingmanager> routing_manager,
                std::shared_ptr<Messagemanager> message_manager)
     : Node(pipe_sock, message_manager)
     {
+        this->spider_ip = spider_ip;
         this->pipe_id = pipe_id;
         this->mode = mode;
         this->pipe_ip = pipe_ip;
         this->pipe_ip_scope_id = pipe_ip_scope_id;
         this->pipe_listen_port = pipe_listen_port;
+        this->routing_manager = routing_manager;
         this->routing_messages_queue = std::make_unique<Routingmessagequeue>();
     }
 
     Pipe::~Pipe()
     {
 
+    }
+
+    void Pipe::set_spider_ip(std::shared_ptr<Spiderip> spider_ip)
+    {
+        this->spider_ip = spider_ip;
+    }
+
+    std::shared_ptr<Spiderip> Pipe::get_spider_ip()
+    {
+        return spider_ip;
     }
 
     void Pipe::set_pipe_id(uint32_t pipe_id)
@@ -179,6 +199,13 @@ namespace spider
         int32_t recv_header_size = 0;
         int32_t recv_data_size = 0;
         int32_t remaining_size = 0;
+
+        std::shared_ptr<Pipe> pipe;
+        char destination_node_type;
+        uint32_t connection_id = 0;
+        uint32_t client_id = 0;
+        uint32_t server_id = 0;
+        uint32_t pipe_id = 0;
 
 
         while(1)
@@ -372,11 +399,31 @@ namespace spider
                                 }else if(rec == socks5_message_header_size + socks5_message_data->data_size)
                                 {
                                     socks5_message = std::make_unique<Socks5message>(socks5_message_data);
-
-                                    std::thread thread_message_manager(&Messagemanager::push_socks5_message,
-                                                                       message_manager,
-                                                                       socks5_message);
-                                    thread_message_manager.detach();
+                                    if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip()
+                                        || spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip()
+                                        || spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip()
+                                        || spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
+                                    {
+                                        std::thread thread_message_manager(&Messagemanager::push_socks5_message,
+                                                                           message_manager,
+                                                                           socks5_message);
+                                        thread_message_manager.detach();
+                                    }else
+                                    {
+                                        pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
+                                        if(pipe != nullptr)
+                                        {
+                                            std::thread thread_pipe(&Pipe::push_socks5_message,
+                                                                    pipe,
+                                                                    socks5_message);
+                                            thread_pipe.detach();
+                                        }else
+                                        {
+#ifdef _DEBUG
+                                            std::printf("[-] cannot transfer pipe message\n");
+#endif
+                                        }
+                                    }
                                 }
                             }
                         }else
