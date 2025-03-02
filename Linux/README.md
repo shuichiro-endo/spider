@@ -50,15 +50,19 @@ make
         =-    -:                  Linux Ver: 1.2  Author: Shuichiro Endo  
 
 
-usage   : ./spider [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
+usage   : ./spider
+        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
+        : [-f config_file]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
-example : ./spider -4 192.168.0.10
+example : ./spider
+        : ./spider -4 192.168.0.10
         : ./spider -6 2001::xxxx:xxxx:xxxx:xxxx
         : ./spider -u fd00::xxxx:xxxx:xxxx:xxxx
         : ./spider -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
         : ./spider -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
+        : ./spider -f config_sample.txt
         : ./spider -4 192.168.0.10 -r s
         : ./spider -4 192.168.0.10 -e x -k deadbeef
         : ./spider -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
@@ -72,7 +76,7 @@ example : ./spider -4 192.168.0.10
 > Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
 
 ```
-> ./spider -4 192.168.0.25 -l fe80::a00:27ff:febe:3a77%enp0s3
+> ./spider
 
                  -.                                 _//                   
            .=  :*=--::                       _/     _//                   
@@ -87,8 +91,10 @@ example : ./spider -4 192.168.0.10
 
 --------------------------------- spider ---------------------------------
  spider ipv4                     : 192.168.0.25
+ spider ipv6 unique local        : fd00:abcd:1234:5678::1
  spider ipv6 link local          : fe80::a00:27ff:febe:3a77
  spider ipv6 link local scope id : enp0s3 (2)
+ config file                     : 
  routing mode                    : auto
  xor encryption                  : off
  xor key hex string              : 
@@ -105,7 +111,7 @@ example : ./spider -4 192.168.0.10
  0: exit
 --------------------------------------------------------------------------
 
-command > 
+command >
 
 ```
 

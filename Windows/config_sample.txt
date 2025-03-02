@@ -1,0 +1,88 @@
+// Title: config_sample.txt
+//
+// [pipe_server]
+// pipe_listen_ip:192.168.0.25
+// pipe_listen_port:1025
+//
+// [pipe_server]
+// pipe_listen_ip:fe80::a00:27ff:fe25:c316
+// pipe_listen_port:1026
+//
+// [pipe_server]
+// pipe_listen_ip:fd00:abcd:1234:5678::1
+// pipe_listen_port:1027
+//
+// [pipe_client]
+// pipe_ip:192.168.0.25
+// pipe_destination_ip:192.168.0.26
+// pipe_destination_port:1026
+//
+// [pipe_client]
+// pipe_ip:fe80::a00:27ff:febe:3a77
+// pipe_destination_ip:fe80::a00:27ff:fe25:c316
+// pipe_destination_port:1026
+//
+// [sleep]
+// sleep:10
+//
+// [client]
+// client_listen_ip:192.168.0.25
+// client_listen_port:9050
+// destination_spider_ip:192.168.0.26
+// tv_sec:3
+// tv_usec:0
+// forwarder_tv_sec:30
+// forwarder_tv_usec:0
+//
+// [client]
+// client_listen_ip:fe80::a00:27ff:febe:3a77
+// client_listen_port:9000
+// destination_spider_ip:192.168.0.26
+// tv_sec:3
+// tv_usec:0
+// forwarder_tv_sec:30
+// forwarder_tv_usec:0
+//
+// [client_udp]
+// client_listen_ip:192.168.0.25
+// client_listen_port:10053
+// destination_spider_ip:192.168.0.26
+// target_ip:1.1.1.1
+// target_port:53
+// tv_sec:3
+// tv_usec:0
+// forwarder_tv_sec:30
+// forwarder_tv_usec:0
+
+
+[pipe_server]
+pipe_listen_ip:
+pipe_listen_port:
+
+[pipe_client]
+pipe_ip:
+pipe_destination_ip:
+pipe_destination_port:
+
+[sleep]
+sleep:
+
+[client]
+client_listen_ip:
+client_listen_port:
+destination_spider_ip:
+tv_sec:
+tv_usec:
+forwarder_tv_sec:
+forwarder_tv_usec:
+
+[client_udp]
+client_listen_ip:
+client_listen_port:
+destination_spider_ip:
+target_ip:
+target_port:
+tv_sec:
+tv_usec:
+forwarder_tv_sec:
+forwarder_tv_usec:

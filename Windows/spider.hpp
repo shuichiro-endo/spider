@@ -47,6 +47,8 @@
 #include <stdint.h>
 #include <process.h>
 #include <iostream>
+#include <algorithm>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <memory>

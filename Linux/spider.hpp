@@ -39,6 +39,8 @@
 #include <cstring>
 #include <ctime>
 #include <iostream>
+#include <algorithm>
+#include <fstream>
 #include <limits>
 #include <string>
 #include <memory>

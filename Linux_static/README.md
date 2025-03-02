@@ -78,6 +78,7 @@ spider/Linux_static
 ├── client.hpp
 ├── clientmanager.cpp
 ├── clientmanager.hpp
+├── config_sample.txt
 ├── encryption.cpp
 ├── encryption.hpp
 ├── include
@@ -131,7 +132,7 @@ spider/Linux_static
 ├── xor.cpp
 └── xor.hpp
 
-3 directories, 60 files
+3 directories, 61 files
 ```
 4. build
 ```
