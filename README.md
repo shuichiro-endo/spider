@@ -1,6 +1,6 @@
 # spider
 > [!CAUTION]
-> This tool cannot transfer data correctly because it does not take TCP sequence numbers into account.
+> This tool cannot transfer data correctly because it does not take packet order into account.
 >
 > Please use it for experimental purposes.
 
