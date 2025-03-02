@@ -2355,11 +2355,13 @@ namespace spider
     static void usage(char *filename)
     {
         std::printf("\n");
-        std::printf("usage   : %s [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n", filename);
+        std::printf("usage   : %s\n", filename);
+        std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
-        std::printf("example : %s -4 192.168.0.10\n", filename);
+        std::printf("example : %s\n", filename);
+        std::printf("        : %s -4 192.168.0.10\n", filename);
         std::printf("        : %s -6 2001::xxxx:xxxx:xxxx:xxxx\n", filename);
         std::printf("        : %s -u fd00::xxxx:xxxx:xxxx:xxxx\n", filename);
         std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
@@ -2381,6 +2383,12 @@ int main(int argc,
     std::string spider_ipv6_global;
     std::string spider_ipv6_unique_local;
     std::string spider_ipv6_link_local;
+    int32_t ret = 0;
+    struct ifaddrs *ifaddr, *ifa;
+    char ip_tmp[INET6_ADDRSTRLEN + 1] = {0};
+    std::string ip;
+    std::string percent = "%";
+    std::string ifname;
     std::string routing_mode = "a";
     std::string encryption_type;
     std::string key;
@@ -2445,9 +2453,80 @@ int main(int argc,
        && spider_ipv6_unique_local.empty()
        && spider_ipv6_link_local.empty())
     {
-        std::printf("[-] spider ipv4 and ipv6 are empty\n");
-        spider::usage(argv[0]);
-        exit(-1);
+        ret = getifaddrs(&ifaddr);
+        if(ret == -1)
+        {
+            std::printf("[-] getifaddrs error\n");
+            exit(-1);
+        }
+
+        for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)
+        {
+            if(ifa->ifa_addr == NULL
+               || (strncmp(ifa->ifa_name, "lo", strlen("lo") + 1) == 0))
+            {
+                continue;
+            }
+
+            if(ifa->ifa_addr->sa_family == AF_INET) // ipv4
+            {
+                memset(ip_tmp,
+                       0,
+                       INET6_ADDRSTRLEN + 1);
+
+                if(inet_ntop(AF_INET, &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr, ip_tmp, INET_ADDRSTRLEN) == NULL)
+                {
+                    std::printf("[-] inet_ntop error\n");
+                    freeifaddrs(ifaddr);
+                    exit(-1);
+                }
+
+                ip = ip_tmp;
+
+                if(spider_ipv4.empty())
+                {
+                    spider_ipv4 = ip;
+                }
+            }else if(ifa->ifa_addr->sa_family == AF_INET6)
+            {
+                memset(ip_tmp,
+                       0,
+                       INET6_ADDRSTRLEN + 1);
+
+                if(inet_ntop(AF_INET6, &((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr, ip_tmp, INET6_ADDRSTRLEN) == NULL)
+                {
+                    std::printf("[-] inet_ntop error\n");
+                    freeifaddrs(ifaddr);
+                    exit(-1);
+                }
+
+                ip = ip_tmp;
+
+                if(ip.rfind("2001:", 0) == 0)
+                {
+                    if(spider_ipv6_global.empty())
+                    {
+                        spider_ipv6_global = ip;
+                    }
+                }else if(ip.rfind("fd00:", 0) == 0)
+                {
+                    if(spider_ipv6_unique_local.empty())
+                    {
+                        spider_ipv6_unique_local = ip;
+                    }
+                }else if(ip.rfind("fe80:", 0) == 0)
+                {
+                    if(spider_ipv6_link_local.empty())
+                    {
+                        ifname = ifa->ifa_name;
+                        ip = ip + percent + ifname;
+                        spider_ipv6_link_local = ip;
+                    }
+                }
+            }
+        }
+
+        freeifaddrs(ifaddr);
     }
 
     std::shared_ptr<spider::Spiderip> spider_ip = std::make_shared<spider::Spiderip>(spider_ipv4,

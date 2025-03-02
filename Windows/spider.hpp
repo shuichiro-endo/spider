@@ -58,11 +58,12 @@
 #include <semaphore>
 #include <stdint.h>
 #include <stddef.h>
+#include <iphlpapi.h>
 #include <netioapi.h>
 
 
 #pragma comment(lib, "ws2_32.lib")      // Winsock Library
-#pragma comment(lib, "Iphlpapi.lib")    // IP Helper Library
+#pragma comment(lib, "iphlpapi.lib")    // IP Helper Library
 
 
 namespace spider

@@ -2387,11 +2387,13 @@ namespace spider
     static void usage(char *filename)
     {
         std::printf("\n");
-        std::printf("usage   : %s [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n", filename);
+        std::printf("usage   : %s\n", filename);
+        std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
-        std::printf("example : %s -4 192.168.0.10\n", filename);
+        std::printf("example : %s\n", filename);
+        std::printf("        : %s -4 192.168.0.10\n", filename);
         std::printf("        : %s -6 2001::xxxx:xxxx:xxxx:xxxx\n", filename);
         std::printf("        : %s -u fd00::xxxx:xxxx:xxxx:xxxx\n", filename);
         std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%14\n", filename);
@@ -2453,6 +2455,14 @@ int main(int argc,
     std::string spider_ipv6_global;
     std::string spider_ipv6_unique_local;
     std::string spider_ipv6_link_local;
+    unsigned long out_buffer_length = 0;
+    IP_ADAPTER_ADDRESSES *addresses = NULL;
+    sockaddr_in *sa_in = NULL;
+    sockaddr_in6 *sa_in6 = NULL;
+    char ip_tmp[INET6_ADDRSTRLEN + 1] = {0};
+    std::string ip;
+    std::string percent = "%";
+    std::string scope_id;
     std::string routing_mode = "a";
     std::string encryption_type;
     std::string key;
@@ -2517,9 +2527,84 @@ int main(int argc,
        && spider_ipv6_unique_local.empty()
        && spider_ipv6_link_local.empty())
     {
-        std::printf("[-] spider ipv4 and ipv6 are empty\n");
-        spider::usage(argv[0]);
-        exit(-1);
+        GetAdaptersAddresses(AF_UNSPEC,
+                             0,
+                             NULL,
+                             NULL,
+                             &out_buffer_length);
+
+        addresses = (IP_ADAPTER_ADDRESSES *)calloc(out_buffer_length,
+                                                   sizeof(char));
+
+        if(GetAdaptersAddresses(AF_UNSPEC, 0, NULL, addresses, &out_buffer_length) == NO_ERROR)
+        {
+            for(IP_ADAPTER_ADDRESSES *current_addresses = addresses; current_addresses != NULL; current_addresses = current_addresses->Next)
+            {
+                for (IP_ADAPTER_UNICAST_ADDRESS* unicast = current_addresses->FirstUnicastAddress; unicast != NULL; unicast = unicast->Next)
+                {
+                    if(unicast->Address.lpSockaddr->sa_family == AF_INET)
+                    {
+                        sa_in = (sockaddr_in *)unicast->Address.lpSockaddr;
+                        memset(ip_tmp,
+                               0,
+                               INET6_ADDRSTRLEN + 1);
+
+                        if(inet_ntop(AF_INET, &sa_in->sin_addr, ip_tmp, INET_ADDRSTRLEN) == NULL)
+                        {
+                            std::printf("[-] inet_ntop error\n");
+                            free(addresses);
+                            exit(-1);
+                        }
+
+                        ip = ip_tmp;
+
+                        if(spider_ipv4.empty())
+                        {
+                            spider_ipv4 = ip;
+                        }
+                    }else if(unicast->Address.lpSockaddr->sa_family == AF_INET6)
+                    {
+                        sa_in6 = (sockaddr_in6 *)unicast->Address.lpSockaddr;
+                        memset(ip_tmp,
+                               0,
+                               INET6_ADDRSTRLEN + 1);
+
+                        if(inet_ntop(AF_INET6, &sa_in6->sin6_addr, ip_tmp, INET6_ADDRSTRLEN) == NULL)
+                        {
+                            std::printf("[-] inet_ntop error\n");
+                            free(addresses);
+                            exit(-1);
+                        }
+
+                        ip = ip_tmp;
+
+                        if(ip.rfind("2001:", 0) == 0)
+                        {
+                            if(spider_ipv6_global.empty())
+                            {
+                                spider_ipv6_global = ip;
+                            }
+                        }else if(ip.rfind("fd00:", 0) == 0)
+                        {
+                            if(spider_ipv6_unique_local.empty())
+                            {
+                                spider_ipv6_unique_local = ip;
+                            }
+                        }else if(ip.rfind("fe80:", 0) == 0)
+                        {
+                            if(spider_ipv6_link_local.empty())
+                            {
+                                scope_id = std::to_string(sa_in6->sin6_scope_id);
+                                ip = ip + percent + scope_id;
+                                spider_ipv6_link_local = ip;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        free(addresses);
     }
 
     std::shared_ptr<spider::Spiderip> spider_ip = std::make_shared<spider::Spiderip>(spider_ipv4,
