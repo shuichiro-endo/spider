@@ -55,34 +55,67 @@
 // forwarder_tv_usec:0
 
 
+// [pipe_server]
+// pipe_listen_ip:
+// pipe_listen_port:
+
 [pipe_server]
-pipe_listen_ip:
-pipe_listen_port:
+pipe_listen_ip:192.168.0.25
+pipe_listen_port:1025
 
-[pipe_client]
-pipe_ip:
-pipe_destination_ip:
-pipe_destination_port:
+[pipe_server]
+pipe_listen_ip:192.168.0.25
+pipe_listen_port:1026
 
-[sleep]
-sleep:
 
-[client]
-client_listen_ip:
-client_listen_port:
-destination_spider_ip:
-tv_sec:
-tv_usec:
-forwarder_tv_sec:
-forwarder_tv_usec:
 
-[client_udp]
-client_listen_ip:
-client_listen_port:
-destination_spider_ip:
-target_ip:
-target_port:
-tv_sec:
-tv_usec:
-forwarder_tv_sec:
-forwarder_tv_usec:
+
+
+
+// [pipe_client]
+// pipe_ip:
+// pipe_destination_ip:
+// pipe_destination_port:
+
+
+
+
+
+
+// [sleep]
+// sleep:
+
+
+
+
+
+
+// [client]
+// client_listen_ip:
+// client_listen_port:
+// destination_spider_ip:
+// tv_sec:
+// tv_usec:
+// forwarder_tv_sec:
+// forwarder_tv_usec:
+
+
+
+
+
+
+// [client_udp]
+// client_listen_ip:
+// client_listen_port:
+// destination_spider_ip:
+// target_ip:
+// target_port:
+// tv_sec:
+// tv_usec:
+// forwarder_tv_sec:
+// forwarder_tv_usec:
+
+
+
+
+
