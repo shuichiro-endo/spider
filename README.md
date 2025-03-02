@@ -1,7 +1,8 @@
-# This tool cannot transfer data correctly because it does not take TCP sequence numbers into account.
-# Please use it for experimental purposes.
-
 # spider
+> [!CAUTION]
+> This tool cannot transfer data correctly because it does not take TCP sequence numbers into account.
+>
+> Please use it for experimental purposes.
 
 socks5 proxy tunnel tool
 
