@@ -515,6 +515,13 @@ namespace spider
             }
         }
 
+        for(auto it = msgs_map.begin(); it != msgs_map.end();)
+        {
+            msg = it->second;
+            free(msg.second);
+            it = msgs_map.erase(it);
+        }
+
         free(buffer);
         return 0;
     }
@@ -925,6 +932,13 @@ namespace spider
                     }
                 }
             }
+        }
+
+        for(auto it = msgs_map.begin(); it != msgs_map.end();)
+        {
+            msg = it->second;
+            free(msg.second);
+            it = msgs_map.erase(it);
         }
 
         free(buffer);
