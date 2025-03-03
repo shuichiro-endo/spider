@@ -236,6 +236,15 @@ namespace spider
         return data_size;
     }
 
+    uint32_t Node::generate_random_id()
+    {
+        std::random_device rd;
+        std::mt19937 mt(rd());
+        std::uniform_int_distribution<uint32_t> distrib(1, UINT32_MAX);
+
+        return distrib(mt);
+    }
+
     void Node::print_bytes(char *buffer, int buffer_length)
     {
         for(int i=0; i<buffer_length; i++){

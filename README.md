@@ -1,8 +1,4 @@
 # spider
-> [!CAUTION]
-> This tool cannot transfer data correctly because it does not take packet order into account.
->
-> Please use it for experimental purposes.
 
 socks5 proxy tunnel tool
 

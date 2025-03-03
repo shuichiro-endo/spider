@@ -15,6 +15,7 @@ namespace spider
     struct socks5_message_data
     {
         char message_type;
+        uint32_t message_id;
         char reserved1;
         uint32_t connection_id;
         uint32_t client_id;
@@ -36,6 +37,7 @@ namespace spider
     struct socks5_message_data_header
     {
         char message_type;
+        uint32_t message_id;
         char reserved1;
         uint32_t connection_id;
         uint32_t client_id;
@@ -56,6 +58,7 @@ namespace spider
     class Socks5message : public Message
     {
     private:
+        uint32_t message_id;
         uint32_t connection_id;
         uint32_t client_id;
         uint32_t server_id;
@@ -80,6 +83,9 @@ namespace spider
         Socks5message(struct socks5_message_data *socks5_message_data);
 
         ~Socks5message();
+
+        void set_message_id(uint32_t message_id);
+        uint32_t get_message_id();
 
         void set_connection_id(uint32_t connection_id);
         uint32_t get_connection_id();

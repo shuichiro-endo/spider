@@ -36,6 +36,9 @@ namespace spider
         int32_t forwarder_tv_usec;
         std::shared_ptr<Encryption> encryption;
         std::shared_ptr<spider::Caresmanager> cares_manager;
+        uint32_t recv_message_id = 0;
+        uint32_t next_recv_message_id = 0;
+        uint32_t send_message_id = 0;
 
     public:
 

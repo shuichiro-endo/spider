@@ -287,6 +287,8 @@ namespace spider
                         set_server_id(socks5_message->get_server_id());
                     }
 
+                    recv_message_id = socks5_message->get_message_id();
+
                     std::memcpy(buffer,
                                 socks5_message->get_data(),
                                 rec);
@@ -384,6 +386,7 @@ namespace spider
                                                             sizeof(struct socks5_message_data));
 
         socks5_message_data->message_type = 's';
+        socks5_message_data->message_id = send_message_id;
         socks5_message_data->connection_id = connection_id;
         socks5_message_data->client_id = client_id;
         socks5_message_data->server_id = server_id;
@@ -488,7 +491,7 @@ namespace spider
                 }else if(rec > 0)
                 {
 #ifdef DEBUGPRINT
-                    std::printf("[+] [client -> server] send_message\n");
+                    std::printf("[+] [client -> server] send_message message_id:%u\n", send_message_id);
 #endif
                     sen = send_message(buffer,
                                        rec,
@@ -497,6 +500,8 @@ namespace spider
                     if(sen <= 0){
                         break;
                     }
+
+                    send_message_id++;
                 }else
                 {
                     break;
@@ -522,6 +527,10 @@ namespace spider
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
         int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
+        std::size_t check_msg_count = 0;
+        std::pair<int32_t, char *> msg;
+        recv_message_id = 0;
 
 
         while(1)
@@ -544,7 +553,8 @@ namespace spider
                 break;
             }else if(ret == SOCKET_ERROR){
 #ifdef DEBUGPRINT
-                std::printf("[+] forwarder_send_data select error: 0x%x\n", ret);
+                std::printf("[+] forwarder_send_data select error: 0x%x\n",
+                            ret);
 #endif
                 break;
             }
@@ -566,35 +576,93 @@ namespace spider
                                    false);
                 if(rec > 0)
                 {
-                    len = rec;
-                    send_length = 0;
-#ifdef DEBUGPRINT
-                    std::printf("[+] [client <- client] send\n");
-#endif
-                    while(len > 0)
+                    if(recv_message_id == next_recv_message_id)
                     {
-                        sen = send(sock,
-                                   buffer+send_length,
-                                   len,
-                                   0);
-                        if(sen == SOCKET_ERROR)
-                        {
-                            ret = WSAGetLastError();
-                            if(ret == WSAEWOULDBLOCK)
-                            {
-                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                                continue;
-                            }else
-                            {
+                        len = rec;
+                        send_length = 0;
 #ifdef DEBUGPRINT
-                                std::printf("[-] forwarder_send_data send error: %d\n",
-                                            ret);
+                        std::printf("[+] [client <- client] send message_id:%u\n",
+                                    next_recv_message_id);
 #endif
-                                break;
+                        while(len > 0)
+                        {
+                            sen = send(sock,
+                                       buffer+send_length,
+                                       len,
+                                       0);
+                            if(sen == SOCKET_ERROR)
+                            {
+                                ret = WSAGetLastError();
+                                if(ret == WSAEWOULDBLOCK)
+                                {
+                                    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                    continue;
+                                }else
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] forwarder_send_data send error: %d\n",
+                                                ret);
+#endif
+                                    break;
+                                }
                             }
+                            send_length += sen;
+                            len -= sen;
                         }
-                        send_length += sen;
-                        len -= sen;
+
+                        next_recv_message_id++;
+                    }else
+                    {
+                        msg = std::make_pair(rec,
+                                             buffer);
+                        msgs_map.insert({recv_message_id, msg});
+
+                        check_msg_count = msgs_map.count(next_recv_message_id);
+                        while(check_msg_count > 0)
+                        {
+                            msg = msgs_map[next_recv_message_id];
+                            msgs_map.erase(next_recv_message_id);
+
+                            len = msg.first;
+                            buffer = msg.second;
+                            send_length = 0;
+#ifdef _DEBUG
+                            std::printf("[+] [client <- client] send message_id:%u\n",
+                                        next_recv_message_id);
+#endif
+                            while(len > 0)
+                            {
+                                sen = send(sock,
+                                           buffer+send_length,
+                                           len,
+                                           0);
+                                if(sen == SOCKET_ERROR)
+                                {
+                                    ret = WSAGetLastError();
+                                    if(ret == WSAEWOULDBLOCK)
+                                    {
+                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                        continue;
+                                    }else
+                                    {
+#ifdef DEBUGPRINT
+                                        std::printf("[-] forwarder_send_data send error: %d\n",
+                                                    ret);
+#endif
+                                        break;
+                                    }
+                                }
+                                send_length += sen;
+                                len -= sen;
+                            }
+
+                            free(buffer);
+                            next_recv_message_id++;
+                            check_msg_count = msgs_map.count(next_recv_message_id);
+                        }
+
+                        buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                                sizeof(char));
                     }
                 }else
                 {
@@ -609,8 +677,10 @@ namespace spider
 
     int32_t Client::forwarder()
     {
-        std::thread thread1(&Client::forwarder_recv_data, this);
-        std::thread thread2(&Client::forwarder_send_data, this);
+        std::thread thread1(&Client::forwarder_recv_data,
+                            this);
+        std::thread thread2(&Client::forwarder_send_data,
+                            this);
 
         thread1.join();
         thread2.join();
@@ -627,6 +697,9 @@ namespace spider
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
         int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        recv_message_id = 0;
+        next_recv_message_id = 0;
+        send_message_id = generate_random_id();
 
 
         // socks SELECTION_REQUEST [client -> client]
@@ -656,6 +729,7 @@ namespace spider
         std::printf("[+] [client -> server] send selection request\n");
 #endif
 
+        send_message_id++;
         sen = send_message(buffer,
                            rec,
                            tv_sec,
@@ -686,6 +760,9 @@ namespace spider
             free(buffer);
             return -1;
         }
+
+        next_recv_message_id = recv_message_id + 1;
+
 #ifdef DEBUGPRINT
         std::printf("[+] [client <- server] recv selection response: %d bytes\n",
                     rec);
@@ -741,6 +818,7 @@ namespace spider
             std::printf("[+] [client -> server] send username password authentication request\n");
 #endif
 
+            send_message_id++;
             sen = send_message(buffer,
                                rec,
                                tv_sec,
@@ -763,7 +841,8 @@ namespace spider
                                tv_usec,
                                false);
 
-            if(rec <= 0)
+            if(rec <= 0
+               || next_recv_message_id != recv_message_id)
             {
 #ifdef DEBUGPRINT
                 std::printf("[-] [client <- server] recv username password authentication response error\n");
@@ -771,6 +850,9 @@ namespace spider
                 free(buffer);
                 return -1;
             }
+
+            next_recv_message_id++;
+
 #ifdef DEBUGPRINT
             std::printf("[+] [client <- server] recv username password authentication response: %d bytes\n",
                         rec);
@@ -819,6 +901,7 @@ namespace spider
         std::printf("[+] [client -> server] send socks request\n");
 #endif
 
+        send_message_id++;
         sen = send_message(buffer,
                            rec,
                            tv_sec,
@@ -841,7 +924,8 @@ namespace spider
                            tv_usec,
                            false);
 
-        if(rec <= 0)
+        if(rec <= 0
+           || next_recv_message_id != recv_message_id)
         {
 #ifdef DEBUGPRINT
             std::printf("[-] [client <- server] recv socks response error\n");
@@ -849,6 +933,9 @@ namespace spider
             free(buffer);
             return -1;
         }
+
+        next_recv_message_id++;
+
 #ifdef DEBUGPRINT
         std::printf("[+] [client <- server] recv socks response: %d bytes\n",
                     rec);
@@ -873,6 +960,8 @@ namespace spider
 #ifdef DEBUGPRINT
         std::printf("[+] [client <> client <> server <> target] forwarder\n");
 #endif
+
+        send_message_id++;
         forwarder();
 
 #ifdef DEBUGPRINT
@@ -898,6 +987,11 @@ namespace spider
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
         int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
+        std::size_t check_msg_count = 0;
+        std::pair<int32_t, char *> msg;
+        recv_message_id = 0;
+
 
         struct sockaddr *client_addr;
         int client_addr_length = addr_length;
@@ -974,7 +1068,8 @@ namespace spider
                 }else if(rec > 0)
                 {
 #ifdef DEBUGPRINT
-                    std::printf("[+] [client -> server] send_message\n");
+                    std::printf("[+] [client -> server] send_message message_id:%u\n",
+                                send_message_id);
 #endif
                     sen = send_message(buffer,
                                        rec,
@@ -983,6 +1078,8 @@ namespace spider
                     if(sen <= 0){
 //                        break;
                     }
+
+                    send_message_id++;
                 }else
                 {
 //                    break;
@@ -1031,39 +1128,100 @@ namespace spider
                                        false);
                     if(rec > 0)
                     {
-                        len = rec;
-                        send_length = 0;
-#ifdef DEBUGPRINT
-                        std::printf("[+] [client <- client] sendto\n");
-#endif
-                        while(len > 0)
+                        if(recv_message_id == next_recv_message_id)
                         {
-                            sen = sendto(sock,
-                                         buffer+send_length,
-                                         len,
-                                         0,
-                                         client_addr,
-                                         client_addr_length);
-                            if(sen == SOCKET_ERROR)
-                            {
-                                ret =  WSAGetLastError();
-                                if(ret == WSAEWOULDBLOCK)
-                                {
-                                    std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                                    continue;
-                                }else
-                                {
+                            len = rec;
+                            send_length = 0;
 #ifdef DEBUGPRINT
-                                    std::printf("[-] forwarder_send_data sendto error: %d\n",
-                                                ret);
+                            std::printf("[+] [client <- client] sendto message_id:%u\n",
+                                        next_recv_message_id);
 #endif
-//                                    free(client_addr);
-//                                    free(buffer);
-//                                    return 0;
+                            while(len > 0)
+                            {
+                                sen = sendto(sock,
+                                             buffer+send_length,
+                                             len,
+                                             0,
+                                             client_addr,
+                                             client_addr_length);
+                                if(sen == SOCKET_ERROR)
+                                {
+                                    ret =  WSAGetLastError();
+                                    if(ret == WSAEWOULDBLOCK)
+                                    {
+                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                        continue;
+                                    }else
+                                    {
+#ifdef DEBUGPRINT
+                                        std::printf("[-] forwarder_send_data sendto error: %d\n",
+                                                    ret);
+#endif
+//                                      free(client_addr);
+//                                      free(buffer);
+//                                      return 0;
+                                    }
                                 }
+                                send_length += sen;
+                                len -= sen;
                             }
-                            send_length += sen;
-                            len -= sen;
+
+                            next_recv_message_id++;
+                        }else
+                        {
+                            msg = std::make_pair(rec,
+                                                 buffer);
+                            msgs_map.insert({recv_message_id, msg});
+
+                            check_msg_count = msgs_map.count(next_recv_message_id);
+                            while(check_msg_count > 0)
+                            {
+                                msg = msgs_map[next_recv_message_id];
+                                msgs_map.erase(next_recv_message_id);
+
+                                len = msg.first;
+                                buffer = msg.second;
+                                send_length = 0;
+#ifdef _DEBUG
+                                std::printf("[+] [client <- client] sendto message_id:%u\n", next_recv_message_id);
+#endif
+                                while(len > 0)
+                                {
+                                    sen = sendto(sock,
+                                                 buffer+send_length,
+                                                 len,
+                                                 0,
+                                                 client_addr,
+                                                 client_addr_length);
+                                    if(sen == SOCKET_ERROR)
+                                    {
+                                        ret =  WSAGetLastError();
+                                        if(ret == WSAEWOULDBLOCK)
+                                        {
+                                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                            continue;
+                                        }else
+                                        {
+#ifdef DEBUGPRINT
+                                            std::printf("[-] forwarder_send_data sendto error: %d\n",
+                                                        ret);
+#endif
+//                                          free(client_addr);
+//                                          free(buffer);
+//                                          return 0;
+                                        }
+                                    }
+                                    send_length += sen;
+                                    len -= sen;
+                                }
+
+                                free(buffer);
+                                next_recv_message_id++;
+                                check_msg_count = msgs_map.count(next_recv_message_id);
+                            }
+
+                            buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                                    sizeof(char));
                         }
                     }else
                     {
@@ -1080,7 +1238,9 @@ namespace spider
 
     int32_t Client::forwarder_udp(int addr_length)
     {
-        std::thread thread(&Client::forwarder_udp_recv_send_data, this, addr_length);
+        std::thread thread(&Client::forwarder_udp_recv_send_data,
+                           this,
+                           addr_length);
 
         thread.join();
 
@@ -1106,6 +1266,9 @@ namespace spider
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
         int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        recv_message_id = 0;
+        next_recv_message_id = 0;
+        send_message_id = generate_random_id();
 
         struct sockaddr_in client_addr;
         struct sockaddr_in *tmp_ipv4;
@@ -1147,6 +1310,7 @@ namespace spider
         selection_request->methods[0] = authentication_method;
         send_length = 3;
 
+        send_message_id++;
         sen = send_message(buffer,
                            send_length,
                            tv_sec,
@@ -1177,6 +1341,9 @@ namespace spider
             free(buffer);
             return -1;
         }
+
+        next_recv_message_id = recv_message_id + 1;
+
 #ifdef DEBUGPRINT
         std::printf("[+] [client <- server] recv selection response: %d bytes\n",
                     rec);
@@ -1215,6 +1382,7 @@ namespace spider
 
             send_length = 3 + username_length + password_length;
 
+            send_message_id++;
             sen = send_message(buffer,
                                send_length,
                                tv_sec,
@@ -1237,7 +1405,8 @@ namespace spider
                                tv_usec,
                                false);
 
-            if(rec <= 0)
+            if(rec <= 0
+               || next_recv_message_id != recv_message_id)
             {
 #ifdef DEBUGPRINT
                 std::printf("[-] [client <- server] recv username password authentication response error\n");
@@ -1245,6 +1414,9 @@ namespace spider
                 free(buffer);
                 return -1;
             }
+
+            next_recv_message_id++;
+
 #ifdef DEBUGPRINT
             std::printf("[+] [client <- server] recv username password authentication response: %d bytes\n",
                         rec);
@@ -1287,6 +1459,7 @@ namespace spider
                     2);
         send_length = 5 + target_ip_length + 2;
 
+        send_message_id++;
         sen = send_message(buffer,
                            send_length,
                            tv_sec,
@@ -1309,7 +1482,8 @@ namespace spider
                            tv_usec,
                            false);
 
-        if(rec <= 0)
+        if(rec <= 0
+           || next_recv_message_id != recv_message_id)
         {
 #ifdef DEBUGPRINT
             std::printf("[-] [client <- server] recv socks response error\n");
@@ -1317,6 +1491,9 @@ namespace spider
             free(buffer);
             return -1;
         }
+
+        next_recv_message_id++;
+
 #ifdef DEBUGPRINT
         std::printf("[+] [client <- server] recv socks response: %d bytes\n",
                     rec);
@@ -1502,6 +1679,8 @@ namespace spider
 #ifdef DEBUGPRINT
         std::printf("[+] [client <> client <> server <> target] forwarder_udp\n");
 #endif
+
+        send_message_id++;
         forwarder_udp(addr_length);
 
 #ifdef DEBUGPRINT

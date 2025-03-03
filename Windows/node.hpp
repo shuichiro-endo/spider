@@ -52,6 +52,8 @@ namespace spider
         int32_t recv_data(char *buffer, int32_t buffer_length, long tv_sec, long tv_usec);
         int32_t send_data(char *buffer, int32_t buffer_length, long tv_sec, long tv_usec);
 
+        uint32_t generate_random_id();
+
         void print_bytes(char *buffer, int buffer_length);
 
         int gettimeofday(timeval *tv, timezone *tz);

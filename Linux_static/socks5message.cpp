@@ -12,6 +12,7 @@ namespace spider
     Socks5message::Socks5message(struct socks5_message_data *socks5_message_data)
     {
         this->message_type = socks5_message_data->message_type;
+        this->message_id = socks5_message_data->message_id;
         this->connection_id = socks5_message_data->connection_id;
         this->client_id = socks5_message_data->client_id;
         this->server_id = socks5_message_data->server_id;
@@ -49,6 +50,16 @@ namespace spider
     Socks5message::~Socks5message()
     {
         free(data);
+    }
+
+    void Socks5message::set_message_id(uint32_t message_id)
+    {
+        this->message_id = message_id;
+    }
+
+    uint32_t Socks5message::get_message_id()
+    {
+        return message_id;
     }
 
     void Socks5message::set_connection_id(uint32_t connection_id)
@@ -202,6 +213,7 @@ namespace spider
 
         struct socks5_message_data *socks5_message_data = (struct socks5_message_data *)buffer;
         socks5_message_data->message_type = this->message_type;
+        socks5_message_data->message_id = this->message_id;
         socks5_message_data->connection_id = this->connection_id;
         socks5_message_data->client_id = this->client_id;
         socks5_message_data->server_id = this->server_id;

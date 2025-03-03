@@ -34,6 +34,10 @@ namespace spider
         int32_t forwarder_tv_sec;
         int32_t forwarder_tv_usec;
         std::shared_ptr<Encryption> encryption;
+        uint32_t recv_message_id = 0;
+        uint32_t next_recv_message_id = 0;
+        uint32_t send_message_id = 0;
+
 
     public:
 
