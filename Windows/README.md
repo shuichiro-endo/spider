@@ -52,7 +52,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 1.4  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 1.5  Author: Shuichiro Endo
 
 
 usage   : spider.exe
@@ -91,7 +91,7 @@ example : spider.exe
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:                Windows Ver: 1.4  Author: Shuichiro Endo
+        =-    -:                Windows Ver: 1.5  Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------

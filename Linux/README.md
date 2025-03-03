@@ -47,7 +47,7 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 1.4  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 1.5  Author: Shuichiro Endo  
 
 
 usage   : ./spider
@@ -86,7 +86,7 @@ example : ./spider
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                  Linux Ver: 1.4  Author: Shuichiro Endo  
+        =-    -:                  Linux Ver: 1.5  Author: Shuichiro Endo  
 
 
 --------------------------------- spider ---------------------------------
