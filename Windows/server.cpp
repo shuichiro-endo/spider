@@ -663,6 +663,7 @@ namespace spider
                     0,
                     2);
 
+        send_message_id++;
         sen = send_message(buffer,
                            sizeof(struct socks_response_ipv4),
                            tv_sec,
@@ -696,6 +697,7 @@ namespace spider
                     0,
                     2);
 
+        send_message_id++;
         sen = send_message(buffer,
                            sizeof(struct socks_response_ipv6),
                            tv_sec,
@@ -1271,7 +1273,6 @@ namespace spider
 #endif
 
             // socks SOCKS_RESPONSE send error [client <- server]
-            send_message_id++;
             sen = send_socks_response_ipv4(buffer,
                                            buffer_max_length,
                                            0x5,
@@ -1297,7 +1298,6 @@ namespace spider
             if(atyp == 0x1
                || atyp == 0x3)  // IPv4
             {
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1306,7 +1306,6 @@ namespace spider
                                                0x1);
             }else   // IPv6
             {
-                send_message_id++;
                 sen = send_socks_response_ipv6(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1364,7 +1363,6 @@ namespace spider
 #endif
 
                         // socks SOCKS_RESPONSE send error [client <- server]
-                        send_message_id++;
                         sen = send_socks_response_ipv4(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -1391,7 +1389,6 @@ namespace spider
 #endif
 
                     // socks SOCKS_RESPONSE send error [client <- server]
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1438,7 +1435,6 @@ namespace spider
 #endif
 
                 // socks SOCKS_RESPONSE send error [client <- server]
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1469,7 +1465,6 @@ namespace spider
 #endif
 
             // socks SOCKS_RESPONSE send error [client <- server]
-            send_message_id++;
             sen = send_socks_response_ipv4(buffer,
                                            buffer_max_length,
                                            0x5,
@@ -1509,7 +1504,6 @@ namespace spider
                     std::printf("[-] [server <- target] socket error: %d\n",
                                 ret);
 #endif
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1537,7 +1531,6 @@ namespace spider
                     std::printf("[-] [server <- target] cannot connect error: %d\n",
                                 ret);
 #endif
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1562,7 +1555,6 @@ namespace spider
                             target_port.c_str());
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1583,7 +1575,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1600,7 +1591,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1632,7 +1622,6 @@ namespace spider
                     std::printf("[-] [server <- target] socket error: %d\n",
                                 ret);
 #endif
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1650,7 +1639,6 @@ namespace spider
                     return -1;
                 }
 
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1672,7 +1660,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -1712,7 +1699,6 @@ namespace spider
                                     ret);
 #endif
 
-                        send_message_id++;
                         sen = send_socks_response_ipv4(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -1741,7 +1727,6 @@ namespace spider
                                     ret);
 #endif
 
-                        send_message_id++;
                         sen = send_socks_response_ipv4(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -1765,7 +1750,6 @@ namespace spider
                                 target_port.c_str());
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1785,7 +1769,6 @@ namespace spider
                     std::printf("[-] not implemented\n");
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1802,7 +1785,6 @@ namespace spider
                     std::printf("[-] not implemented\n");
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1835,7 +1817,6 @@ namespace spider
                                     ret);
 #endif
 
-                        send_message_id++;
                         sen = send_socks_response_ipv4(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -1853,7 +1834,6 @@ namespace spider
                         return -1;
                     }
 
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1875,7 +1855,6 @@ namespace spider
                     std::printf("[-] not implemented\n");
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv4(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -1932,7 +1911,6 @@ namespace spider
                                     ret);
 #endif
 
-                        send_message_id++;
                         sen = send_socks_response_ipv6(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -1961,7 +1939,6 @@ namespace spider
                                     ret);
 #endif
 
-                        send_message_id++;
                         sen = send_socks_response_ipv6(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -1986,7 +1963,6 @@ namespace spider
                                 target_port.c_str());
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2006,7 +1982,6 @@ namespace spider
                     std::printf("[-] not implemented\n");
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2023,7 +1998,6 @@ namespace spider
                     std::printf("[-] not implemented\n");
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2056,7 +2030,6 @@ namespace spider
                                     ret);
 #endif
 
-                        send_message_id++;
                         sen = send_socks_response_ipv6(buffer,
                                                        buffer_max_length,
                                                        0x5,
@@ -2074,7 +2047,6 @@ namespace spider
                         return -1;
                     }
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2096,7 +2068,6 @@ namespace spider
                     std::printf("[-] not implemented\n");
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2113,7 +2084,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv4(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -2170,7 +2140,6 @@ namespace spider
                                 ret);
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2199,7 +2168,6 @@ namespace spider
                                 ret);
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2224,7 +2192,6 @@ namespace spider
                             target_port.c_str());
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv6(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -2244,7 +2211,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv6(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -2261,7 +2227,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv6(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -2294,7 +2259,6 @@ namespace spider
                                 ret);
 #endif
 
-                    send_message_id++;
                     sen = send_socks_response_ipv6(buffer,
                                                    buffer_max_length,
                                                    0x5,
@@ -2312,7 +2276,6 @@ namespace spider
                     return -1;
                 }
 
-                send_message_id++;
                 sen = send_socks_response_ipv6(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -2333,7 +2296,6 @@ namespace spider
                 std::printf("[-] not implemented\n");
 #endif
 
-                send_message_id++;
                 sen = send_socks_response_ipv6(buffer,
                                                buffer_max_length,
                                                0x5,
@@ -2349,7 +2311,6 @@ namespace spider
             std::printf("[-] not implemented\n");
 #endif
 
-            send_message_id++;
             sen = send_socks_response_ipv4(buffer,
                                            buffer_max_length,
                                            0x5,
