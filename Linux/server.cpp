@@ -928,9 +928,10 @@ namespace spider
                                            forwarder_tv_usec);
                         if(sen <= 0){
 //                          break;
+                        }else
+                        {
+                            send_message_id++;
                         }
-
-                        send_message_id++;
                     }
                 }
             }
