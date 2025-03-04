@@ -453,13 +453,13 @@ namespace spider
 
         if(data_size + AES_BLOCK_LEN > buffer_size)
         {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
             std::printf("[-] aes encrypt buffer size error: %d\n", data_size);
 #endif
             return -1;
         }
 
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
 //        print_bytes(data, data_size);
 #endif
 
@@ -492,7 +492,7 @@ namespace spider
 
         if(data_size % AES_BLOCK_LEN)
         {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
             std::printf("[-] aes decrypt data size error: %d\n", data_size);
 #endif
             return -1;
@@ -523,7 +523,7 @@ namespace spider
         data_size = delete_padding((unsigned char *)data,
                                    data_size);
 
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
 //        print_bytes(data, data_size);
 #endif
 

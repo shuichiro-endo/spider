@@ -305,7 +305,7 @@ namespace spider
                                           buffer_size);
                         if(ret <= 0)
                         {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                             std::printf("[-] recv_message decrypt error: %d\n",
                                         ret);
 #endif
@@ -368,7 +368,7 @@ namespace spider
                                       SOCKS5_MESSAGE_DATA_SIZE);
             if(ret <= 0)
             {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                 std::printf("[-] send_message encrypt error: %d\n",
                             ret);
 #endif
@@ -626,7 +626,7 @@ namespace spider
                             len = msg.first;
                             buffer = msg.second;
                             send_length = 0;
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                             std::printf("[+] [client <- client] send message_id:%u\n",
                                         next_recv_message_id);
 #endif
@@ -1189,7 +1189,7 @@ namespace spider
                                 len = msg.first;
                                 buffer = msg.second;
                                 send_length = 0;
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                                 std::printf("[+] [client <- client] sendto message_id:%u\n", next_recv_message_id);
 #endif
                                 while(len > 0)

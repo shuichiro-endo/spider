@@ -419,7 +419,7 @@ namespace spider
                                             thread_pipe.detach();
                                         }else
                                         {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                                             std::printf("[-] cannot transfer pipe message\n");
 #endif
                                         }
