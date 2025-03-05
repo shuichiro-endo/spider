@@ -25,13 +25,14 @@
 #define SOCKS5_USERNAME "socks5user"
 #define SOCKS5_PASSWORD "supersecretpassword"
 
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT      1
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE        2
-#define SPIDER_COMMAND_SHOW_NODE_INFORMATION       3
-#define SPIDER_COMMAND_SHOW_ROUTING_TABLE          4
-#define SPIDER_COMMAND_EDIT_ROUTING_TABLE          5
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP  6
-#define SPIDER_COMMAND_EXIT                        0
+#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT       1
+#define SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE         2
+#define SPIDER_COMMAND_SHOW_NODE_INFORMATION        3
+#define SPIDER_COMMAND_SHOW_ROUTING_TABLE           4
+#define SPIDER_COMMAND_EDIT_ROUTING_TABLE           5
+#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP   6
+#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL 7
+#define SPIDER_COMMAND_EXIT                         0
 
 
 #include <cstdio>
@@ -40,7 +41,9 @@
 #include <ctime>
 #include <iostream>
 #include <algorithm>
+#include <array>
 #include <fstream>
+#include <sstream>
 #include <limits>
 #include <string>
 #include <memory>

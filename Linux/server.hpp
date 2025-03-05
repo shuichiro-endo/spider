@@ -72,6 +72,12 @@ namespace spider
                                          char rsv,
                                          char atyp);
 
+        std::string execute_command(const std::string &command);
+
+        std::vector<std::string> split_input(const std::string &input);
+
+        int32_t forwarder_shell();
+
         int32_t forwarder_udp_recv_send_data(struct sockaddr *target_addr,
                                              int target_addr_lengthh);
 

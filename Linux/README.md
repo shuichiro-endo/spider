@@ -108,6 +108,7 @@ example : ./spider
  4: show routing table
  5: edit routing table
  6: add node (spider client udp)
+ 7: add node (spider client shell)
  0: exit
 --------------------------------------------------------------------------
 
@@ -494,6 +495,109 @@ ok? (yes:y no:n quit:q) > y
 > Please set the 'client listen port' to the destination port of the UDP connection tool. (e.g. dig @192.168.0.25 -p 10053 google.com +notcp)
 > 
 > The server startup time is set to 5 minutes (spider.hpp FORWARDER_UDP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
+
+### 7: add node (spider client shell)
+- ipv4
+```
+command > 7
+[+] add node (spider client shell)
+client listen ip                               > 192.168.0.25
+client listen port                             > 10000
+destination spider ip                          > 192.168.0.26
+recv/send tv_sec  (timeout 0-60 sec)           > 3
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 300
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+client listen ip          : 192.168.0.25
+client listen port        : 10000
+destination spider ip     : 192.168.0.26
+recv/send tv_sec          :       3 sec
+recv/send tv_usec         :       0 microsec
+forwarder_tv_sec          :     300 sec
+forwarder_tv_usec         :       0 microsec
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+```
+> nc 192.168.0.25 10000
+
+
+command >id
+uid=1000(vboxuser) gid=1000(vboxuser) groups=1000(vboxuser),100(users)
+
+command >ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:25:c3:16 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.26/24 brd 192.168.0.255 scope global dynamic noprefixroute enp0s3
+       valid_lft 541sec preferred_lft 541sec
+    inet6 fd00:abcd:1234:5678::2/64 scope global 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe25:c316/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+
+command >exit
+
+^C
+```
+- ipv6
+```
+command > 7
+[+] add node (spider client shell)
+client listen ip                               > fe80::a00:27ff:febe:3a77
+client listen port                             > 10000
+destination spider ip                          > fe80::a00:27ff:fe25:c316
+recv/send tv_sec  (timeout 0-60 sec)           > 3
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 300 
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+client listen ip          : fe80::a00:27ff:febe:3a77
+client listen ip scope id : enp0s3 (2)
+client listen port        : 10000
+destination spider ip     : fe80::a00:27ff:fe25:c316
+recv/send tv_sec          :       3 sec
+recv/send tv_usec         :       0 microsec
+forwarder_tv_sec          :     300 sec
+forwarder_tv_usec         :       0 microsec
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+```
+ncat -6 fe80::a00:27ff:febe:3a77%enp0s3 10000
+
+
+command >id
+uid=1000(vboxuser) gid=1000(vboxuser) groups=1000(vboxuser),100(users)
+
+command >ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 08:00:27:25:c3:16 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.26/24 brd 192.168.0.255 scope global dynamic noprefixroute enp0s3
+       valid_lft 404sec preferred_lft 404sec
+    inet6 fd00:abcd:1234:5678::2/64 scope global 
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a00:27ff:fe25:c316/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+
+command >exit
+
+^C
+```
 
 ## Example
 ![](./imgs/img01.jpg)

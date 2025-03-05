@@ -706,6 +706,401 @@ namespace spider
         return sen;
     }
 
+    std::string Server::execute_command(const std::string& command)
+    {
+        HANDLE handle_read_pipe;
+        HANDLE handle_write_pipe;
+        SECURITY_ATTRIBUTES sa;
+        PROCESS_INFORMATION pi;
+        STARTUPINFO si;
+        std::vector<char> buffer(4096);
+        DWORD read_length = 0;
+        std::string cmd = "cmd.exe /C " + command;
+        std::string result;
+
+
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        if(!CreatePipe(&handle_read_pipe, &handle_write_pipe, &sa, 0))
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] CreatePipe error: %d\n",
+                        GetLastError());
+#endif
+            return result;
+        }
+
+        ZeroMemory(&pi,
+                   sizeof(pi));
+
+        ZeroMemory(&si,
+                   sizeof(si));
+
+        si.cb = sizeof(si);
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        si.hStdOutput = handle_write_pipe;
+        si.hStdError = handle_write_pipe;
+
+        if(!CreateProcess(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] CreateProcess error: %d\n",
+                        GetLastError());
+#endif
+            result = "[-] CreateProcess error\n";
+            CloseHandle(handle_read_pipe);
+            CloseHandle(handle_write_pipe);
+            return result;
+        }
+
+        CloseHandle(handle_write_pipe);
+
+        while(ReadFile(handle_read_pipe, buffer.data(), buffer.size() - 1, &read_length, NULL)
+              && read_length > 0)
+        {
+            buffer[read_length] = '\0';
+            result += buffer.data();
+        }
+
+        CloseHandle(handle_read_pipe);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        return result;
+    }
+
+    std::vector<std::string> Server::split_input(const std::string& input)
+    {
+        std::vector<std::string> tokens;
+        std::istringstream stream(input);
+        std::string token;
+
+        while(stream >> token)
+        {
+            tokens.push_back(token);
+        }
+
+        return tokens;
+    }
+
+    int32_t Server::forwarder_shell()
+    {
+        int32_t ret = 0;
+        int32_t rec = 0;
+        int32_t sen = 0;
+
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
+        std::size_t check_msg_count = 0;
+        std::pair<int32_t, char *> msg;
+        recv_message_id = 0;
+
+        std::string prompt = "\ncommand >";
+        int32_t prompt_size = prompt.size();
+        std::string input;
+        std::vector <std::string> tokens;
+        std::string result;
+        int32_t result_size = 0;
+        BOOL exit_flag = false;
+
+
+        while(1)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[+] [client -> server] recv_message\n");
+#endif
+            std::memset(buffer,
+                        0,
+                        buffer_max_length);
+
+            rec = recv_message(buffer,
+                               buffer_max_length,
+                               forwarder_tv_sec,
+                               forwarder_tv_usec);
+            if(rec > 0)
+            {
+                if(recv_message_id == next_recv_message_id)
+                {
+                    next_recv_message_id++;
+                    result = "";
+                    input = buffer;
+
+                    tokens = split_input(input);
+                    if(tokens.empty())
+                    {
+                        std::memset(buffer,
+                                    0,
+                                    buffer_max_length);
+
+                        std::memcpy(buffer,
+                                    prompt.c_str(),
+                                    prompt_size);
+
+#ifdef DEBUGPRINT
+                        std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                    send_message_id);
+#endif
+                        sen = send_message(buffer,
+                                           prompt_size,
+                                           forwarder_tv_sec,
+                                           forwarder_tv_usec);
+                        if(sen > 0)
+                        {
+                            send_message_id++;
+                        }
+
+                        continue;
+                    }
+
+                    if(tokens[0] == "exit")
+                    {
+                        exit_flag = true;
+                        break;
+                    }else if(tokens[0] == "cd")
+                    {
+                        if(tokens.size() > 1)
+                        {
+                            ret = SetCurrentDirectory(tokens[1].c_str());
+                            if(ret == 0)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] change directory error: %s, %d\n",
+                                            tokens[1].c_str(),
+                                            GetLastError());
+#endif
+                                result = "[-] change directory error\n";
+                            }else{
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                std::memcpy(buffer,
+                                            prompt.c_str(),
+                                            prompt_size);
+
+#ifdef DEBUGPRINT
+                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                            send_message_id);
+#endif
+                                sen = send_message(buffer,
+                                                   prompt_size,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen > 0)
+                                {
+                                    send_message_id++;
+                                }
+
+                                continue;
+                            }
+                        }else
+                        {
+                            result = execute_command(input);
+                        }
+                    }else
+                    {
+                        result = execute_command(input);
+                    }
+
+                    std::memset(buffer,
+                                0,
+                                buffer_max_length);
+
+                    result_size = result.size();
+                    if(result_size > SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size)
+                    {
+                        result_size = SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size;
+                    }
+
+                    std::memcpy(buffer,
+                                result.c_str(),
+                                result_size);
+
+                    std::memcpy(buffer+result_size,
+                                prompt.c_str(),
+                                prompt_size);
+
+                    result_size += prompt_size;
+
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                send_message_id);
+#endif
+                    sen = send_message(buffer,
+                                       result_size,
+                                       forwarder_tv_sec,
+                                       forwarder_tv_usec);
+                    if(sen > 0)
+                    {
+                        send_message_id++;
+                    }
+                }else
+                {
+                    msg = std::make_pair(rec,
+                                         buffer);
+                    msgs_map.insert({recv_message_id, msg});
+
+                    check_msg_count = msgs_map.count(next_recv_message_id);
+                    while(check_msg_count > 0)
+                    {
+                        msg = msgs_map[next_recv_message_id];
+                        msgs_map.erase(next_recv_message_id);
+
+                        result = "";
+                        buffer = msg.second;
+                        input = buffer;
+
+                        tokens = split_input(input);
+                        if(tokens.empty())
+                        {
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            std::memcpy(buffer,
+                                        prompt.c_str(),
+                                        prompt_size);
+
+#ifdef DEBUGPRINT
+                            std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                        send_message_id);
+#endif
+                            sen = send_message(buffer,
+                                               prompt_size,
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                            if(sen > 0)
+                            {
+                                send_message_id++;
+                            }
+
+                            free(buffer);
+                            next_recv_message_id++;
+                            check_msg_count = msgs_map.count(next_recv_message_id);
+                            continue;
+                        }
+
+                        if(tokens[0] == "exit")
+                        {
+                            exit_flag = true;
+                            break;
+                        }else if(tokens[0] == "cd")
+                        {
+                            if(tokens.size() > 1)
+                            {
+                                ret = SetCurrentDirectory(tokens[1].c_str());
+                                if(ret == 0)
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] change directory error: %s, %d\n",
+                                                tokens[1].c_str(),
+                                                GetLastError());
+#endif
+                                    result = "[-] change directory error\n";
+                                }else
+                                {
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    std::memcpy(buffer,
+                                                prompt.c_str(),
+                                                prompt_size);
+
+#ifdef DEBUGPRINT
+                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                send_message_id);
+#endif
+                                    sen = send_message(buffer,
+                                                       prompt_size,
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                                    if(sen > 0)
+                                    {
+                                        send_message_id++;
+                                    }
+
+                                    free(buffer);
+                                    next_recv_message_id++;
+                                    check_msg_count = msgs_map.count(next_recv_message_id);
+                                    continue;
+                                }
+                            }else
+                            {
+                                result = execute_command(input);
+                            }
+                        }else
+                        {
+                            result = execute_command(input);
+                        }
+
+                        std::memset(buffer,
+                                    0,
+                                    buffer_max_length);
+
+                        result_size = result.size();
+                        if(result_size > SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size)
+                        {
+                            result_size = SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size;
+                        }
+
+                        std::memcpy(buffer,
+                                    result.c_str(),
+                                    result_size);
+
+                        std::memcpy(buffer+result_size,
+                                    prompt.c_str(),
+                                    prompt_size);
+
+                        result_size += prompt_size;
+
+#ifdef DEBUGPRINT
+                        std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                    send_message_id);
+#endif
+                        sen = send_message(buffer,
+                                           result_size,
+                                           forwarder_tv_sec,
+                                           forwarder_tv_usec);
+                        if(sen > 0)
+                        {
+                            send_message_id++;
+                        }
+                    }
+
+                    if(exit_flag == true)
+                    {
+                        break;
+                    }
+
+                    free(buffer);
+                    next_recv_message_id++;
+                    check_msg_count = msgs_map.count(next_recv_message_id);
+                }
+
+                buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                        sizeof(char));
+            }else
+            {
+                break;
+            }
+        }
+
+        for(auto it = msgs_map.begin(); it != msgs_map.end();)
+        {
+            msg = it->second;
+            free(msg.second);
+            it = msgs_map.erase(it);
+        }
+
+        free(buffer);
+        return 0;
+    }
+
     int32_t Server::forwarder_udp_recv_send_data(struct sockaddr *target_addr,
                                                  int target_addr_length)
     {
@@ -979,6 +1374,7 @@ namespace spider
     int32_t Server::do_socks5_connection(std::shared_ptr<Socks5message> socks5_message)
     {
         BOOL socks5_connect_flag = true;
+        BOOL socks5_connect_shell_flag = true;
         BOOL socks5_connect_udp_flag = false;
 
         static char authentication_method = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
@@ -1265,7 +1661,8 @@ namespace spider
         atyp = socks_request->atyp;
         if(atyp != 0x1
            && atyp != 0x3
-           && atyp != 0x4)
+           && atyp != 0x4
+           && atyp != 0x0)
         {
 #ifdef DEBUGPRINT
             std::printf("[-] socks request atyp(%d) error\n",
@@ -1286,8 +1683,9 @@ namespace spider
         }
 
         cmd = socks_request->cmd;
-        if(cmd != 0x1
-           && cmd != 0x8)  // CONNECT (0x1), CONNECT UDP (0x8, UDP over TCP, original command)
+        if(cmd != 0x1       // CONNECT (0x1)
+           && cmd != 0x8    // CONNECT UDP (0x8, UDP over TCP, original command)
+           && cmd != 0x9)   // CONNECT SHELL (0x9, shell, original command)
         {
 #ifdef DEBUGPRINT
             std::printf("[-] socks request cmd(%d) error\n",
@@ -1459,7 +1857,8 @@ namespace spider
             memcpy(&target_addr6.sin6_port,
                    &socks_request_ipv6->dst_port,
                    2);
-        }else
+        }else if(cmd != 0x9
+                 && socks_request->atyp != 0x0)
         {
 #ifdef DEBUGPRINT
             std::printf("[-] not implemented\n");
@@ -2307,7 +2706,29 @@ namespace spider
                 free(buffer);
                 return -1;
             }
-        }else{
+        }else if(cmd == 0x9
+                 && atyp == 0x0)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[+] socks5 response cmd: CONNECT SHELL (0x9, original command)\n");
+#endif
+            sen = send_socks_response_ipv4(buffer,
+                                           buffer_max_length,
+                                           0x5,
+                                           0x0,
+                                           0x0,
+                                           0x0);
+
+#ifdef DEBUGPRINT
+            std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                        rec,
+                        sen);
+#endif
+
+            socks5_connect_flag = false;
+            socks5_connect_shell_flag = true;
+        }else
+        {
 #ifdef DEBUGPRINT
             std::printf("[-] not implemented\n");
 #endif
@@ -2333,14 +2754,19 @@ namespace spider
         if(socks5_connect_flag == true)
         {
             ret = forwarder();
+        }else if(socks5_connect_shell_flag == true)
+        {
+            ret = forwarder_shell();
         }else if(socks5_connect_udp_flag == true)
         {
             if(family == AF_INET)
             {
-                ret = forwarder_udp((sockaddr *)&target_addr, target_addr_length);
+                ret = forwarder_udp((sockaddr *)&target_addr,
+                                    target_addr_length);
             }else if(family == AF_INET6)
             {
-                ret = forwarder_udp((sockaddr *)&target_addr6, target_addr6_length);
+                ret = forwarder_udp((sockaddr *)&target_addr6,
+                                    target_addr6_length);
             }
         }
 

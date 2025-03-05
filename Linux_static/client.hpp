@@ -154,6 +154,8 @@ namespace spider
 
         int32_t do_socks5_connection();
 
+        int32_t do_socks5_connection_shell();
+
         int32_t do_socks5_connection_udp();
     };
 }
