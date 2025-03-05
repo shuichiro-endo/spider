@@ -1037,7 +1037,7 @@ namespace spider
         char target_addr6_string[INET6_ADDR_STRING_LENGTH + 1] = {0};
         char *target_addr6_string_pointer = target_addr6_string;
 
-        std::string ipv6_link_local_prefix = "fe80::";
+        std::string ipv6_link_local_prefix = "fe80:";
 
 
         // socks SELECTION_REQUEST [client -> server]
