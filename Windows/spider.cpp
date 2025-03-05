@@ -4460,6 +4460,7 @@ int main(int argc,
 
             case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL:
                 std::printf("[+] add node (spider client shell)\n");
+                std::printf("[!] This is not SOCKS5 connection.\n");
                 spider::add_node_spider_client_shell(spider_ip,
                                                      encryption,
                                                      client_manager,

@@ -507,6 +507,7 @@ ok? (yes:y no:n quit:q) > y
 ```
 command > 7
 [+] add node (spider client shell)
+[!] This is not SOCKS5 connection.
 client listen ip                               > 192.168.0.25
 client listen port                             > 10000
 destination spider ip                          > 192.168.0.26
@@ -557,6 +558,7 @@ command >exit
 ```
 command > 7
 [+] add node (spider client shell)
+[!] This is not SOCKS5 connection.
 client listen ip                               > fe80::a00:27ff:febe:3a77
 client listen port                             > 10000
 destination spider ip                          > fe80::a00:27ff:fe25:c316
