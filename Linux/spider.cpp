@@ -3897,6 +3897,7 @@ namespace spider
         std::printf("usage   : %s\n", filename);
         std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-f config_file]\n");
+        std::printf("        : [-i pipe_destination_ip] [-p pipe_destination_port]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
@@ -3907,6 +3908,7 @@ namespace spider
         std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("        : %s -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("        : %s -f config_sample.txt\n", filename);
+        std::printf("        : %s -i 192.168.0.25 -p 1025\n", filename);
         std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e x -k deadbeef\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
@@ -3918,7 +3920,7 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:4:6:u:l:f:r:e:k:v:";
+    const char *optstring = "h:4:6:u:l:f:i:p:r:e:k:v:";
     opterr = 0;
     std::string spider_ipv4;
     std::string spider_ipv6_global;
@@ -3931,6 +3933,14 @@ int main(int argc,
     std::string percent = "%";
     std::string ifname;
     std::string config_file;
+    char mode;
+    std::string pipe_ip;
+    std::string pipe_ip_scope_id;
+    std::string pipe_destination_ip;
+    std::string pipe_destination_port;
+    std::string ipv6_global_prefix = "2001:";
+    std::string ipv6_unique_local_prefix = "fd00:";
+    std::string ipv6_link_local_prefix = "fe80:";
     std::string routing_mode = "a";
     std::string encryption_type;
     std::string key;
@@ -3970,6 +3980,14 @@ int main(int argc,
 
             case 'f':
                 config_file = optarg;
+                break;
+
+            case 'i':
+                pipe_destination_ip = optarg;
+                break;
+
+            case 'p':
+                pipe_destination_port = optarg;
                 break;
 
             case 'r':
@@ -4160,6 +4178,77 @@ int main(int argc,
             std::printf("[-] read config file error\n");
             exit(-1);
         }
+    }
+
+    if(!pipe_destination_ip.empty()
+        && !pipe_destination_port.empty())
+    {
+        mode = 'c';
+
+        if(pipe_destination_ip.find(":") == std::string::npos)  // ipv4
+        {
+            if(spider_ip->get_spider_ipv4().empty())
+            {
+                std::printf("[-] spider_ipv4 empty\n");
+                exit(-1);
+            }
+
+            pipe_ip = spider_ip->get_spider_ipv4();
+        }else if(pipe_destination_ip.rfind(ipv6_global_prefix, 0) == 0) // ipv6 global
+        {
+            if(spider_ip->get_spider_ipv6_global().empty())
+            {
+                std::printf("[-] spider_ipv6_global empty\n");
+                exit(-1);
+            }
+
+            pipe_ip = spider_ip->get_spider_ipv6_global();
+        }else if(pipe_destination_ip.rfind(ipv6_unique_local_prefix, 0) == 0)   // ipv6 unique local
+        {
+            if(spider_ip->get_spider_ipv6_unique_local().empty())
+            {
+                std::printf("[-] spider_ipv6_unique_local empty\n");
+                exit(-1);
+            }
+
+            pipe_ip = spider_ip->get_spider_ipv6_unique_local();
+        }else if(pipe_destination_ip.rfind(ipv6_link_local_prefix, 0) == 0) // ipv6 link local
+        {
+            if(spider_ip->get_spider_ipv6_link_local().empty())
+            {
+                std::printf("[-] spider_ipv6_link_local empty\n");
+                exit(-1);
+            }
+
+            if(pipe_destination_ip.find("%") != std::string::npos)
+            {
+                std::printf("[-] pipe_destination_ip includes a scope id: %s\n",
+                            pipe_destination_ip.c_str());
+                exit(-1);
+            }
+
+            pipe_ip = spider_ip->get_spider_ipv6_link_local();
+            pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+        }else
+        {
+            std::printf("[-] pipe_destination_ip error: %s\n",
+                        pipe_destination_ip.c_str());
+            exit(-1);
+        }
+
+        std::thread thread(spider::connect_pipe,
+                           spider_ip,
+                           pipe_manager,
+                           routing_manager,
+                           message_manager,
+                           mode,
+                           pipe_ip,
+                           pipe_ip_scope_id,
+                           pipe_destination_ip,
+                           pipe_destination_port);
+        thread.detach();
+
+        std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
     }
 
 
