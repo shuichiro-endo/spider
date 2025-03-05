@@ -181,14 +181,14 @@ namespace spider
                                 char **line_start,
                                 char **line_end);
 
-    static uint32_t read_config_file(std::string config_file,
-                                     std::shared_ptr<Spiderip> spider_ip,
-                                     std::shared_ptr<Encryption> encryption,
-                                     std::shared_ptr<Clientmanager> client_manager,
-                                     std::shared_ptr<Pipemanager> pipe_manager,
-                                     std::shared_ptr<Routingmanager> routing_manager,
-                                     std::shared_ptr<Messagemanager> message_manager,
-                                     std::shared_ptr<Caresmanager> cares_manager);
+    static int32_t read_config_file(std::string config_file,
+                                    std::shared_ptr<Spiderip> spider_ip,
+                                    std::shared_ptr<Encryption> encryption,
+                                    std::shared_ptr<Clientmanager> client_manager,
+                                    std::shared_ptr<Pipemanager> pipe_manager,
+                                    std::shared_ptr<Routingmanager> routing_manager,
+                                    std::shared_ptr<Messagemanager> message_manager,
+                                    std::shared_ptr<Caresmanager> cares_manager);
 
     static void print_title();
 
@@ -2868,14 +2868,14 @@ namespace spider
         return line;
     }
 
-    static uint32_t read_config_file(std::string config_file,
-                                     std::shared_ptr<Spiderip> spider_ip,
-                                     std::shared_ptr<Encryption> encryption,
-                                     std::shared_ptr<Clientmanager> client_manager,
-                                     std::shared_ptr<Pipemanager> pipe_manager,
-                                     std::shared_ptr<Routingmanager> routing_manager,
-                                     std::shared_ptr<Messagemanager> message_manager,
-                                     std::shared_ptr<Caresmanager> cares_manager)
+    static int32_t read_config_file(std::string config_file,
+                                    std::shared_ptr<Spiderip> spider_ip,
+                                    std::shared_ptr<Encryption> encryption,
+                                    std::shared_ptr<Clientmanager> client_manager,
+                                    std::shared_ptr<Pipemanager> pipe_manager,
+                                    std::shared_ptr<Routingmanager> routing_manager,
+                                    std::shared_ptr<Messagemanager> message_manager,
+                                    std::shared_ptr<Caresmanager> cares_manager)
     {
         std::ifstream file(config_file);
         std::vector<char> buffer;
