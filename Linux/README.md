@@ -53,6 +53,7 @@ make
 usage   : ./spider
         : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-f config_file]
+        : [-i pipe_destination_ip] [-p pipe_destination_port]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
@@ -63,6 +64,7 @@ example : ./spider
         : ./spider -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
         : ./spider -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%eth0
         : ./spider -f config_sample.txt
+        : ./spider -i 192.168.0.25 -p 1025
         : ./spider -4 192.168.0.10 -r s
         : ./spider -4 192.168.0.10 -e x -k deadbeef
         : ./spider -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
@@ -497,6 +499,10 @@ ok? (yes:y no:n quit:q) > y
 > The server startup time is set to 5 minutes (spider.hpp FORWARDER_UDP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
 
 ### 7: add node (spider client shell)
+> [!IMPORTANT]
+> This is not SOCKS5 connection.
+> 
+> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
 - ipv4
 ```
 command > 7
