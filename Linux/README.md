@@ -611,7 +611,7 @@ command >exit
 
 ### 8: add node (spider client) to destination spider
 > [!IMPORTANT]
-> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
+> It is necessary to create a route in advance using pipes.
 - ipv4
 ```
 command > 8
@@ -670,7 +670,7 @@ ok? (yes:y no:n quit:q)                        > y
 
 ### 9: add node (spider pipe) to destination spider
 > [!IMPORTANT]
-> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
+> It is necessary to create a route in advance using pipes.
 1. pipe (server)
 - ipv4
 ```
