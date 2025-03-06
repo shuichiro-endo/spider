@@ -1374,7 +1374,7 @@ namespace spider
     int32_t Server::do_socks5_connection(std::shared_ptr<Socks5message> socks5_message)
     {
         BOOL socks5_connect_flag = true;
-        BOOL socks5_connect_shell_flag = true;
+        BOOL socks5_connect_shell_flag = false;
         BOOL socks5_connect_udp_flag = false;
 
         static char authentication_method = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
