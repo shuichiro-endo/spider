@@ -5,6 +5,7 @@
 
 #include "spider.hpp"
 #include "spiderip.hpp"
+#include "spidercommand.hpp"
 #include "socks5.hpp"
 #include "server.hpp"
 #include "messagemanager.hpp"
@@ -29,7 +30,8 @@ namespace spider
                    int32_t forwarder_tv_usec,
                    std::shared_ptr<Encryption> encryption,
                    std::shared_ptr<Messagemanager> message_manager,
-                   std::shared_ptr<spider::Caresmanager> cares_manager)
+                   std::shared_ptr<spider::Caresmanager> cares_manager,
+                   Spidercommand *spider_command)
     : Node(server_sock, message_manager)
     {
         this->spider_ip = spider_ip;
@@ -49,6 +51,7 @@ namespace spider
         this->target_sock = -1;
         this->message_manager = message_manager;
         this->cares_manager = cares_manager;
+        this->spider_command = spider_command;
     }
 
     Server::~Server()
@@ -1065,6 +1068,94 @@ namespace spider
         return 0;
     }
 
+    int32_t Server::forwarder_add_node()
+    {
+        int32_t ret = 0;
+        int32_t rec = 0;
+        int32_t sen = 0;
+
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        recv_message_id = 0;
+
+        std::vector<char> config;
+        int32_t config_size = 0;
+        std::string result = "";
+        int32_t result_size = 0;
+
+
+#ifdef _DEBUG
+        std::printf("[+] [client -> server] recv_message\n");
+#endif
+        std::memset(buffer,
+                    0,
+                    buffer_max_length);
+
+        rec = recv_message(buffer,
+                           buffer_max_length,
+                           forwarder_tv_sec,
+                           forwarder_tv_usec);
+        if(rec > 0)
+        {
+            if(recv_message_id == next_recv_message_id)
+            {
+                config.resize(rec);
+                std::memcpy(config.data(),
+                            buffer,
+                            rec);
+
+                std::memset(buffer,
+                            0,
+                            buffer_max_length);
+
+                ret = spider_command->read_config(config);
+                if(ret != 0)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] read_config error\n");
+#endif
+                    result = "read_config ng\n";
+                }else
+                {
+#ifdef _DEBUG
+                    std::printf("[+] read_config\n");
+#endif
+                    result = "read_config ok\n";
+                }
+
+                result_size = result.size();
+                std::memcpy(buffer,
+                            result.c_str(),
+                            result_size);
+
+#ifdef _DEBUG
+                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                            send_message_id);
+#endif
+                sen = send_message(buffer,
+                                   result_size,
+                                   forwarder_tv_sec,
+                                   forwarder_tv_usec);
+                if(sen > 0)
+                {
+                    send_message_id++;
+                }
+            }
+        }else
+        {
+#ifdef _DEBUG
+            std::printf("[-] [client -> server] recv_message error\n");
+#endif
+            free(buffer);
+            return -1;
+        }
+
+        free(buffer);
+        return 0;
+    }
+
     int32_t Server::forwarder_udp_recv_send_data(struct sockaddr *target_addr,
                                                  int target_addr_length)
     {
@@ -1330,6 +1421,7 @@ namespace spider
     {
         bool socks5_connect_flag = true;
         bool socks5_connect_shell_flag = false;
+        bool socks5_connect_add_node_flag = false;
         bool socks5_connect_udp_flag = false;
 
         static char authentication_method = SOCKS5_AUTHENTICATION_METHOD; // 0x0:No Authentication Required  0x2:Username/Password Authentication
@@ -1637,7 +1729,8 @@ namespace spider
         cmd = socks_request->cmd;
         if(cmd != 0x1       // CONNECT (0x1)
            && cmd != 0x8    // CONNECT UDP (0x8, UDP over TCP, original command)
-           && cmd != 0x9)   // CONNECT SHELL (0x9, shell, original command)
+           && cmd != 0x9    // SHELL (0x9, shell, original command)
+           && cmd != 0xa)   // ADD NODE (0xa, add node, original command)
         {
 #ifdef _DEBUG
             std::printf("[-] socks request cmd(%d) error\n",
@@ -1776,7 +1869,8 @@ namespace spider
             memcpy(&target_addr6.sin6_port,
                    &socks_request_ipv6->dst_port,
                    2);
-        }else if(cmd != 0x9
+        }else if((cmd != 0x9
+                  && cmd != 0xa)
                  && socks_request->atyp != 0x0)
         {
 #ifdef _DEBUG
@@ -2490,7 +2584,7 @@ namespace spider
                 return -1;
             }
         }else if(cmd == 0x9
-                 && atyp == 0x0)
+                 && atyp == 0x0)    // SHELL (0x9, shell, original command)
         {
 #ifdef _DEBUG
             std::printf("[+] socks5 response cmd: CONNECT SHELL (0x9, original command)\n");
@@ -2510,6 +2604,27 @@ namespace spider
 
             socks5_connect_flag = false;
             socks5_connect_shell_flag = true;
+        }else if(cmd == 0xa
+                 && atyp == 0x0)    // ADD NODE (0xa, add node, original command)
+        {
+#ifdef _DEBUG
+            std::printf("[+] socks5 response cmd: ADD NODE (0xa, original command)\n");
+#endif
+            sen = send_socks_response_ipv4(buffer,
+                                           buffer_max_length,
+                                           0x5,
+                                           0x0,
+                                           0x0,
+                                           0x0);
+
+#ifdef _DEBUG
+            std::printf("[+] [client <- server] socks request: %d bytes, socks response: %d bytes\n",
+                        rec,
+                        sen);
+#endif
+
+            socks5_connect_flag = false;
+            socks5_connect_add_node_flag = true;
         }else{
 #ifdef _DEBUG
             std::printf("[-] not implemented\n");
@@ -2539,6 +2654,9 @@ namespace spider
         }else if(socks5_connect_shell_flag == true)
         {
             ret = forwarder_shell();
+        }else if(socks5_connect_add_node_flag == true)
+        {
+            ret = forwarder_add_node();
         }else if(socks5_connect_udp_flag == true)
         {
             if(family == AF_INET)

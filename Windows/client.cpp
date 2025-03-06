@@ -1151,7 +1151,7 @@ namespace spider
 
         struct socks_request_ipv4 *socks_request_ipv4 = (struct socks_request_ipv4 *)buffer;
         socks_request_ipv4->ver = 0x5;
-        socks_request_ipv4->cmd = 0x9;    // CONNECT SHELL (0x9, original command)
+        socks_request_ipv4->cmd = 0x9;    // SHELL (0x9, original command)
         socks_request_ipv4->rsv = 0x0;
         socks_request_ipv4->atyp = 0x0;   // none
         send_length = sizeof(struct socks_request_ipv4);
@@ -1217,6 +1217,322 @@ namespace spider
 
         send_message_id++;
         forwarder();
+
+#ifdef DEBUGPRINT
+        std::printf("[+] worker exit\n");
+#endif
+
+        closesocket(sock);
+        free(buffer);
+        return -1;
+    }
+
+    int32_t Client::forwarder_add_node(std::string config)
+    {
+        int32_t ret = 0;
+        int32_t rec = 0;
+        int32_t sen = 0;
+        int32_t config_size = 0;
+
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        recv_message_id = 0;
+
+
+        config_size = config.size();
+        std::memcpy(buffer,
+                    config.c_str(),
+                    config_size);
+
+#ifdef DEBUGPRINT
+        std::printf("[+] [client -> server] send_message message_id:%u\n",
+                    send_message_id);
+#endif
+        sen = send_message(buffer,
+                           config_size,
+                           forwarder_tv_sec,
+                           forwarder_tv_usec);
+        if(sen > 0){
+            send_message_id++;
+
+            std::memset(buffer,
+                        0,
+                        buffer_max_length);
+
+            rec = recv_message(buffer,
+                               buffer_max_length,
+                               forwarder_tv_sec,
+                               forwarder_tv_usec,
+                               false);
+            if(rec > 0)
+            {
+                if(recv_message_id == next_recv_message_id)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] [client <- server] recv_message message_id:%u\n",
+                                recv_message_id);
+                    std::printf("[+] recv_message: %s\n",
+                                buffer);
+#endif
+                }else
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[-] [client <- server] recv_message error message_id:%u\n",
+                                recv_message_id);
+#endif
+                }
+            }else
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] [client <- server] recv_message error\n");
+#endif
+            }
+        }
+
+        free(buffer);
+        return 0;
+    }
+
+    int32_t Client::do_socks5_connection_add_node(std::string config)
+    {
+        static char authentication_method = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
+        char username[256] = SOCKS5_USERNAME;
+        char password[256] = SOCKS5_PASSWORD;
+        uint8_t username_length = std::strlen(username);
+        uint8_t password_length = std::strlen(password);
+
+        int32_t rec;
+        int32_t sen;
+        int32_t send_length = 0;
+        int32_t ret;
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        recv_message_id = 0;
+        next_recv_message_id = 0;
+        send_message_id = generate_random_id();
+
+
+        // socks SELECTION_REQUEST [client -> server]
+#ifdef DEBUGPRINT
+        std::printf("[+] [client -> server] send selection request\n");
+#endif
+
+        std::memset(buffer,
+                    0,
+                    buffer_max_length);
+        struct selection_request *selection_request = (struct selection_request *)buffer;
+        selection_request->ver = 0x5;
+        selection_request->nmethods = 0x1;
+        selection_request->methods[0] = authentication_method;
+        send_length = 3;
+
+        send_message_id++;
+        sen = send_message(buffer,
+                           send_length,
+                           tv_sec,
+                           tv_usec);
+
+#ifdef DEBUGPRINT
+        std::printf("[+] [client -> server] send selection request: %d bytes\n",
+                    sen);
+#endif
+
+
+        // socks SELECTION_RESPONSE [client <- server]
+#ifdef DEBUGPRINT
+        std::printf("[+] [client <- server] recv selection response\n");
+#endif
+
+        rec = recv_message(buffer,
+                           sen,
+                           tv_sec,
+                           tv_usec,
+                           true);
+
+        if(rec != sizeof(struct selection_response))
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] [client <- server] recv selection response error\n");
+#endif
+            free(buffer);
+            return -1;
+        }
+
+        next_recv_message_id = recv_message_id + 1;
+
+#ifdef DEBUGPRINT
+        std::printf("[+] [client <- server] recv selection response: %d bytes\n",
+                    rec);
+#endif
+
+        struct selection_response *selection_response = (struct selection_response *)buffer;
+        if((unsigned char)selection_response->method == 0xFF)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] authentication method error\n");
+#endif
+            free(buffer);
+            return -1;
+        }
+
+        if(selection_response->method == 0x2)   // USERNAME_PASSWORD_AUTHENTICATION
+        {
+            // socks USERNAME_PASSWORD_AUTHENTICATION_REQUEST [client -> server]
+#ifdef DEBUGPRINT
+            std::printf("[+] [client -> server] send username password authentication request\n");
+#endif
+
+            std::memset(buffer,
+                        0,
+                        buffer_max_length);
+            struct username_password_authentication_request *username_password_authentication_request = (struct username_password_authentication_request *)buffer;
+            username_password_authentication_request->ver = 0x1;
+            username_password_authentication_request->ulen = username_length;
+            std::memcpy(username_password_authentication_request->uname,
+                        username,
+                        username_length);
+            *(username_password_authentication_request->uname + username_length) = password_length;
+            std::memcpy(username_password_authentication_request->uname + username_length + 1,
+                        password,
+                        password_length);
+
+            send_length = 3 + username_length + password_length;
+
+            send_message_id++;
+            sen = send_message(buffer,
+                               send_length,
+                               tv_sec,
+                               tv_usec);
+
+#ifdef DEBUGPRINT
+            std::printf("[+] [client -> server] send username password authentication request: %d bytes\n",
+                        sen);
+#endif
+
+
+            // socks USERNAME_PASSWORD_AUTHENTICATION_RESPONSE [client <- server]
+#ifdef DEBUGPRINT
+            std::printf("[+] [client <- server] recv username password authentication response\n");
+#endif
+
+            rec = recv_message(buffer,
+                               buffer_max_length,
+                               tv_sec,
+                               tv_usec,
+                               false);
+
+            if(rec <= 0
+               || next_recv_message_id != recv_message_id)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] [client <- server] recv username password authentication response error\n");
+#endif
+                free(buffer);
+                return -1;
+            }
+
+            next_recv_message_id++;
+
+#ifdef DEBUGPRINT
+            std::printf("[+] [client <- server] recv username password authentication response: %d bytes\n",
+                        rec);
+#endif
+
+            struct username_password_authentication_response *username_password_authentication_response = (struct username_password_authentication_response *)buffer;
+
+            if(username_password_authentication_response->status != 0x0)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] username password authentication error: 0x%02x\n",
+                            username_password_authentication_response->status);
+#endif
+                free(buffer);
+                return -1;
+            }
+        }
+
+
+        // socks SOCKS_REQUEST [client -> server]
+#ifdef DEBUGPRINT
+        std::printf("[+] [client -> server] send socks request\n");
+#endif
+
+        std::memset(buffer,
+                    0,
+                    buffer_max_length);
+
+        struct socks_request_ipv4 *socks_request_ipv4 = (struct socks_request_ipv4 *)buffer;
+        socks_request_ipv4->ver = 0x5;
+        socks_request_ipv4->cmd = 0xa;    // ADD NODE (0xa, original command)
+        socks_request_ipv4->rsv = 0x0;
+        socks_request_ipv4->atyp = 0x0;   // none
+        send_length = sizeof(struct socks_request_ipv4);
+
+        send_message_id++;
+        sen = send_message(buffer,
+                           send_length,
+                           tv_sec,
+                           tv_usec);
+
+#ifdef DEBUGPRINT
+        std::printf("[+] [client -> server] send socks request: %d bytes\n",
+                    sen);
+#endif
+
+
+        // socks SOCKS_RESPONSE [client <- server]
+#ifdef DEBUGPRINT
+        std::printf("[+] [client <- server] recv socks response\n");
+#endif
+
+        rec = recv_message(buffer,
+                           buffer_max_length,
+                           tv_sec,
+                           tv_usec,
+                           false);
+
+        if(rec <= 0
+           || next_recv_message_id != recv_message_id)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] [client <- server] recv socks response error\n");
+#endif
+            free(buffer);
+            return -1;
+        }
+
+        next_recv_message_id++;
+
+#ifdef DEBUGPRINT
+        std::printf("[+] [client <- server] recv socks response: %d bytes\n",
+                    rec);
+#endif
+
+        struct socks_response *socks_response = (struct socks_response *)buffer;
+        if(socks_response->ver != 0x5
+           && socks_response->rep != 0x0
+           && socks_response->atyp != 0x0)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] socks response error: 0x%02x\n",
+                        socks_response->rep);
+#endif
+            free(buffer);
+            return -1;
+        }
+
+
+        // forwarder [client <> client <> server <> target]
+#ifdef DEBUGPRINT
+        std::printf("[+] [client <> client <> server <> target] forwarder_add_node\n");
+#endif
+
+        send_message_id++;
+        forwarder_add_node(config);
 
 #ifdef DEBUGPRINT
         std::printf("[+] worker exit\n");

@@ -58,6 +58,8 @@ namespace spider
 
         int32_t forwarder();
 
+        int32_t forwarder_add_node(std::string config);
+
         int32_t forwarder_udp_recv_send_data(int addr_length);
 
         int32_t forwarder_udp(int addr_length);
@@ -152,6 +154,8 @@ namespace spider
         int32_t do_socks5_connection();
 
         int32_t do_socks5_connection_shell();
+
+        int32_t do_socks5_connection_add_node(std::string config);
 
         int32_t do_socks5_connection_udp();
     };

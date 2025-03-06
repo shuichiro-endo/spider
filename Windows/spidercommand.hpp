@@ -91,6 +91,11 @@ namespace spider
                                 int32_t forwarder_tv_sec,
                                 int32_t forwarder_tv_usec);
 
+        void add_node_to_destination_spider_worker(std::string config,
+                                                   std::string source_spider_ip,
+                                                   std::string source_spider_ip_scope_id,
+                                                   std::string destination_spider_ip);
+
         std::string get_line_value(std::string line,
                                    std::string name);
 
@@ -132,6 +137,12 @@ namespace spider
         void add_node_spider_client_udp();
 
         void add_node_spider_client_shell();
+
+        void add_node_spider_client_to_destination_spider();
+
+        void add_node_spider_pipe_to_destination_spider();
+
+        int32_t read_config(std::vector<char> config);
 
         int32_t read_config_file(std::string config_file);
 

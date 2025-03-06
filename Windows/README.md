@@ -114,6 +114,8 @@ example : spider.exe
  5: edit routing table
  6: add node (spider client udp)
  7: add node (spider client shell)
+ 8: add node (spider client) to destination spider
+ 9: add node (spider pipe) to destination spider
  0: exit
 --------------------------------------------------------------------------
 

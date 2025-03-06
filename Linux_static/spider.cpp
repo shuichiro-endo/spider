@@ -454,6 +454,8 @@ int main(int argc,
         std::printf(" %d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
         std::printf(" %d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
         std::printf(" %d: add node (spider client shell)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+        std::printf(" %d: add node (spider client) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
+        std::printf(" %d: add node (spider pipe) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
         std::printf(" %d: exit\n", SPIDER_COMMAND_EXIT);
         std::printf("--------------------------------------------------------------------------\n");
         std::printf("\n");
@@ -508,6 +510,16 @@ int main(int argc,
                 std::printf("[+] add node (spider client shell)\n");
                 std::printf("[!] This is not SOCKS5 connection.\n");
                 spider_command->add_node_spider_client_shell();
+                break;
+
+            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER:
+                std::printf("[+] add node (spider client) to destination spider\n");
+                spider_command->add_node_spider_client_to_destination_spider();
+                break;
+
+            case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER:
+                std::printf("[+] add node (spider pipe) to destination spider\n");
+                spider_command->add_node_spider_pipe_to_destination_spider();
                 break;
 
             case SPIDER_COMMAND_EXIT:

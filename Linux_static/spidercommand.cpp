@@ -150,7 +150,8 @@ namespace spider
                                                   socks5_message->get_forwarder_tv_usec(),
                                                   encryption,
                                                   message_manager,
-                                                  cares_manager);
+                                                  cares_manager,
+                                                  this);
 
                 do
                 {
@@ -2573,6 +2574,580 @@ namespace spider
         return;
     }
 
+    void Spidercommand::add_node_to_destination_spider_worker(std::string config,
+                                                              std::string source_spider_ip,
+                                                              std::string source_spider_ip_scope_id,
+                                                              std::string destination_spider_ip)
+    {
+        int32_t ret = 0;
+        uint32_t connection_id = 0;
+        uint32_t client_id = 0;
+        int32_t client_sock = -1;
+        std::shared_ptr<Client> client;
+        std::pair<uint32_t, uint32_t> client_key;
+
+
+        client = std::make_shared<Client>("add",
+                                          0,
+                                          0,
+                                          0,
+                                          source_spider_ip,
+                                          source_spider_ip_scope_id,
+                                          "",
+                                          "",
+                                          destination_spider_ip,
+                                          client_sock,
+                                          10,   // tv_sec = 10
+                                          0,    // tv_usec = 0
+                                          60,   // forwarder_tv_sec = 60
+                                          0,    // forwarder_tv_usec = 0
+                                          encryption,
+                                          message_manager);
+
+        do
+        {
+            connection_id = generate_random_id();
+            client_id = generate_random_id();
+            ret = client_manager->insert_client(connection_id,
+                                                client_id,
+                                                client);
+        }while(ret != 0);
+
+        ret = client->do_socks5_connection_add_node(config);
+        if(ret == -1)
+        {
+            client_manager->erase_client(client->get_connection_id(),
+                                         client->get_client_id());
+        }
+
+        return;
+    }
+
+    void Spidercommand::add_node_spider_client_to_destination_spider()
+    {
+        std::string config = "";
+        std::string source_spider_ip;
+        std::string source_spider_ip_scope_id;
+        std::string destination_spider_ip;
+        std::string client_listen_ip;
+        std::string client_listen_port;
+        std::string client_destination_spider_ip;
+        int32_t tv_sec = 0;
+        int32_t tv_usec = 0;
+        int32_t forwarder_tv_sec = 0;
+        int32_t forwarder_tv_usec = 0;
+        char check = 'n';
+
+
+        while(1)
+        {
+            std::printf("source spider ip                               > ");
+            std::cin >> source_spider_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(source_spider_ip != spider_ip->get_spider_ipv4()
+               && source_spider_ip != spider_ip->get_spider_ipv6_global()
+               && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+               && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+                std::printf("[-] please input spider ipv4 or ipv6\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+            std::printf("destination spider ip                          > ");
+            std::cin >> destination_spider_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("client listen ip                               > ");
+            std::cin >> client_listen_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("client listen port                             > ");
+            std::cin >> client_listen_port;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("client destination spider ip                   > ");
+            std::cin >> client_destination_spider_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+            std::cin >> tv_sec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                tv_sec = 3;
+            }else if(tv_sec < 0 || tv_sec > 60)
+            {
+                tv_sec = 3;
+            }
+
+            std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+            std::cin >> tv_usec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                tv_usec = 0;
+            }else if(tv_usec < 0 || tv_usec > 1000000)
+            {
+                tv_usec = 0;
+            }
+
+            if(tv_sec == 0 && tv_usec == 0){
+                tv_sec = 3;
+                tv_usec = 0;
+            }
+
+            std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+            std::cin >> forwarder_tv_sec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                forwarder_tv_sec = 30;
+            }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+            {
+                forwarder_tv_sec = 30;
+            }
+
+            std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+            std::cin >> forwarder_tv_usec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                forwarder_tv_usec = 0;
+            }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+            {
+                forwarder_tv_usec = 0;
+            }
+
+            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+            {
+                forwarder_tv_sec = 30;
+                forwarder_tv_usec = 0;
+            }
+
+            std::printf("\n");
+            std::printf("source spider ip             : %s\n", source_spider_ip.c_str());
+            if(!source_spider_ip_scope_id.empty())
+            {
+                std::printf("source spider ip scope id    : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+            }
+            std::printf("destination spider ip        : %s\n", destination_spider_ip.c_str());
+            std::printf("client listen ip             : %s\n", client_listen_ip.c_str());
+            std::printf("client listen port           : %s\n", client_listen_port.c_str());
+            std::printf("client destination spider ip : %s\n", client_destination_spider_ip.c_str());
+            std::printf("recv/send tv_sec             : %7d sec\n", tv_sec);
+            std::printf("recv/send tv_usec            : %7d microsec\n", tv_usec);
+            std::printf("forwarder_tv_sec             : %7d sec\n", forwarder_tv_sec);
+            std::printf("forwarder_tv_usec            : %7d microsec\n", forwarder_tv_usec);
+            std::printf("\n");
+
+            std::printf("ok? (yes:y no:n quit:q)                        > ");
+            std::cin >> check;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(check == 'y')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                config = "";
+                config += "[client]\n";
+
+                config += "client_listen_ip:";
+                config += client_listen_ip;
+                config += "\n";
+
+                config += "client_listen_port:";
+                config += client_listen_port;
+                config += "\n";
+
+                config += "destination_spider_ip:";
+                config += client_destination_spider_ip;
+                config += "\n";
+
+                config += "tv_sec:";
+                config += std::to_string(tv_sec);
+                config += "\n";
+
+                config += "tv_usec:";
+                config += std::to_string(tv_usec);
+                config += "\n";
+
+                config += "forwarder_tv_sec:";
+                config += std::to_string(forwarder_tv_sec);
+                config += "\n";
+
+                config += "forwarder_tv_usec:";
+                config += std::to_string(forwarder_tv_usec);
+                config += "\n";
+
+                break;
+            }else if(check == 'n')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(check == 'q'){
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }else{
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }
+
+        }
+
+        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                           this,
+                           config,
+                           source_spider_ip,
+                           source_spider_ip_scope_id,
+                           destination_spider_ip);
+        thread.detach();
+
+        //        std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
+
+        return;
+    }
+
+    void Spidercommand::add_node_spider_pipe_to_destination_spider()
+    {
+        std::string config = "";
+        char mode;  // client:c server:s
+        std::string source_spider_ip;
+        std::string source_spider_ip_scope_id;
+        std::string destination_spider_ip;
+        std::string pipe_ip;
+        std::string pipe_destination_ip;
+        std::string pipe_destination_port;
+        std::string pipe_listen_port;
+        char check = 'n';
+
+
+        while(1)
+        {
+            std::printf("mode (client:c server:s)                       > ");
+            std::cin >> mode;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(mode == 'c')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                std::printf("source spider ip                               > ");
+                std::cin >> source_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip != spider_ip->get_spider_ipv4()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("destination spider ip                          > ");
+                std::cin >> destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("pipe ip                                        > ");
+                std::cin >> pipe_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("pipe destination ip                            > ");
+                std::cin >> pipe_destination_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("pipe destination port                          > ");
+                std::cin >> pipe_destination_port;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("\n");
+                std::printf("mode                      : %c\n", mode);
+                std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
+                if(!source_spider_ip_scope_id.empty())
+                {
+                    std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                }
+                std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
+                std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
+                std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    config = "";
+                    config += "[pipe_client]\n";
+
+                    config += "pipe_ip:";
+                    config += pipe_ip;
+                    config += "\n";
+
+                    config += "pipe_destination_ip:";
+                    config += pipe_destination_ip;
+                    config += "\n";
+
+                    config += "pipe_destination_port:";
+                    config += pipe_destination_port;
+                    config += "\n";
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q'){
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else{
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+
+                break;
+            }else if(mode == 's')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                std::printf("source spider ip                               > ");
+                std::cin >> source_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip != spider_ip->get_spider_ipv4()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("destination spider ip                          > ");
+                std::cin >> destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("pipe listen ip                                 > ");
+                std::cin >> pipe_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("pipe listen port                               > ");
+                std::cin >> pipe_listen_port;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("\n");
+                std::printf("mode                      : %c\n", mode);
+                std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
+                if(!source_spider_ip_scope_id.empty())
+                {
+                    std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                }
+                std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
+                std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    config = "";
+                    config += "[pipe_server]\n";
+
+                    config += "pipe_listen_ip:";
+                    config += pipe_ip;
+                    config += "\n";
+
+                    config += "pipe_listen_port:";
+                    config += pipe_listen_port;
+                    config += "\n";
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q'){
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else{
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+
+                break;
+            }else{
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }
+        }
+
+        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                           this,
+                           config,
+                           source_spider_ip,
+                           source_spider_ip_scope_id,
+                           destination_spider_ip);
+        thread.detach();
+
+//        std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
+
+        return;
+    }
+
     std::string Spidercommand::get_line_value(std::string line,
                                               std::string name)
     {
@@ -2640,10 +3215,516 @@ namespace spider
         return line;
     }
 
+    int32_t Spidercommand::read_config(std::vector<char> config)
+    {
+        char *line_start = config.data();
+        char *line_end = nullptr;
+        std::string line;
+
+
+        line = get_line(config.data(),
+                        config.size(),
+                        &line_start,
+                        &line_end);
+        if(line.empty())
+        {
+            return -1;
+        }
+
+        if(line == "[client]")
+        {
+            std::string client_listen_ip;
+            std::string client_listen_ip_scope_id;
+            std::string client_listen_port;
+            std::string destination_spider_ip;
+            std::string tv_sec_string;
+            std::string tv_usec_string;
+            std::string forwarder_tv_sec_string;
+            std::string forwarder_tv_usec_string;
+            int32_t tv_sec = 0;
+            int32_t tv_usec = 0;
+            int32_t forwarder_tv_sec = 0;
+            int32_t forwarder_tv_usec = 0;
+
+
+            // client_listen_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("client_listen_ip:") != std::string::npos)
+            {
+                client_listen_ip = get_line_value(line,
+                                                  "client_listen_ip:");
+            }
+
+            if(client_listen_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [client_listen_ip] error\n");
+#endif
+                return -1;
+            }
+
+            if(client_listen_ip != spider_ip->get_spider_ipv4()
+               && client_listen_ip != spider_ip->get_spider_ipv6_global()
+               && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+               && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [client_listen_ip] please input spider ipv4 or ipv6: %s\n",
+                            client_listen_ip.c_str());
+#endif
+                return -1;
+            }
+
+            if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+
+            // client_listen_port
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("client_listen_port:") != std::string::npos)
+            {
+                client_listen_port = get_line_value(line,
+                                                    "client_listen_port:");
+            }
+
+            if(client_listen_port.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [client_listen_port] error\n");
+#endif
+                return -1;
+            }
+
+
+            // destination_spider_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("destination_spider_ip:") != std::string::npos)
+            {
+                destination_spider_ip = get_line_value(line,
+                                                       "destination_spider_ip:");
+            }
+
+            if(destination_spider_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [destination_spider_ip] error\n");
+#endif
+                return -1;
+            }
+
+
+            // tv_sec
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("tv_sec:") != std::string::npos)
+            {
+                tv_sec_string = get_line_value(line,
+                                               "tv_sec:");
+            }
+
+            if(tv_sec_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [tv_sec] error\n");
+#endif
+                return -1;
+            }
+
+
+            // tv_usec
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("tv_usec:") != std::string::npos)
+            {
+                tv_usec_string = get_line_value(line,
+                                                "tv_usec:");
+            }
+
+            if(tv_usec_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [tv_usec] error\n");
+#endif
+                return -1;
+            }
+
+
+            // forwarder_tv_sec
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("forwarder_tv_sec:") != std::string::npos)
+            {
+                forwarder_tv_sec_string = get_line_value(line,
+                    "forwarder_tv_sec:");
+            }
+
+            if(forwarder_tv_sec_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [forwarder_tv_sec] error\n");
+#endif
+                return -1;
+            }
+
+
+            // forwarder_tv_usec
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("forwarder_tv_usec:") != std::string::npos)
+            {
+                forwarder_tv_usec_string = get_line_value(line,
+                    "forwarder_tv_usec:");
+            }
+
+            if(forwarder_tv_usec_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [client] [forwarder_tv_usec] error\n");
+#endif
+                return -1;
+            }
+
+
+            tv_sec = std::stoi(tv_sec_string);
+            tv_usec = std::stoi(tv_usec_string);
+            forwarder_tv_sec = std::stoi(forwarder_tv_sec_string);
+            forwarder_tv_usec = std::stoi(forwarder_tv_usec_string);
+
+            if(tv_sec < 0 || tv_sec > 60)
+            {
+                tv_sec = 3;
+            }
+
+            if(tv_usec < 0 || tv_usec > 1000000)
+            {
+                tv_usec = 0;
+            }
+
+            if(tv_sec == 0 && tv_usec == 0){
+                tv_sec = 3;
+                tv_usec = 0;
+            }
+
+            if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+            {
+                forwarder_tv_sec = 30;
+            }
+
+            if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+            {
+                forwarder_tv_usec = 0;
+            }
+
+            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+            {
+                forwarder_tv_sec = 30;
+                forwarder_tv_usec = 0;
+            }
+
+
+            std::thread thread(&Spidercommand::listen_client,
+                               this,
+                               client_listen_ip,
+                               client_listen_ip_scope_id,
+                               client_listen_port,
+                               destination_spider_ip,
+                               tv_sec,
+                               tv_usec,
+                               forwarder_tv_sec,
+                               forwarder_tv_usec);
+            thread.detach();
+        }else if(line == "[pipe_client]")
+        {
+            char mode = 'c';
+            std::string pipe_ip;
+            std::string pipe_ip_scope_id;
+            std::string pipe_destination_ip;
+            std::string pipe_destination_ip_scope_id;
+            std::string pipe_destination_port;
+
+
+            // pipe_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_ip:") != std::string::npos)
+            {
+                pipe_ip = get_line_value(line,
+                                         "pipe_ip:");
+            }
+
+            if(pipe_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] [pipe_ip] error\n");
+#endif
+                return -1;
+            }
+
+            if(pipe_ip != spider_ip->get_spider_ipv4()
+               && pipe_ip != spider_ip->get_spider_ipv6_global()
+               && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+               && pipe_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] [pipe_ip] please input spider ipv4 or ipv6: %s\n",
+                            pipe_ip.c_str());
+#endif
+                return -1;
+            }
+
+            if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+
+            // pipe_destination_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] error\n");
+#endif
+                return -1;
+            }
+
+
+            if(line.find("pipe_destination_ip:") != std::string::npos)
+            {
+                pipe_destination_ip = get_line_value(line,
+                                                     "pipe_destination_ip:");
+            }
+
+            if(pipe_destination_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] [pipe_destination_ip] error\n");
+#endif
+                return -1;
+            }
+
+
+            // pipe_destination_port
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_destination_port:") != std::string::npos)
+            {
+                pipe_destination_port = get_line_value(line,
+                                                       "pipe_destination_port:");
+            }
+
+            if(pipe_destination_port.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client] [pipe_destination_port] error\n");
+#endif
+                return -1;
+            }
+
+
+            std::thread thread(&Spidercommand::connect_pipe,
+                               this,
+                               mode,
+                               pipe_ip,
+                               pipe_ip_scope_id,
+                               pipe_destination_ip,
+                               pipe_destination_port);
+            thread.detach();
+        }else if(line == "[pipe_server]")
+        {
+            char mode = 's';
+            std::string pipe_listen_ip;
+            std::string pipe_listen_ip_scope_id;
+            std::string pipe_listen_port;
+
+
+            // pipe_listen_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_listen_ip:") != std::string::npos)
+            {
+                pipe_listen_ip = get_line_value(line,
+                                                "pipe_listen_ip:");
+            }
+
+            if(pipe_listen_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server] [pipe_listen_ip] error\n");
+#endif
+                return -1;
+            }
+
+            if(pipe_listen_ip != spider_ip->get_spider_ipv4()
+               && pipe_listen_ip != spider_ip->get_spider_ipv6_global()
+               && pipe_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+               && pipe_listen_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server] [pipe_listen_ip] please input spider ipv4 or ipv6: %s\n",
+                            pipe_listen_ip.c_str());
+#endif
+                return -1;
+            }
+
+            if(pipe_listen_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                pipe_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+
+            // pipe_listen_port
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_listen_port:") != std::string::npos)
+            {
+                pipe_listen_port = get_line_value(line,
+                                                  "pipe_listen_port:");
+            }
+
+            if(pipe_listen_port.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server] [pipe_listen_port] error\n");
+#endif
+                return -1;
+            }
+
+
+            std::thread thread(&Spidercommand::listen_pipe,
+                               this,
+                               mode,
+                               pipe_listen_ip,
+                               pipe_listen_ip_scope_id,
+                               pipe_listen_port);
+            thread.detach();
+        }
+
+        return 0;
+    }
+
     int32_t Spidercommand::read_config_file(std::string config_file)
     {
         std::ifstream file(config_file);
-        std::vector<char> buffer;
+        std::vector<char> config;
         std::streamsize file_size;
         char *line_start;
         char *line_end;
@@ -2661,9 +3742,9 @@ namespace spider
         file_size = file.tellg();
         file.seekg(0, std::ios::beg);
 
-        buffer.resize(file_size);
+        config.resize(file_size);
 
-        if(!file.read(buffer.data(), file_size))
+        if(!file.read(config.data(), file_size))
         {
             std::printf("[-] cannot read config file: %s\n",
                         config_file.c_str());
@@ -2672,13 +3753,13 @@ namespace spider
 
         file.close();
 
-        line_start = buffer.data();
+        line_start = config.data();
         line_end = nullptr;
 
         while(1)
         {
-            line = get_line(buffer.data(),
-                            buffer.size(),
+            line = get_line(config.data(),
+                            config.size(),
                             &line_start,
                             &line_end);
             if(line.empty())
@@ -2703,8 +3784,8 @@ namespace spider
 
 
                 // client_listen_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2731,7 +3812,7 @@ namespace spider
                    && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] [client] [client_listen_ip] please input spider ipv4 or ipv6: %s\n",
-                                client_listen_ip);
+                                client_listen_ip.c_str());
                     break;
                 }
 
@@ -2742,8 +3823,8 @@ namespace spider
 
 
                 // client_listen_port
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2766,8 +3847,8 @@ namespace spider
 
 
                 // destination_spider_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2790,8 +3871,8 @@ namespace spider
 
 
                 // tv_sec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2814,8 +3895,8 @@ namespace spider
 
 
                 // tv_usec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2838,8 +3919,8 @@ namespace spider
 
 
                 // forwarder_tv_sec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2862,8 +3943,8 @@ namespace spider
 
 
                 // forwarder_tv_usec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2944,8 +4025,8 @@ namespace spider
 
 
                 // pipe_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -2972,7 +4053,7 @@ namespace spider
                    && pipe_ip != spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] [pipe_client] [pipe_ip] please input spider ipv4 or ipv6: %s\n",
-                                pipe_ip);
+                                pipe_ip.c_str());
                     break;
                 }
 
@@ -2983,8 +4064,8 @@ namespace spider
 
 
                 // pipe_destination_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3008,8 +4089,8 @@ namespace spider
 
 
                 // pipe_destination_port
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3048,8 +4129,8 @@ namespace spider
 
 
                 // pipe_listen_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3076,7 +4157,7 @@ namespace spider
                    && pipe_listen_ip != spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] [pipe_server] [pipe_listen_ip] please input spider ipv4 or ipv6: %s\n",
-                                pipe_listen_ip);
+                                pipe_listen_ip.c_str());
                     break;
                 }
 
@@ -3087,8 +4168,8 @@ namespace spider
 
 
                 // pipe_listen_port
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3136,8 +4217,8 @@ namespace spider
 
 
                 // client_listen_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3164,7 +4245,7 @@ namespace spider
                    && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
                 {
                     std::printf("[-] [client_udp] [client_listen_ip] please input spider ipv4 or ipv6: %s\n",
-                                client_listen_ip);
+                                client_listen_ip.c_str());
                     break;
                 }
 
@@ -3175,8 +4256,8 @@ namespace spider
 
 
                 // client_listen_port
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3199,8 +4280,8 @@ namespace spider
 
 
                 // destination_spider_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3223,8 +4304,8 @@ namespace spider
 
 
                 // target_ip
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3253,8 +4334,8 @@ namespace spider
 
 
                 // target_port
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3277,8 +4358,8 @@ namespace spider
 
 
                 // tv_sec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3301,8 +4382,8 @@ namespace spider
 
 
                 // tv_usec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3325,8 +4406,8 @@ namespace spider
 
 
                 // forwarder_tv_sec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3349,8 +4430,8 @@ namespace spider
 
 
                 // forwarder_tv_usec
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
@@ -3429,8 +4510,8 @@ namespace spider
 
 
                 // sleep
-                line = get_line(buffer.data(),
-                                buffer.size(),
+                line = get_line(config.data(),
+                                config.size(),
                                 &line_start,
                                 &line_end);
                 if(line.empty())
