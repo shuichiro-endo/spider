@@ -507,6 +507,11 @@ edit mode (add:a delete:d quit:q)  >
 > This is not SOCKS5 connection. (UDP over TCP)
 > 
 > The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
+
+> [!NOTE]
+> Please set the 'client listen port' to the destination port of the UDP connection tool. (e.g. dig @192.168.0.25 -p 10053 google.com +notcp)
+> 
+> The server startup time is set to 5 minutes (spider.hpp FORWARDER_UDP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
 - ipv4
 ```
 command > 6
@@ -534,6 +539,30 @@ forwarder_tv_usec         :       0 microsec
 FORWARDER_UDP_TIMEOUT     :     300 sec
 
 ok? (yes:y no:n quit:q) > y
+
+```
+```
+> dig @192.168.0.25 -p 10053 google.com +notcp
+
+; <<>> DiG 9.18.24-1-Debian <<>> @192.168.0.25 -p 10053 google.com +notcp
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 4477
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;google.com.			IN	A
+
+;; ANSWER SECTION:
+google.com.		149	IN	A	142.250.76.142
+
+;; Query time: 28 msec
+;; SERVER: 192.168.0.25#10053(192.168.0.25) (UDP)
+;; WHEN: Fri Mar 07 08:49:39 JST 2025
+;; MSG SIZE  rcvd: 55
 
 ```
 - ipv6
@@ -566,10 +595,30 @@ FORWARDER_UDP_TIMEOUT     :     300 sec
 ok? (yes:y no:n quit:q) > y
 
 ```
-> [!NOTE]
-> Please set the 'client listen port' to the destination port of the UDP connection tool. (e.g. dig @192.168.0.25 -p 10053 google.com +notcp)
-> 
-> The server startup time is set to 5 minutes (spider.hpp FORWARDER_UDP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
+```
+dig @fe80::a00:27ff:febe:3a77%2 -p 10053 google.com +notcp
+
+; <<>> DiG 9.18.24-1-Debian <<>> @fe80::a00:27ff:febe:3a77%2 -p 10053 google.com +notcp
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 38501
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;google.com.			IN	A
+
+;; ANSWER SECTION:
+google.com.		265	IN	A	142.250.76.142
+
+;; Query time: 40 msec
+;; SERVER: fe80::a00:27ff:febe:3a77%2#10053(fe80::a00:27ff:febe:3a77%2) (UDP)
+;; WHEN: Fri Mar 07 08:51:26 JST 2025
+;; MSG SIZE  rcvd: 55
+
+```
 
 ### 7: add node (spider client shell)
 > [!IMPORTANT]
