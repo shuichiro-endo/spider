@@ -99,6 +99,18 @@ namespace spider
         std::unique_lock<std::mutex> lock_servers_map(servers_map_mutex);
         for(auto iterator = servers_map.begin(); iterator != servers_map.end(); ++iterator)
         {
+            int64_t sock = -1;
+            if(iterator->second->get_sock() != INVALID_SOCKET)
+            {
+                sock = iterator->second->get_sock();
+            }
+
+            int64_t target_sock = -1;
+            if(iterator->second->get_target_sock() != INVALID_SOCKET)
+            {
+                target_sock = iterator->second->get_target_sock();
+            }
+
             std::printf("|   %10u|%10u|%10u|%-46s|      %5s|%-46s|        %5d|%-46s|      %5s|        %5d|%7d|%7d|         %7d|          %7d|\n",
                         iterator->second->get_connection_id(),
                         iterator->second->get_client_id(),
@@ -106,10 +118,10 @@ namespace spider
                         iterator->second->get_server_ip().c_str(),
                         iterator->second->get_server_port().c_str(),
                         iterator->second->get_client_destination_ip().c_str(),
-                        iterator->second->get_sock(),
+                        sock,
                         iterator->second->get_target_ip().c_str(),
                         iterator->second->get_target_port().c_str(),
-                        iterator->second->get_target_sock(),
+                        target_sock,
                         iterator->second->get_tv_sec(),
                         iterator->second->get_tv_usec(),
                         iterator->second->get_forwarder_tv_sec(),
@@ -137,18 +149,29 @@ namespace spider
         std::unique_lock<std::mutex> lock_servers_map(servers_map_mutex);
         for(auto iterator = servers_map.begin(); iterator != servers_map.end(); ++iterator)
         {
-            std::ostringstream oss;
+            int64_t sock = -1;
+            if(iterator->second->get_sock() != INVALID_SOCKET)
+            {
+                sock = iterator->second->get_sock();
+            }
 
+            int64_t target_sock = -1;
+            if(iterator->second->get_target_sock() != INVALID_SOCKET)
+            {
+                target_sock = iterator->second->get_target_sock();
+            }
+
+            std::ostringstream oss;
             oss << "|   " << std::right << std::setw(10) << iterator->second->get_connection_id()
                 << "|" << std::right << std::setw(10) << iterator->second->get_client_id()
                 << "|" << std::right << std::setw(10) << iterator->second->get_server_id()
                 << "|" << std::left << std::setw(46) << iterator->second->get_server_ip().c_str()
                 << "|      " << std::right << std::setw(5) << iterator->second->get_server_port().c_str()
                 << "|" << std::left << std::setw(46) << iterator->second->get_client_destination_ip().c_str()
-                << "|        " << std::right << std::setw(5) << iterator->second->get_sock()
+                << "|        " << std::right << std::setw(5) << sock
                 << "|" << std::left << std::setw(46) << iterator->second->get_target_ip().c_str()
                 << "|      " << std::right << std::setw(5) << iterator->second->get_target_port().c_str()
-                << "|        " << std::right << std::setw(5) << iterator->second->get_target_sock()
+                << "|        " << std::right << std::setw(5) << target_sock
                 << "|" << std::right << std::setw(7) << iterator->second->get_tv_sec()
                 << "|" << std::right << std::setw(7) << iterator->second->get_tv_usec()
                 << "|         " << std::right << std::setw(7) << iterator->second->get_forwarder_tv_sec()

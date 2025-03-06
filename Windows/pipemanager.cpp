@@ -105,6 +105,12 @@ namespace spider
         std::unique_lock<std::mutex> lock_pipes_map(pipes_map_mutex);
         for(auto iterator = pipes_map.begin(); iterator != pipes_map.end(); ++iterator)
         {
+            int64_t sock = -1;
+            if(iterator->second->get_sock() != INVALID_SOCKET)
+            {
+                sock = iterator->second->get_sock();
+            }
+
             std::printf("|%10u|%c   |%-46s|%-10s      |           %5s|%-46s|%-10s                  |                %5s|      %5d|\n",
                         iterator->second->get_pipe_id(),
                         iterator->second->get_mode(),
@@ -114,7 +120,7 @@ namespace spider
                         iterator->second->get_pipe_destination_ip().c_str(),
                         iterator->second->get_pipe_destination_ip_scope_id().c_str(),
                         iterator->second->get_pipe_destination_port().c_str(),
-                        iterator->second->get_sock());
+                        sock);
         }
         lock_pipes_map.unlock();
 
@@ -157,8 +163,13 @@ namespace spider
                 pipe_destination_ip_scope_id = "";
             }
 
-            std::ostringstream oss;
+            int64_t sock = -1;
+            if(iterator->second->get_sock() != INVALID_SOCKET)
+            {
+                sock = iterator->second->get_sock();
+            }
 
+            std::ostringstream oss;
             oss << "|" << std::right << std::setw(10) << iterator->second->get_pipe_id()
                 << "|" << iterator->second->get_mode() << "   "
                 << "|" << std::left << std::setw(46) << iterator->second->get_pipe_ip().c_str()
@@ -167,7 +178,7 @@ namespace spider
                 << "|" << std::left << std::setw(46) << iterator->second->get_pipe_destination_ip().c_str()
                 << "|" << std::left << std::setw(10) << iterator->second->get_pipe_destination_ip_scope_id().c_str() << "             (" << std::right << std::setw(3) << pipe_destination_ip_scope_id.c_str() << ")"
                 << "|                " << std::right << std::setw(5) << iterator->second->get_pipe_destination_port().c_str()
-                << "|      " << std::right << std::setw(5) << iterator->second->get_sock()
+                << "|      " << std::right << std::setw(5) << sock
                 << "|\n";
 
             std::string tmp = oss.str();

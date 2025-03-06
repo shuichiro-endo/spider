@@ -97,6 +97,12 @@ namespace spider
         std::unique_lock<std::mutex> lock(clients_map_mutex);
         for(auto iterator = clients_map.begin(); iterator != clients_map.end(); ++iterator)
         {
+            int64_t sock = -1;
+            if(iterator->second->get_sock() != INVALID_SOCKET)
+            {
+                sock = iterator->second->get_sock();
+            }
+
             std::printf("|%-6s|   %10u|%10u|%10u|%-46s|%-10s        |             %5s|      %5s|%-46s|%-46s|      %5s|        %5d|%7d|%7d|         %7d|          %7d|\n",
                         iterator->second->get_type().c_str(),
                         iterator->second->get_connection_id(),
@@ -109,7 +115,7 @@ namespace spider
                         iterator->second->get_destination_spider_ip().c_str(),
                         iterator->second->get_target_ip().c_str(),
                         iterator->second->get_target_port().c_str(),
-                        iterator->second->get_sock(),
+                        sock,
                         iterator->second->get_tv_sec(),
                         iterator->second->get_tv_usec(),
                         iterator->second->get_forwarder_tv_sec(),
@@ -147,8 +153,13 @@ namespace spider
                 client_ip_scope_id = "";
             }
 
-            std::ostringstream oss;
+            int64_t sock = -1;
+            if(iterator->second->get_sock() != INVALID_SOCKET)
+            {
+                sock = iterator->second->get_sock();
+            }
 
+            std::ostringstream oss;
             oss << "|" << std::left << std::setw(6) << iterator->second->get_type().c_str()
                 << "|   " << std::right << std::setw(10) << iterator->second->get_connection_id()
                 << "|" << std::right << std::setw(10) << iterator->second->get_client_id()
@@ -160,7 +171,7 @@ namespace spider
                 << "|" << std::left << std::setw(46) << iterator->second->get_destination_spider_ip().c_str()
                 << "|" << std::left << std::setw(46) << iterator->second->get_target_ip().c_str()
                 << "|      " << std::right << std::setw(5) << iterator->second->get_target_port().c_str()
-                << "|        " << std::right << std::setw(5) << iterator->second->get_sock()
+                << "|        " << std::right << std::setw(5) << sock
                 << "|" << std::right << std::setw(7) << iterator->second->get_tv_sec()
                 << "|" << std::right << std::setw(7) << iterator->second->get_tv_usec()
                 << "|         " << std::right << std::setw(7) << iterator->second->get_forwarder_tv_sec()
