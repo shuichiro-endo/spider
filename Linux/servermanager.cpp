@@ -122,5 +122,47 @@ namespace spider
 
         return;
     }
+
+    std::string Servermanager::show_servers_map_string()
+    {
+        std::string result = "";
+
+
+        result += "---------------------------------------------------------------------------------------------------------------------------------------- server -----------------------------------------------------------------------------------------------------------------------------------------\n";
+
+        result += "|connection id|client id |server id |server ip                                     |server port|client destination ip                         |server socket|target ip                                     |target port|target socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|\n";
+
+        result += "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+
+        std::unique_lock<std::mutex> lock_servers_map(servers_map_mutex);
+        for(auto iterator = servers_map.begin(); iterator != servers_map.end(); ++iterator)
+        {
+            std::ostringstream oss;
+
+            oss << "|   " << std::right << std::setw(10) << iterator->second->get_connection_id()
+                << "|" << std::right << std::setw(10) << iterator->second->get_client_id()
+                << "|" << std::right << std::setw(10) << iterator->second->get_server_id()
+                << "|" << std::left << std::setw(46) << iterator->second->get_server_ip().c_str()
+                << "|      " << std::right << std::setw(5) << iterator->second->get_server_port().c_str()
+                << "|" << std::left << std::setw(46) << iterator->second->get_client_destination_ip().c_str()
+                << "|        " << std::right << std::setw(5) << iterator->second->get_sock()
+                << "|" << std::left << std::setw(46) << iterator->second->get_target_ip().c_str()
+                << "|      " << std::right << std::setw(5) << iterator->second->get_target_port().c_str()
+                << "|        " << std::right << std::setw(5) << iterator->second->get_target_sock()
+                << "|" << std::right << std::setw(7) << iterator->second->get_tv_sec()
+                << "|" << std::right << std::setw(7) << iterator->second->get_tv_usec()
+                << "|         " << std::right << std::setw(7) << iterator->second->get_forwarder_tv_sec()
+                << "|          " << std::right << std::setw(7) << iterator->second->get_forwarder_tv_usec()
+                << "|\n";
+
+            std::string tmp = oss.str();
+            result += tmp;
+        }
+        lock_servers_map.unlock();
+
+        result += "-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n";
+
+        return result;
+    }
 }
 

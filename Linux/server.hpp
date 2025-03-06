@@ -15,6 +15,9 @@ namespace spider
     class Spiderip;
     class Spidercommand;
     class Encryption;
+    class Clientmanager;
+    class Servermanager;
+    class Pipemanager;
     class Messagemanager;
 
     class Server : public Node
@@ -38,6 +41,9 @@ namespace spider
         uint32_t recv_message_id = 0;
         uint32_t next_recv_message_id = 0;
         uint32_t send_message_id = 0;
+        std::shared_ptr<Clientmanager> client_manager;
+        std::shared_ptr<Servermanager> server_manager;
+        std::shared_ptr<Pipemanager> pipe_manager;
         Spidercommand *spider_command;
 
     public:
@@ -81,6 +87,8 @@ namespace spider
 
         int32_t forwarder_add_node();
 
+        int32_t forwarder_show_node();
+
         int32_t forwarder_udp_recv_send_data(struct sockaddr *target_addr,
                                              int target_addr_lengthh);
 
@@ -101,6 +109,9 @@ namespace spider
                int32_t forwarder_tv_sec,
                int32_t forwarder_tv_usec,
                std::shared_ptr<Encryption> encryption,
+               std::shared_ptr<Clientmanager> client_manager,
+               std::shared_ptr<Servermanager> server_manager,
+               std::shared_ptr<Pipemanager> pipe_manager,
                std::shared_ptr<Messagemanager> message_manager,
                Spidercommand *spider_command);
 

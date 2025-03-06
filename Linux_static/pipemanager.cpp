@@ -146,6 +146,62 @@ namespace spider
         return;
     }
 
+    std::string Pipemanager::show_pipes_map_string()
+    {
+        std::string result = "";
+
+
+        result += "---------------------------------------------------------------------------------------------------- pipe ------------------------------------------------------------------------------------------------------\n";
+
+        result += "|pipe id   |mode|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|\n";
+
+        result += "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+
+        std::unique_lock<std::mutex> lock_pipes_map(pipes_map_mutex);
+        for(auto iterator = pipes_map.begin(); iterator != pipes_map.end(); ++iterator)
+        {
+            std::string pipe_ip_scope_id;
+            std::string pipe_destination_ip_scope_id;
+
+            if(if_nametoindex(iterator->second->get_pipe_ip_scope_id().c_str()) > 0)
+            {
+                pipe_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_pipe_ip_scope_id().c_str()));
+            }else
+            {
+                pipe_ip_scope_id = "";
+            }
+
+            if(if_nametoindex(iterator->second->get_pipe_destination_ip_scope_id().c_str()) > 0)
+            {
+                pipe_destination_ip_scope_id = std::to_string(if_nametoindex(iterator->second->get_pipe_destination_ip_scope_id().c_str()));
+            }else
+            {
+                pipe_destination_ip_scope_id = "";
+            }
+
+            std::ostringstream oss;
+
+            oss << "|" << std::right << std::setw(10) << iterator->second->get_pipe_id()
+                << "|" << iterator->second->get_mode() << "   "
+                << "|" << std::left << std::setw(46) << iterator->second->get_pipe_ip().c_str()
+                << "|" << std::left << std::setw(10) << iterator->second->get_pipe_ip_scope_id().c_str() << " (" << std::right << std::setw(3) << pipe_ip_scope_id.c_str() << ")"
+                << "|           " << std::right << std::setw(5) << iterator->second->get_pipe_listen_port().c_str()
+                << "|" << std::left << std::setw(46) << iterator->second->get_pipe_destination_ip().c_str()
+                << "|" << std::left << std::setw(10) << iterator->second->get_pipe_destination_ip_scope_id().c_str() << "             (" << std::right << std::setw(3) << pipe_destination_ip_scope_id.c_str() << ")"
+                << "|                " << std::right << std::setw(5) << iterator->second->get_pipe_destination_port().c_str()
+                << "|      " << std::right << std::setw(5) << iterator->second->get_sock()
+                << "|\n";
+
+            std::string tmp = oss.str();
+            result += tmp;
+        }
+        lock_pipes_map.unlock();
+
+        result += "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n";
+
+        return result;
+    }
+
     void Pipemanager::send_routing_message(std::shared_ptr<Routingmessage> routing_message)
     {
         int ret = 0;

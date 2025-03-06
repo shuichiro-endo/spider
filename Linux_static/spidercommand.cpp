@@ -149,6 +149,9 @@ namespace spider
                                                   socks5_message->get_forwarder_tv_sec(),
                                                   socks5_message->get_forwarder_tv_usec(),
                                                   encryption,
+                                                  client_manager,
+                                                  server_manager,
+                                                  pipe_manager,
                                                   message_manager,
                                                   cares_manager,
                                                   this);
@@ -1536,16 +1539,185 @@ namespace spider
         return;
     }
 
+    void Spidercommand::show_node_information_worker(std::string source_spider_ip,
+                                                     std::string source_spider_ip_scope_id,
+                                                     std::string destination_spider_ip)
+    {
+        int32_t ret = 0;
+        uint32_t connection_id = 0;
+        uint32_t client_id = 0;
+        int32_t client_sock = -1;
+        std::shared_ptr<Client> client;
+        std::pair<uint32_t, uint32_t> client_key;
+
+
+        client = std::make_shared<Client>("show",
+                                          0,
+                                          0,
+                                          0,
+                                          source_spider_ip,
+                                          source_spider_ip_scope_id,
+                                          "",
+                                          "",
+                                          destination_spider_ip,
+                                          client_sock,
+                                          SHOW_NODE_INFORMATION_WORKER_TV_SEC,
+                                          SHOW_NODE_INFORMATION_WORKER_TV_USEC,
+                                          SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_SEC,
+                                          SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_USEC,
+                                          encryption,
+                                          message_manager);
+
+        do
+        {
+            connection_id = generate_random_id();
+            client_id = generate_random_id();
+            ret = client_manager->insert_client(connection_id,
+                                                client_id,
+                                                client);
+        }while(ret != 0);
+
+        ret = client->do_socks5_connection_show_node();
+        if(ret == -1)
+        {
+            client_manager->erase_client(client->get_connection_id(),
+                                         client->get_client_id());
+        }
+
+        return;
+    }
+
     void Spidercommand::show_node_information()
     {
-        // client
-        client_manager->show_clients_map();
+        char mode;  // self:s other:o
+        std::string source_spider_ip;
+        std::string source_spider_ip_scope_id;
+        std::string destination_spider_ip;
+        char check = 'n';
 
-        // server
-        server_manager->show_servers_map();
 
-        // pipe
-        pipe_manager->show_pipes_map();
+        while(1)
+        {
+            std::printf("mode (self:s other:o)                          > ");
+            std::cin >> mode;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(mode == 's')   // self
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                // client
+                client_manager->show_clients_map();
+
+                // server
+                server_manager->show_servers_map();
+
+                // pipe
+                pipe_manager->show_pipes_map();
+
+                break;
+            }else if(mode == 'o')   // other
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                std::printf("source spider ip                               > ");
+                std::cin >> source_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip != spider_ip->get_spider_ipv4()
+                    && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                    && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                    && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("destination spider ip                          > ");
+                std::cin >> destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("\n");
+                std::printf("mode                      : %c\n", mode);
+                std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
+                if(!source_spider_ip_scope_id.empty())
+                {
+                    std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                }
+                std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+
+                    std::thread thread(&Spidercommand::show_node_information_worker,
+                                       this,
+                                       source_spider_ip,
+                                       source_spider_ip_scope_id,
+                                       destination_spider_ip);
+                    thread.detach();
+
+                    std::this_thread::sleep_for(std::chrono::seconds(20));  // 20s
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q'){
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else{
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+
+                break;
+            }else{
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }
+        }
 
         return;
     }
@@ -2597,10 +2769,10 @@ namespace spider
                                           "",
                                           destination_spider_ip,
                                           client_sock,
-                                          10,   // tv_sec = 10
-                                          0,    // tv_usec = 0
-                                          60,   // forwarder_tv_sec = 60
-                                          0,    // forwarder_tv_usec = 0
+                                          ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_SEC,
+                                          ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_USEC,
+                                          ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_SEC,
+                                          ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_USEC,
                                           encryption,
                                           message_manager);
 

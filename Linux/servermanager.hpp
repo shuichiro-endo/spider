@@ -40,6 +40,8 @@ namespace spider
                           uint32_t server_id);
 
         void show_servers_map();
+
+        std::string show_servers_map_string();
     };
 }
 

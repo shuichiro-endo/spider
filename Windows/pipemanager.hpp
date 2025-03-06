@@ -41,6 +41,8 @@ namespace spider
 
         void show_pipes_map();
 
+        std::string show_pipes_map_string();
+
         void send_routing_message(std::shared_ptr<Routingmessage> routing_message);
     };
 }

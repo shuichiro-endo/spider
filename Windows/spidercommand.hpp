@@ -69,6 +69,10 @@ namespace spider
                         std::string pipe_listen_ip_scope_id,
                         std::string pipe_listen_port);
 
+        void show_node_information_worker(std::string source_spider_ip,
+                                          std::string source_spider_ip_scope_id,
+                                          std::string destination_spider_ip);
+
         void client_udp_workder(std::string client_listen_ip,
                                 std::string client_listen_ip_scope_id,
                                 std::string client_listen_port,

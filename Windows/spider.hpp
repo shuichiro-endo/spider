@@ -23,6 +23,16 @@
 
 #define FORWARDER_UDP_TIMEOUT 300
 
+#define SHOW_NODE_INFORMATION_WORKER_TV_SEC 10
+#define SHOW_NODE_INFORMATION_WORKER_TV_USEC 0
+#define SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_SEC 10
+#define SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_USEC 0
+
+#define ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_SEC 10
+#define ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_USEC 0
+#define ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_SEC 60
+#define ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_USEC 0
+
 #define SOCKS5_AUTHENTICATION_METHOD 0x0; // 0x0:No Authentication Required  0x2:Username/Password Authentication
 #define SOCKS5_USERNAME "socks5user"
 #define SOCKS5_PASSWORD "supersecretpassword"
@@ -50,6 +60,7 @@
 #include <stdint.h>
 #include <process.h>
 #include <iostream>
+#include <iomanip>
 #include <algorithm>
 #include <array>
 #include <fstream>
