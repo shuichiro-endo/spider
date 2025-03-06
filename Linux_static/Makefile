@@ -22,6 +22,7 @@ SRCS    += clientmanager.cpp
 SRCS    += server.cpp
 SRCS    += servermanager.cpp
 SRCS    += messagemanager.cpp
+SRCS    += spidercommand.cpp
 SRCS    += spider.cpp
 
 OBJS     = $(SRCS:.cpp=.o)
