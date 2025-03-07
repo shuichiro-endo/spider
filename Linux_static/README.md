@@ -127,12 +127,14 @@ spider/Linux_static
 ├── socks5messagequeue.hpp
 ├── spider.cpp
 ├── spider.hpp
+├── spidercommand.cpp
+├── spidercommand.hpp
 ├── spiderip.cpp
 ├── spiderip.hpp
 ├── xor.cpp
 └── xor.hpp
 
-3 directories, 61 files
+3 directories, 63 files
 ```
 4. build
 ```
