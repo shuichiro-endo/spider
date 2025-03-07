@@ -624,7 +624,7 @@ google.com.		265	IN	A	142.250.76.142
 > [!IMPORTANT]
 > This is not SOCKS5 connection.
 > 
-> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
+> It is necessary to create a route in advance using pipes.
 - ipv4
 ```
 command > 7
