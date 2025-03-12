@@ -1448,7 +1448,7 @@ namespace spider
                                     }else
                                     {
 #ifdef _DEBUG
-                                        std::printf("[-] forwarder_send_data send error: %d\n",
+                                        std::printf("[-] forwarder_shell_send_data send error: %d\n",
                                                     errno);
 #endif
                                         break;
@@ -1616,7 +1616,7 @@ namespace spider
                                         }else
                                         {
 #ifdef _DEBUG
-                                            std::printf("[-] forwarder_send_data send error: %d\n",
+                                            std::printf("[-] forwarder_shell_send_data send error: %d\n",
                                                         errno);
 #endif
                                             break;

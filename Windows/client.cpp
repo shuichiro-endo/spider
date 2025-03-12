@@ -1041,7 +1041,7 @@ namespace spider
             }else if(ret == SOCKET_ERROR)
             {
 #ifdef DEBUGPRINT
-                std::printf("[+] forwarder_recv_data select error: 0x%x\n", ret);
+                std::printf("[+] forwarder_shell_recv_data select error: 0x%x\n", ret);
 #endif
                 break;
             }
@@ -1071,7 +1071,7 @@ namespace spider
                     }else
                     {
 #ifdef DEBUGPRINT
-                        std::printf("[-] forwarder_recv_data recv error: %d\n",
+                        std::printf("[-] forwarder_shell_recv_data recv error: %d\n",
                                     ret);
 #endif
                         break;
@@ -1297,7 +1297,7 @@ namespace spider
                 break;
             }else if(ret == SOCKET_ERROR){
 #ifdef DEBUGPRINT
-                std::printf("[+] forwarder_send_data select error: 0x%x\n",
+                std::printf("[+] forwarder_shell_send_data select error: 0x%x\n",
                             ret);
 #endif
                 break;
