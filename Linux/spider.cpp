@@ -119,13 +119,12 @@ int main(int argc,
     std::string aes_iv_hex_string;
 
 
-    spider::print_title();
-
     while((opt = getopt(argc, argv, optstring)) != -1)
     {
         switch(opt)
         {
             case 'h':
+                spider::print_title();
                 spider::usage(argv[0]);
                 exit(-1);
 
@@ -178,6 +177,7 @@ int main(int argc,
                 break;
 
             default:
+                spider::print_title();
                 spider::usage(argv[0]);
                 exit(-1);
         }
@@ -214,6 +214,8 @@ int main(int argc,
             close(fd);
         }
     }
+
+    spider::print_title();
 
     if(spider_ipv4.empty()
        && spider_ipv6_global.empty()
