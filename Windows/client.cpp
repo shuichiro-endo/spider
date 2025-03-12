@@ -1360,14 +1360,14 @@ namespace spider
                 {
                     if(recv_message_id == next_recv_message_id)
                     {
+                        next_recv_message_id++;
+
                         upload_download_data = (struct upload_download_data *)buffer;
                         ret = strncmp(upload_download_data->command,
                                       "download",
                                       sizeof("download"));
                         if(ret == 0)
                         {
-                            next_recv_message_id++;
-
                             if(download_file_flag == false)
                             {
                                 download_file_flag = true;
@@ -1499,8 +1499,6 @@ namespace spider
                                 send_length += sen;
                                 len -= sen;
                             }
-
-                            next_recv_message_id++;
                         }
                     }else
                     {
