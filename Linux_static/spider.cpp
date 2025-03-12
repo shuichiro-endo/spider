@@ -33,7 +33,13 @@ namespace spider
 {
     static void print_title();
     static void usage(char *filename);
+    static void signal_handler(int sig);
 
+
+    static void signal_handler(int sig)
+    {
+        exit(sig);
+    }
 
     static void print_title()
     {
@@ -56,7 +62,7 @@ namespace spider
         std::printf("usage   : %s\n", filename);
         std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-f config_file]\n");
-        std::printf("        : [-i pipe_destination_ip] [-p pipe_destination_port]\n");
+        std::printf("        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
@@ -67,7 +73,7 @@ namespace spider
         std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("        : %s -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("        : %s -f config_sample.txt\n", filename);
-        std::printf("        : %s -i 192.168.0.25 -p 1025\n", filename);
+        std::printf("        : %s -d -i 192.168.0.25 -p 1025\n", filename);
         std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e x -k deadbeef\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
@@ -79,7 +85,7 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:4:6:u:l:f:i:p:r:e:k:v:";
+    const char *optstring = "h:4:6:u:l:f:di:p:r:e:k:v:";
     opterr = 0;
     std::string spider_ipv4;
     std::string spider_ipv6_global;
@@ -92,6 +98,9 @@ int main(int argc,
     std::string percent = "%";
     std::string ifname;
     std::string config_file;
+    bool daemon_flag = false;
+    pid_t pid = -1;
+    int fd = -1;
     char mode;
     std::string pipe_ip;
     std::string pipe_ip_scope_id;
@@ -141,6 +150,10 @@ int main(int argc,
                 config_file = optarg;
                 break;
 
+            case 'd':
+                daemon_flag = true;
+                break;
+
             case 'i':
                 pipe_destination_ip = optarg;
                 break;
@@ -168,6 +181,38 @@ int main(int argc,
             default:
                 spider::usage(argv[0]);
                 exit(-1);
+        }
+    }
+
+    signal(SIGUSR1,
+           spider::signal_handler);
+
+    // daemon
+    if(daemon_flag == true)
+    {
+        pid = fork();
+        if(pid < 0)
+        {
+            exit(-1);
+        }
+        if(pid > 0)
+        {
+            exit(0);
+        }
+
+        ret = setsid();
+        if(ret < 0)
+        {
+            exit(-1);
+        }
+
+        fd = open("/dev/null", O_RDWR);
+        dup2(fd, STDIN_FILENO);
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
+        if(fd > 2)
+        {
+            close(fd);
         }
     }
 

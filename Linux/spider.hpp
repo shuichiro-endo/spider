@@ -52,6 +52,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <csignal>
 #include <iostream>
 #include <iomanip>
 #include <algorithm>

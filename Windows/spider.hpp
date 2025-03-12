@@ -82,6 +82,7 @@
 #include <netioapi.h>
 
 
+#pragma comment(lib, "user32.lib")      // User32 Library
 #pragma comment(lib, "ws2_32.lib")      // Winsock Library
 #pragma comment(lib, "iphlpapi.lib")    // IP Helper Library
 
