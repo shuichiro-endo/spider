@@ -58,6 +58,14 @@ namespace spider
 
         int32_t forwarder();
 
+        std::vector<std::string> split_input(const std::string& input);
+
+        int32_t forwarder_shell_recv_data();
+
+        int32_t forwarder_shell_send_data();
+
+        int32_t forwarder_shell();
+
         int32_t forwarder_add_node(std::string config);
 
         int32_t forwarder_show_node();

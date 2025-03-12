@@ -12,6 +12,7 @@
 
 #define ROUTING_MESSAGE_DATA_SIZE 60000
 #define SOCKS5_MESSAGE_DATA_SIZE 60000
+#define SHELL_UPLOAD_DOWNLOAD_DATA_SIZE 50000
 
 #define ROUTING_MESSAGE_QUEUE_CAPACITY 100
 #define SOCKS5_MESSAGE_QUEUE_CAPACITY 100
@@ -65,6 +66,7 @@
 #include <array>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <memory>
@@ -92,6 +94,25 @@ namespace spider
         int tz_dsttime;
     };
 }
+
+struct upload_download_data_header
+{
+    char command[10];
+    char file_name[256];
+    char file_path[256];
+    uint64_t file_size;
+    uint64_t data_size;
+};
+
+struct upload_download_data
+{
+    char command[10];
+    char file_name[256];
+    char file_path[256];
+    uint64_t file_size;
+    uint64_t data_size;
+    char data[SHELL_UPLOAD_DOWNLOAD_DATA_SIZE];
+};
 
 #endif /* SPIDER_H_ */
 

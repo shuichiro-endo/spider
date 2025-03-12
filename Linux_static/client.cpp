@@ -979,6 +979,696 @@ namespace spider
         return -1;
     }
 
+    std::vector<std::string> Client::split_input(const std::string& input)
+    {
+        std::vector<std::string> tokens;
+        std::istringstream stream(input);
+        std::string token;
+
+        while(stream >> token)
+        {
+            tokens.push_back(token);
+        }
+
+        return tokens;
+    }
+
+    int32_t Client::forwarder_shell_recv_data()
+    {
+        int32_t ret = 0;
+        int32_t rec = 0;
+        int32_t sen = 0;
+        int32_t len = 0;
+        int32_t send_length = 0;
+        fd_set readfds;
+        int nfds = -1;
+        struct timeval tv;
+
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+
+        std::string result;
+        std::string prompt = "\ncommand >";
+        std::string input;
+        std::vector <std::string> tokens;
+        std::string upload_file_name = "";
+        std::string upload_file_path = "";
+        uint64_t upload_file_size;
+        uint64_t upload_file_remaining_size;
+        uint64_t read_bytes;
+        struct upload_download_data *upload_download_data;
+
+
+        while(1)
+        {
+            FD_ZERO(&readfds);
+            FD_SET(sock, &readfds);
+            nfds = sock + 1;
+            tv.tv_sec = forwarder_tv_sec;
+            tv.tv_usec = forwarder_tv_usec;
+
+            ret = select(nfds,
+                         &readfds,
+                         NULL,
+                         NULL,
+                         &tv);
+            if(ret == 0)
+            {
+#ifdef _DEBUG
+                std::printf("[+] forwarder_shell_recv_data select timeout\n");
+#endif
+                break;
+            }
+
+            ret = FD_ISSET(sock,
+                           &readfds);
+            if(ret)
+            {
+#ifdef _DEBUG
+                std::printf("[+] [client -> client] recv\n");
+#endif
+                std::memset(buffer,
+                            0,
+                            buffer_max_length);
+
+                rec = recv(sock,
+                           buffer,
+                           socks5_message_data_max_size,
+                           0);
+                if(rec <= 0)
+                {
+                    if(errno == EINTR)
+                    {
+                        continue;
+                    }else if(errno == EAGAIN)
+                    {
+                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                        continue;
+                    }else
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] forwarder_shell_recv_data recv error: %d\n",
+                                    errno);
+#endif
+                        break;
+                    }
+                }else
+                {
+                    input = buffer;
+                    tokens = split_input(input);
+
+                    if(tokens.size() == 3
+                       && tokens[0] == "upload")
+                    {
+                        std::ifstream upload_file(tokens[1].c_str(),
+                                                  std::ios::binary);
+                        if(!upload_file.is_open())
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] file open error\n");
+#endif
+
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            result = "[-] file open error";
+                            result += prompt;
+                            len = result.size();
+                            std::memcpy(buffer,
+                                        result.c_str(),
+                                        result.size());
+                            send_length = 0;
+
+#ifdef _DEBUG
+                            std::printf("[+] [client <- client] send message_id:%u\n",
+                                        next_recv_message_id);
+#endif
+                            while(len > 0)
+                            {
+                                sen = send(sock,
+                                           buffer+send_length,
+                                           len,
+                                           MSG_NOSIGNAL);
+                                if(sen <= 0)
+                                {
+                                    if(errno == EINTR)
+                                    {
+                                        continue;
+                                    }else if(errno == EAGAIN)
+                                    {
+                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                        continue;
+                                    }else
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] forwarder_shell_recv_data send error: %d\n",
+                                                    errno);
+#endif
+                                        break;
+                                    }
+                                }
+                                send_length += sen;
+                                len -= sen;
+                            }
+
+                            continue;
+                        }else
+                        {
+                            upload_file.seekg(0, std::ios::end);
+                            upload_file_size = upload_file.tellg();
+                            upload_file_remaining_size = upload_file_size;
+                            upload_file.seekg(0, std::ios::beg);
+
+                            std::filesystem::path path(tokens[1].c_str());
+                            upload_file_name = path.filename().string();
+                            upload_file_path = tokens[2];
+
+                            while(upload_file_remaining_size > 0)
+                            {
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                upload_download_data = (struct upload_download_data *)buffer;
+
+                                upload_file.read(upload_download_data->data,
+                                                 SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
+
+                                read_bytes = upload_file.gcount();
+
+                                std::memcpy(upload_download_data->command,
+                                            "upload",
+                                            sizeof("upload"));
+
+                                if(upload_file_name.size() > 256)
+                                {
+                                    std::memcpy(upload_download_data->file_name,
+                                                upload_file_name.c_str(),
+                                                255);
+                                }else
+                                {
+                                    std::memcpy(upload_download_data->file_name,
+                                                upload_file_name.c_str(),
+                                                upload_file_name.size());
+                                }
+
+                                if(upload_file_path.size() > 256)
+                                {
+                                    std::memcpy(upload_download_data->file_path,
+                                                upload_file_path.c_str(),
+                                                255);
+                                }else
+                                {
+                                    std::memcpy(upload_download_data->file_path,
+                                                upload_file_path.c_str(),
+                                                upload_file_path.size());
+                                }
+
+                                upload_download_data->file_size = upload_file_size;
+                                upload_download_data->data_size = read_bytes;
+
+                                len = sizeof(struct upload_download_data_header) + read_bytes;
+
+#ifdef _DEBUG
+                                std::printf("[+] [client -> server] send_message message_id:%u\n",
+                                            send_message_id);
+#endif
+
+                                sen = send_message(buffer,
+                                                   len,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen <= 0){
+                                    break;
+                                }
+
+                                send_message_id++;
+                                upload_file_remaining_size -= read_bytes;
+                            }
+
+                            upload_file.close();
+
+                            if(sen <= 0)
+                            {
+                                break;
+                            }
+                        }
+                    }else
+                    {
+#ifdef _DEBUG
+                        std::printf("[+] [client -> server] send_message message_id:%u\n",
+                                    send_message_id);
+#endif
+                        sen = send_message(buffer,
+                                           rec,
+                                           forwarder_tv_sec,
+                                           forwarder_tv_usec);
+                        if(sen <= 0){
+                            break;
+                        }
+
+                        send_message_id++;
+                    }
+                }
+            }
+        }
+
+        free(buffer);
+        return 0;
+    }
+
+    int32_t Client::forwarder_shell_send_data()
+    {
+        int32_t ret = 0;
+        int32_t rec = 0;
+        int32_t sen = 0;
+        int32_t len = 0;
+        int32_t send_length = 0;
+        fd_set writefds;
+        int nfds = -1;
+        struct timeval tv;
+
+        char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                      sizeof(char));
+        int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
+        std::size_t check_msg_count = 0;
+        std::pair<int32_t, char *> msg;
+        recv_message_id = 0;
+
+        std::string result;
+        std::string prompt = "\ncommand >";
+        std::string input;
+        std::vector <std::string> tokens;
+        std::string download_file_name = "";
+        std::string download_file_path = "";
+        uint64_t download_file_size;
+        uint64_t recv_download_file_data_size;
+        uint64_t download_file_remaining_size;
+        char *download_file_data = NULL;
+        bool download_file_flag = false;
+        struct upload_download_data *upload_download_data;
+
+
+        while(1)
+        {
+            FD_ZERO(&writefds);
+            FD_SET(sock, &writefds);
+            nfds = sock + 1;
+            tv.tv_sec = forwarder_tv_sec;
+            tv.tv_usec = forwarder_tv_usec;
+
+            ret = select(nfds,
+                         NULL,
+                         &writefds,
+                         NULL,
+                         &tv);
+            if(ret == 0)
+            {
+#ifdef _DEBUG
+                std::printf("[+] forwarder_shell_send_data select timeout\n");
+#endif
+                break;
+            }
+
+            ret = FD_ISSET(sock,
+                           &writefds);
+            if(ret){
+#ifdef _DEBUG
+                std::printf("[+] [client <- server] recv_message\n");
+#endif
+                std::memset(buffer,
+                            0,
+                            buffer_max_length);
+
+                rec = recv_message(buffer,
+                                   buffer_max_length,
+                                   forwarder_tv_sec,
+                                   forwarder_tv_usec,
+                                   false);
+                if(rec > 0)
+                {
+                    if(recv_message_id == next_recv_message_id)
+                    {
+                        upload_download_data = (struct upload_download_data *)buffer;
+                        ret = strncmp(upload_download_data->command,
+                                      "download",
+                                      sizeof("download"));
+                        if(ret == 0)
+                        {
+                            next_recv_message_id++;
+
+                            if(download_file_flag == false)
+                            {
+                                download_file_flag = true;
+                                download_file_path = upload_download_data->file_path;
+                                download_file_path += "/";
+                                download_file_name = upload_download_data->file_name;
+                                download_file_name = download_file_path + download_file_name;
+                                download_file_size = upload_download_data->file_size;
+                                download_file_data = (char *)calloc(download_file_size,
+                                                                    sizeof(char));
+                                std::memcpy(download_file_data,
+                                            upload_download_data->data,
+                                            upload_download_data->data_size);
+
+                                recv_download_file_data_size = upload_download_data->data_size;
+                                download_file_remaining_size = download_file_size - recv_download_file_data_size;
+                                if(download_file_remaining_size > 0)
+                                {
+                                    continue;
+                                }
+                            }else
+                            {
+                                std::memcpy(download_file_data + recv_download_file_data_size,
+                                            upload_download_data->data,
+                                            upload_download_data->data_size);
+
+                                recv_download_file_data_size += upload_download_data->data_size;
+                                download_file_remaining_size -= upload_download_data->data_size;
+                                if(download_file_remaining_size > 0)
+                                {
+                                    continue;
+                                }
+                            }
+
+                            std::ofstream output_file(download_file_name.c_str(),
+                                                      std::ios::binary);
+
+                            output_file.write(download_file_data,
+                                              download_file_size);
+
+                            output_file.close();
+
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            result = "[+] download file: ";
+                            result += download_file_name;
+                            result += prompt;
+
+                            std::memcpy(buffer,
+                                        result.c_str(),
+                                        result.size());
+
+                            len = result.size();
+                            send_length = 0;
+#ifdef _DEBUG
+                            std::printf("[+] [client <- client] send\n");
+#endif
+                            while(len > 0)
+                            {
+                                sen = send(sock,
+                                           buffer+send_length,
+                                           len,
+                                           MSG_NOSIGNAL);
+                                if(sen <= 0)
+                                {
+                                    if(errno == EINTR)
+                                    {
+                                        continue;
+                                    }else if(errno == EAGAIN)
+                                    {
+                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                        continue;
+                                    }else
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] forwarder_shell_send_data send error: %d\n",
+                                                    errno);
+#endif
+                                        break;
+                                    }
+                                }
+                                send_length += sen;
+                                len -= sen;
+                            }
+
+                            download_file_flag = false;
+                            download_file_name = "";
+                            download_file_path = "";
+                            download_file_size = 0;
+                            recv_download_file_data_size = 0;
+                            download_file_remaining_size = 0;
+                            free(download_file_data);
+                            download_file_data = NULL;
+
+                            if(sen <= 0)
+                            {
+                                break;
+                            }
+                        }else
+                        {
+                            len = rec;
+                            send_length = 0;
+#ifdef _DEBUG
+                            std::printf("[+] [client <- client] send message_id:%u\n",
+                                        next_recv_message_id);
+#endif
+                            while(len > 0)
+                            {
+                                sen = send(sock,
+                                           buffer+send_length,
+                                           len,
+                                           MSG_NOSIGNAL);
+                                if(sen <= 0)
+                                {
+                                    if(errno == EINTR)
+                                    {
+                                        continue;
+                                    }else if(errno == EAGAIN)
+                                    {
+                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                        continue;
+                                    }else
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] forwarder_send_data send error: %d\n",
+                                                    errno);
+#endif
+                                        break;
+                                    }
+                                }
+                                send_length += sen;
+                                len -= sen;
+                            }
+
+                            next_recv_message_id++;
+                        }
+                    }else
+                    {
+                        msg = std::make_pair(rec,
+                                             buffer);
+                        msgs_map.insert({recv_message_id, msg});
+
+                        check_msg_count = msgs_map.count(next_recv_message_id);
+                        while(check_msg_count > 0)
+                        {
+                            msg = msgs_map[next_recv_message_id];
+                            msgs_map.erase(next_recv_message_id);
+                            next_recv_message_id++;
+                            check_msg_count = msgs_map.count(next_recv_message_id);
+
+                            buffer = msg.second;
+
+                            upload_download_data = (struct upload_download_data *)msg.second;
+                            ret = strncmp(upload_download_data->command,
+                                          "download",
+                                          sizeof("download"));
+                            if(ret == 0)
+                            {
+                                if(download_file_flag == false)
+                                {
+                                    download_file_flag = true;
+                                    download_file_path = upload_download_data->file_path;
+                                    download_file_path += "/";
+                                    download_file_name = upload_download_data->file_name;
+                                    download_file_name = download_file_path + download_file_name;
+                                    download_file_size = upload_download_data->file_size;
+                                    download_file_data = (char *)calloc(download_file_size,
+                                                                        sizeof(char));
+                                    std::memcpy(download_file_data,
+                                                upload_download_data->data,
+                                                upload_download_data->data_size);
+
+                                    recv_download_file_data_size = upload_download_data->data_size;
+                                    download_file_remaining_size = download_file_size - recv_download_file_data_size;
+
+                                    free(buffer);
+
+                                    if(download_file_remaining_size > 0)
+                                    {
+                                        continue;
+                                    }
+                                }else
+                                {
+                                    std::memcpy(download_file_data + recv_download_file_data_size,
+                                                upload_download_data->data,
+                                                upload_download_data->data_size);
+
+                                    recv_download_file_data_size += upload_download_data->data_size;
+                                    download_file_remaining_size -= upload_download_data->data_size;
+
+                                    free(buffer);
+
+                                    if(download_file_remaining_size > 0)
+                                    {
+                                        continue;
+                                    }
+                                }
+
+                                std::ofstream output_file(download_file_name.c_str(),
+                                                          std::ios::binary);
+
+                                output_file.write(download_file_data,
+                                                  download_file_size);
+
+                                output_file.close();
+
+
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                result = "[+] download file: ";
+                                result += download_file_name;
+                                result += prompt;
+
+                                std::memcpy(buffer,
+                                            result.c_str(),
+                                            result.size());
+
+                                len = result.size();
+                                send_length = 0;
+#ifdef _DEBUG
+                                std::printf("[+] [client <- client] send\n");
+#endif
+                                while(len > 0)
+                                {
+                                    sen = send(sock,
+                                               buffer+send_length,
+                                               len,
+                                               MSG_NOSIGNAL);
+                                    if(sen <= 0)
+                                    {
+                                        if(errno == EINTR)
+                                        {
+                                            continue;
+                                        }else if(errno == EAGAIN)
+                                        {
+                                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                            continue;
+                                        }else
+                                        {
+#ifdef _DEBUG
+                                            std::printf("[-] forwarder_shell_send_data send error: %d\n",
+                                                        errno);
+#endif
+                                            break;
+                                        }
+                                    }
+                                    send_length += sen;
+                                    len -= sen;
+                                }
+
+                                download_file_flag = false;
+                                download_file_name = "";
+                                download_file_path = "";
+                                download_file_size = 0;
+                                recv_download_file_data_size = 0;
+                                download_file_remaining_size = 0;
+                                free(download_file_data);
+                                download_file_data = NULL;
+
+                                if(sen <= 0)
+                                {
+                                    break;
+                                }
+                            }else
+                            {
+                                len = msg.first;
+                                buffer = msg.second;
+                                send_length = 0;
+#ifdef _DEBUG
+                                std::printf("[+] [client <- client] send message_id:%u\n",
+                                            next_recv_message_id);
+#endif
+                                while(len > 0)
+                                {
+                                    sen = send(sock,
+                                               buffer+send_length,
+                                               len,
+                                               MSG_NOSIGNAL);
+                                    if(sen <= 0)
+                                    {
+                                        if(errno == EINTR)
+                                        {
+                                            continue;
+                                        }else if(errno == EAGAIN)
+                                        {
+                                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                            continue;
+                                        }else
+                                        {
+#ifdef _DEBUG
+                                            std::printf("[-] forwarder_send_data send error: %d\n",
+                                                        errno);
+#endif
+                                            break;
+                                        }
+                                    }
+                                    send_length += sen;
+                                    len -= sen;
+                                }
+
+                                free(buffer);
+                            }
+
+                            buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                                    sizeof(char));
+                        }
+                    }
+                }else
+                {
+                    break;
+                }
+            }
+        }
+
+        for(auto it = msgs_map.begin(); it != msgs_map.end();)
+        {
+            msg = it->second;
+            free(msg.second);
+            it = msgs_map.erase(it);
+        }
+
+        if(download_file_data != NULL)
+        {
+            free(download_file_data);
+        }
+
+        free(buffer);
+        return 0;
+    }
+
+    int32_t Client::forwarder_shell()
+    {
+        std::thread thread1(&Client::forwarder_shell_recv_data,
+                            this);
+        std::thread thread2(&Client::forwarder_shell_send_data,
+                            this);
+
+        thread1.join();
+        thread2.join();
+
+        return 0;
+    }
+
     int32_t Client::do_socks5_connection_shell()
     {
         static char authentication_method = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
@@ -1212,11 +1902,11 @@ namespace spider
 
         // forwarder [client <> client <> server <> target]
 #ifdef _DEBUG
-        std::printf("[+] [client <> client <> server <> target] forwarder\n");
+        std::printf("[+] [client <> client <> server <> target] forwarder_shell\n");
 #endif
 
         send_message_id++;
-        forwarder();
+        forwarder_shell();
 
 #ifdef _DEBUG
         std::printf("[+] worker exit\n");

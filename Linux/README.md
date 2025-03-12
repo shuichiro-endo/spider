@@ -674,6 +674,16 @@ command >ip a
     inet6 fe80::a00:27ff:fe25:c316/64 scope link noprefixroute 
        valid_lft forever preferred_lft forever
 
+command >ls /tmp/spider.jpg 2>&1
+ls: cannot access '/tmp/spider.jpg': No such file or directory
+
+command >upload /home/vboxuser/sample/spider.jpg /tmp
+[+] upload file: /tmp/spider.jpg
+command >ls /tmp/spider.jpg 2>&1
+/tmp/spider.jpg
+
+command >download /tmp/spider.jpg /home/vboxuser/Pictures
+[+] download file: /home/vboxuser/Pictures/spider.jpg
 command >exit
 
 ^C
@@ -704,7 +714,7 @@ ok? (yes:y no:n quit:q)                        > y
 
 ```
 ```
-ncat -6 fe80::a00:27ff:febe:3a77%enp0s3 10000
+> ncat -6 fe80::a00:27ff:febe:3a77%enp0s3 10000
 
 
 command >id
@@ -726,6 +736,16 @@ command >ip a
     inet6 fe80::a00:27ff:fe25:c316/64 scope link noprefixroute 
        valid_lft forever preferred_lft forever
 
+command >ls /tmp/spider.jpg 2>&1
+ls: cannot access '/tmp/spider.jpg': No such file or directory
+
+command >upload /home/vboxuser/sample/spider.jpg /tmp
+[+] upload file: /tmp/spider.jpg
+command >ls /tmp/spider.jpg 2>&1
+/tmp/spider.jpg
+
+command >download /tmp/spider.jpg /home/vboxuser/Pictures
+[+] download file: /home/vboxuser/Pictures/spider.jpg
 command >exit
 
 ^C

