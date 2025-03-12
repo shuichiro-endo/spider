@@ -1021,6 +1021,47 @@ namespace spider
         struct upload_download_data *upload_download_data;
 
 
+        // output prompt
+        std::memset(buffer,
+                    0,
+                    buffer_max_length);
+        std::memcpy(buffer,
+                    prompt.c_str(),
+                    prompt.size());
+        len = prompt.size();
+        send_length = 0;
+
+#ifdef _DEBUG
+        std::printf("[+] [client <- client] send\n");
+#endif
+        while(len > 0)
+        {
+            sen = send(sock,
+                       buffer+send_length,
+                       len,
+                       MSG_NOSIGNAL);
+            if(sen <= 0)
+            {
+                if(errno == EINTR)
+                {
+                    continue;
+                }else if(errno == EAGAIN)
+                {
+                    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                    continue;
+                }else
+                {
+#ifdef _DEBUG
+                    std::printf("[-] forwarder_shell_recv_data send error: %d\n",
+                                errno);
+#endif
+                    break;
+                }
+            }
+            send_length += sen;
+            len -= sen;
+        }
+
         while(1)
         {
             FD_ZERO(&readfds);
@@ -1103,8 +1144,7 @@ namespace spider
                             send_length = 0;
 
 #ifdef _DEBUG
-                            std::printf("[+] [client <- client] send message_id:%u\n",
-                                        next_recv_message_id);
+                            std::printf("[+] [client <- client] send\n");
 #endif
                             while(len > 0)
                             {
