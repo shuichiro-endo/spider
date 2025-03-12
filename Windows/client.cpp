@@ -1291,7 +1291,7 @@ namespace spider
                          &tv);
             if(ret == 0)
             {
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                 std::printf("[+] forwarder_shell_send_data select timeout\n");
 #endif
                 break;
@@ -1306,7 +1306,7 @@ namespace spider
             ret = FD_ISSET(sock,
                            &writefds);
             if(ret){
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                 std::printf("[+] [client <- server] recv_message\n");
 #endif
                 std::memset(buffer,
@@ -1386,7 +1386,7 @@ namespace spider
 
                             len = result.size();
                             send_length = 0;
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                             std::printf("[+] [client <- client] send\n");
 #endif
                             while(len > 0)
@@ -1432,7 +1432,7 @@ namespace spider
                         {
                             len = rec;
                             send_length = 0;
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                             std::printf("[+] [client <- client] send message_id:%u\n",
                                         next_recv_message_id);
 #endif
@@ -1553,7 +1553,7 @@ namespace spider
 
                                 len = result.size();
                                 send_length = 0;
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                                 std::printf("[+] [client <- client] send\n");
 #endif
                                 while(len > 0)
@@ -1600,7 +1600,7 @@ namespace spider
                                 len = msg.first;
                                 buffer = msg.second;
                                 send_length = 0;
-#ifdef _DEBUG
+#ifdef DEBUGPRINT
                                 std::printf("[+] [client <- client] send message_id:%u\n",
                                             next_recv_message_id);
 #endif
