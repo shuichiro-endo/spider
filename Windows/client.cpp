@@ -1472,7 +1472,7 @@ namespace spider
                             send_length = 0;
 #ifdef DEBUGPRINT
                             std::printf("[+] [client <- client] send message_id:%u\n",
-                                        next_recv_message_id);
+                                        next_recv_message_id - 1);
 #endif
                             while(len > 0)
                             {
@@ -1640,7 +1640,7 @@ namespace spider
                                 send_length = 0;
 #ifdef DEBUGPRINT
                                 std::printf("[+] [client <- client] send message_id:%u\n",
-                                            next_recv_message_id);
+                                            next_recv_message_id - 1);
 #endif
                                 while(len > 0)
                                 {
