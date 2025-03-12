@@ -123,8 +123,6 @@ command >
 ### 1: add node (spider client)
 > [!NOTE]
 > The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
->
-> Please set the forwarder timeout to a larger value. (The default is 30 seconds.)
 - ipv4
 ```
 command > 1
@@ -654,7 +652,6 @@ ok? (yes:y no:n quit:q)                        > y
 ```
 > nc 192.168.0.25 10000
 
-
 command >id
 uid=1000(vboxuser) gid=1000(vboxuser) groups=1000(vboxuser),100(users)
 
@@ -715,7 +712,6 @@ ok? (yes:y no:n quit:q)                        > y
 ```
 ```
 > ncat -6 fe80::a00:27ff:febe:3a77%enp0s3 10000
-
 
 command >id
 uid=1000(vboxuser) gid=1000(vboxuser) groups=1000(vboxuser),100(users)
