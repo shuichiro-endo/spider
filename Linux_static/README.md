@@ -151,9 +151,21 @@ make
 ```
 5. check if it is a statically linked binary
 ```
-file spider
+> file spider
+spider: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=03cbdb3be02d9fee73a2b80e6c56d760eade86a2, for GNU/Linux 4.4.0, not stripped
 
-ldd spider
+> ldd spider
+not a dynamic executable
+```
+6. run strip command (optional)
+```
+> strip spider
+
+> file spider
+spider: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=03cbdb3be02d9fee73a2b80e6c56d760eade86a2, for GNU/Linux 4.4.0, stripped
+
+> nm spider
+nm: spider: no symbol
 ```
 
 ## Usage
