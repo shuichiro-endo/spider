@@ -73,7 +73,7 @@ The -4, -6, -u, and -l option set the ip address of the network interface.
 Create nodes configured in the config file at startup.
 
 > [!NOTE]
-> The sample config file is a config_sample.txt file.
+> [config_sample.txt](https://github.com/shuichiro-endo/spider/blob/main/Linux/config_sample.txt) is a sample.
 
 #### [-d (daemon)]
 Start as a daemon.
