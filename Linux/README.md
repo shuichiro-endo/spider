@@ -595,7 +595,7 @@ Set the type of edit mode.
 
 If you want to add a route to the routing table, set 'a'.
 
-If you want to delete a route to the routing table, set 'd'.
+If you want to delete a route from the routing table, set 'd'.
 
 If you want to quit, set 'q'.
 

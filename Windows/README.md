@@ -34,13 +34,6 @@ compile.bat
 The usage is the same as the Linux version.
 
 ### help
-> [!NOTE]
-> In auto mode with the -r option, routing information is automatically exchanged between spiders.
-> 
-> In self mode, routing information is not exchanged between spiders, so please set the routing information manually.
->
-> If the -r option is not set, it is in auto mode by default.
-
 ```
 > spider.exe -h
 
