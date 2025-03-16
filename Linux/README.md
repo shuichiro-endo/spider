@@ -29,13 +29,6 @@ make
 
 ## Usage
 ### help
-> [!NOTE]
-> In auto mode with the -r option, routing information is automatically exchanged between spiders.
-> 
-> In self mode, routing information is not exchanged between spiders, so please set the routing information manually.
->
-> If the -r option is not set, it is in auto mode by default.
-
 ```
 > ./spider -h
 
@@ -70,13 +63,51 @@ example : ./spider
         : ./spider -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
 
 ```
+#### [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
+The -4, -6, -u, and -l option set the ip address of the network interface.
+
+> [!NOTE]
+> Some ip addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
+
+#### [-f config_file]
+Create nodes configured in the config file at startup.
+
+> [!NOTE]
+> The sample config file is a config_sample.txt file.
+
+#### [-d (daemon)]
+Start as a daemon.
+
+> [!CAUTION]
+> Be careful, as it will become invisible.
+>
+> You need to use with pipe client node startup options (-i and -p option).
+> 
+> You need to operate from other spider.
+
+#### [-i pipe_destination_ip] [-p pipe_destination_port]
+Create pipe client node at startup.
+
+Set the ip address and port number of the destination pipe server node.
+
+> [!IMPORTANT]
+> In advance, you need to create the pipe server node on the other spider.
+
+#### [-r routing_mode(auto:a self:s)]
+In auto mode with the -r option, routing information is automatically exchanged between spiders.
+
+In self mode, routing information is not exchanged between spiders, so please set the routing information manually.
+
+If the -r option is not set, it is in auto mode by default.
+
+#### [-e x(xor encryption)] [-k key(hexstring)]
+Encrypt SOCKS5 packets using xor.
+
+#### [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
+Encrypt SOCKS5 packets using aes-256-cbc.
+
 
 ### run
-> [!NOTE]
-> The -4, -6, -u, and -l option set the IP address of the network interface.
-> 
-> Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
-
 ```
 > ./spider
 
@@ -121,8 +152,6 @@ command >
 ```
 
 ### 1: add node (spider client)
-> [!NOTE]
-> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
 - ipv4
 ```
 command > 1
@@ -170,6 +199,31 @@ forwarder_tv_usec         :       0 microsec
 ok? (yes:y no:n quit:q) > y
 
 ```
+#### client listen ip
+Set the ip address of the interface that the client node will listen on.
+
+#### client listen port
+Set the port number that the client node will listen on.
+
+#### destination spider ip
+Set the ip address of the destination spider.
+
+> [!IMPORTANT]
+> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
+
+#### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
+Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
+
+#### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
+Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
+
+> [!NOTE]
+> If you access web sites, set the timeout value shorter. (5s - 30s)
+>
+> If you access ssh server, set the forwarder timeout value longer. (300s - 3600s)
+
+> [!IMPORTANT]
+> The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
 ### 2: add node (spider pipe)
 1. pipe (server)
@@ -206,7 +260,6 @@ pipe listen port        : 1026
 ok? (yes:y no:n quit:q) > y
 
 ```
-
 2. pipe (client)
 - ipv4
 ```
@@ -243,6 +296,27 @@ pipe destination port   : 1026
 ok? (yes:y no:n quit:q) > y
 
 ```
+#### mode (client:c server:s)
+Set the type of the pipe node that you want to create.
+
+If you want to create the pipe client node, set 'c'.
+
+If you want to create the pipe server node, set 's'.
+
+#### pipe listen ip (pipe server)
+Set the ip address of the interface that the pipe server node will listen on.
+
+#### pipe listen port (pipe server)
+Set the port number that the pipe server node will listen on.
+
+#### pipe ip (pipe client)
+Set the ip address of the interface that the pipe client node.
+
+#### pipe destination ip (pipe client)
+Set the ip address of the destination pipe server node.
+
+#### pipe destination port (pipe client)
+Set the port number of the destination pipe server node.
 
 ### 3: show node information
 1. self
@@ -340,6 +414,21 @@ ok? (yes:y no:n quit:q)                        > y
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ```
+#### mode (self:s other:o)
+Set the type of mode.
+
+If you want to see the node information of the spider itself, set 's'.
+
+If you want to see the node information of other spider, set 'o'.
+
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+
+#### source spider ip (other)
+Set the ip address of the spider itself.
+
+#### destination spider ip (other)
+Set the ip address of the destination spider that you want to see the node information.
 
 ### 4: show routing table
 ```
@@ -501,6 +590,26 @@ ok? (yes:y no:n quit:q)            > y
 edit mode (add:a delete:d quit:q)  >
 
 ```
+#### edit mode (add:a delete:d quit:q)
+Set the type of edit mode.
+
+If you want to add a route to the routing table, set 'a'.
+
+If you want to delete a route to the routing table, set 'd'.
+
+If you want to quit, set 'q'.
+
+#### ip address (add)
+Set the ip address of the destination spider that you want to add to the routing table.
+
+#### metric (0 < metric <= 255) (add)
+Set the metric (the number of spiders to pass through) to the destination spider.
+
+#### pipe id (add)
+Set the pipe id for sending packets to the destination spider.
+
+#### ip address (delete)
+Set the ip address of the destination spider that you want to delete from the routing table.
 
 ### 6: add node (spider client udp)
 > [!IMPORTANT]
@@ -619,6 +728,29 @@ google.com.		265	IN	A	142.250.76.142
 ;; MSG SIZE  rcvd: 55
 
 ```
+#### client listen ip
+Set the ip address of the interface that the client node will listen on.
+
+#### client listen port
+Set the port number that the client node will listen on.
+
+#### destination spider ip
+Set the ip address of the destination spider.
+
+> [!IMPORTANT]
+> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
+
+#### target ip (ipv4<16, domainname<256, ipv6<46)
+Set the ip address of the destination server (UDP).
+
+#### target port
+Set the port number of the destination server (UDP).
+
+#### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
+Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
+
+#### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
+Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
 
 ### 7: add node (spider client shell)
 > [!IMPORTANT]
@@ -746,6 +878,28 @@ command >exit
 
 ^C
 ```
+#### client listen ip
+Set the ip address of the interface that the client node will listen on.
+
+#### client listen port
+Set the port number that the client node will listen on.
+
+#### destination spider ip
+Set the ip address of the destination spider.
+
+> [!IMPORTANT]
+> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
+
+#### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
+Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
+
+#### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
+Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
+
+Set the forwarder timeout value longer. (300s - 3600s)
+
+> [!IMPORTANT]
+> The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
 ### 8: add node (spider client) to destination spider
 > [!IMPORTANT]
@@ -805,6 +959,37 @@ forwarder_tv_usec            :       0 microsec
 ok? (yes:y no:n quit:q)                        > y
 
 ```
+#### source spider ip
+Set the ip address of the spider itself.
+
+#### destination spider ip
+Set the ip address of the destination spider that you want to add the client node.
+
+#### client listen ip
+Set the ip address of the interface that the client node will listen on.
+
+#### client listen port
+Set the port number that the client node will listen on.
+
+#### client destination spider ip
+Set the ip address of the destination spider.
+
+> [!IMPORTANT]
+> The startup location of the spider server node is determined by the 'client destination spider ip' when adding the spider client node.
+
+#### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
+Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
+
+#### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
+Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
+
+> [!NOTE]
+> If you access web sites, set the timeout value shorter. (5s - 30s)
+>
+> If you access ssh server, set the forwarder timeout value longer. (300s - 3600s)
+
+> [!IMPORTANT]
+> The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
 ### 9: add node (spider pipe) to destination spider
 > [!IMPORTANT]
@@ -893,6 +1078,33 @@ pipe destination port     : 1031
 ok? (yes:y no:n quit:q)                        > y
 
 ```
+#### mode (client:c server:s)
+Set the type of the pipe node that you want to create.
+
+If you want to create the pipe client node, set 'c'.
+
+If you want to create the pipe server node, set 's'.
+
+#### source spider ip (pipe client, pipe server)
+Set the ip address of the spider itself.
+
+#### destination spider ip (pipe client, pipe server)
+Set the ip address of the destination spider that you want to add the pipe node.
+
+#### pipe listen ip (pipe server)
+Set the ip address of the interface that the pipe server node will listen on.
+
+#### pipe listen port (pipe server)
+Set the port number that the pipe server node will listen on.
+
+#### pipe ip (pipe client)
+Set the ip address of the interface that the pipe client node.
+
+#### pipe destination ip (pipe client)
+Set the ip address of the destination pipe server node.
+
+#### pipe destination port (pipe client)
+Set the port number of the destination pipe server node.
 
 ## Example
 ![](./imgs/img01.jpg)

@@ -75,13 +75,50 @@ example : spider.exe
         : spider.exe -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
 
 ```
+#### [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
+The -4, -6, -u, and -l option set the ip address of the network interface.
+
+> [!NOTE]
+> Some ip addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
+
+#### [-f config_file]
+Create nodes configured in the config file at startup.
+
+> [!NOTE]
+> The sample config file is a config_sample.txt file.
+
+#### [-d (hide)]
+Hide the console window.
+
+> [!CAUTION]
+> Be careful, as it will become invisible.
+>
+> You need to use with pipe client node startup options (-i and -p option).
+> 
+> You need to operate from other spider.
+
+#### [-i pipe_destination_ip] [-p pipe_destination_port]
+Create pipe client node at startup.
+
+Set the ip address and port number of the destination pipe server node.
+
+> [!IMPORTANT]
+> In advance, you need to create the pipe server node on the other spider.
+
+#### [-r routing_mode(auto:a self:s)]
+In auto mode with the -r option, routing information is automatically exchanged between spiders.
+
+In self mode, routing information is not exchanged between spiders, so please set the routing information manually.
+
+If the -r option is not set, it is in auto mode by default.
+
+#### [-e x(xor encryption)] [-k key(hexstring)]
+Encrypt SOCKS5 packets using xor.
+
+#### [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
+Encrypt SOCKS5 packets using aes-256-cbc.
 
 ### run
-> [!NOTE]
-> The -4, -6, -u, and -l option set the IP address of the network interface.
-> 
-> Some IP addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
-
 ```
 > spider.exe
 
