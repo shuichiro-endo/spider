@@ -111,6 +111,8 @@ Encrypt SOCKS5 packets using xor.
 #### [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
 Encrypt SOCKS5 packets using aes-256-cbc.
 
+[This program (tools/generate_aes_key_hex_string.py)](https://github.com/shuichiro-endo/spider/blob/main/tools/generate_aes_key_hex_string.py) can be used for key generation.
+
 ### run
 ```
 > spider.exe
