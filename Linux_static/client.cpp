@@ -353,7 +353,6 @@ namespace spider
         int32_t ret = 0;
         int32_t sen = 0;
         std::shared_ptr<Socks5message> socks5_message;
-        struct socks5_message_data *socks5_message_data;
 
 
         if(data_size > SOCKS5_MESSAGE_DATA_SIZE){
@@ -386,26 +385,21 @@ namespace spider
         print_bytes(buffer, data_size);
 #endif
 
-        socks5_message_data = (struct socks5_message_data *)calloc(1,
-                                                            sizeof(struct socks5_message_data));
-
-        socks5_message_data->message_type = 's';
-        socks5_message_data->message_id = send_message_id;
-        socks5_message_data->connection_id = connection_id;
-        socks5_message_data->client_id = client_id;
-        socks5_message_data->server_id = server_id;
-        socks5_message_data->source_node_type = 'c';
-        memcpy(&socks5_message_data->source_ip, client_ip.c_str(), client_ip.size());
-        socks5_message_data->destination_node_type = 's';
-        memcpy(&socks5_message_data->destination_ip, destination_spider_ip.c_str(), destination_spider_ip.size());
-        socks5_message_data->tv_sec = tv_sec;
-        socks5_message_data->tv_usec = tv_usec;
-        socks5_message_data->forwarder_tv_sec = forwarder_tv_sec;
-        socks5_message_data->forwarder_tv_usec = forwarder_tv_usec;
-        socks5_message_data->data_size = data_size;
-        memcpy(&socks5_message_data->data, buffer, data_size);
-
-        socks5_message = std::make_shared<Socks5message>(socks5_message_data);
+        socks5_message = std::make_shared<Socks5message>('s',
+                                                         send_message_id,
+                                                         connection_id,
+                                                         client_id,
+                                                         server_id,
+                                                         'c',
+                                                         client_ip,
+                                                         's',
+                                                         destination_spider_ip,
+                                                         tv_sec,
+                                                         tv_usec,
+                                                         forwarder_tv_sec,
+                                                         forwarder_tv_usec,
+                                                         data_size,
+                                                         buffer);
 
         ret = message_manager->push_timeout_socks5_message(socks5_message,
                                                            tv_sec,
@@ -418,7 +412,6 @@ namespace spider
             sen = data_size;
         }
 
-        free(socks5_message_data);
         return sen;
     }
 

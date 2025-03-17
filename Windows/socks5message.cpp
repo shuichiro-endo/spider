@@ -9,25 +9,71 @@
 
 namespace spider
 {
+    Socks5message::Socks5message(char message_type,
+                                 uint32_t message_id,
+                                 uint32_t connection_id,
+                                 uint32_t client_id,
+                                 uint32_t server_id,
+                                 char source_node_type,
+                                 std::string source_ip,
+                                 char destination_node_type,
+                                 std::string destination_ip,
+                                 int32_t tv_sec,
+                                 int32_t tv_usec,
+                                 int32_t forwarder_tv_sec,
+                                 int32_t forwarder_tv_usec,
+                                 uint16_t data_size,
+                                 char *data)
+    {
+        this->message_type = message_type;
+        this->message_id = message_id;
+        this->connection_id = connection_id;
+        this->client_id = client_id;
+        this->server_id = server_id;
+        this->source_node_type = source_node_type;
+        this->source_ip = source_ip;
+        this->destination_node_type = destination_node_type;
+        this->destination_ip = destination_ip;
+        this->tv_sec = tv_sec;
+        this->tv_usec = tv_usec;
+        this->forwarder_tv_sec = forwarder_tv_sec;
+        this->forwarder_tv_usec = forwarder_tv_usec;
+        this->data_size = data_size;
+
+        this->data = (char *)calloc(SOCKS5_MESSAGE_DATA_SIZE,
+                                    sizeof(char));
+        if(this->data_size <= SOCKS5_MESSAGE_DATA_SIZE){
+            std::memcpy(this->data,
+                        data,
+                        this->data_size);
+        }else{
+#ifdef DEBUGPRINT
+            std::printf("[-] socks5 message data size error: %d\n",
+                        this->data_size);
+#endif
+            this->data_size = SOCKS5_MESSAGE_DATA_SIZE;
+            std::memcpy(this->data,
+                        data,
+                        SOCKS5_MESSAGE_DATA_SIZE);
+        }
+    }
+
     Socks5message::Socks5message(struct socks5_message_data *socks5_message_data)
     {
         this->message_type = socks5_message_data->message_type;
-        this->message_id = socks5_message_data->message_id;
-        this->connection_id = socks5_message_data->connection_id;
-        this->client_id = socks5_message_data->client_id;
-        this->server_id = socks5_message_data->server_id;
+        this->message_id = ntohl(socks5_message_data->message_id);
+        this->connection_id = ntohl(socks5_message_data->connection_id);
+        this->client_id = ntohl(socks5_message_data->client_id);
+        this->server_id = ntohl(socks5_message_data->server_id);
         this->source_node_type = socks5_message_data->source_node_type;
-
         this->source_ip = socks5_message_data->source_ip;
-
         this->destination_node_type = socks5_message_data->destination_node_type;
         this->destination_ip = socks5_message_data->destination_ip;
-
-        this->tv_sec = socks5_message_data->tv_sec;
-        this->tv_usec = socks5_message_data->tv_usec;
-        this->forwarder_tv_sec = socks5_message_data->forwarder_tv_sec;
-        this->forwarder_tv_usec = socks5_message_data->forwarder_tv_usec;
-        this->data_size = socks5_message_data->data_size;
+        this->tv_sec = ntohl(socks5_message_data->tv_sec);
+        this->tv_usec = ntohl(socks5_message_data->tv_usec);
+        this->forwarder_tv_sec = ntohl(socks5_message_data->forwarder_tv_sec);
+        this->forwarder_tv_usec = ntohl(socks5_message_data->forwarder_tv_usec);
+        this->data_size = ntohs(socks5_message_data->data_size);
 
         this->data = (char *)calloc(SOCKS5_MESSAGE_DATA_SIZE,
                                     sizeof(char));
@@ -213,19 +259,19 @@ namespace spider
 
         struct socks5_message_data *socks5_message_data = (struct socks5_message_data *)buffer;
         socks5_message_data->message_type = this->message_type;
-        socks5_message_data->message_id = this->message_id;
-        socks5_message_data->connection_id = this->connection_id;
-        socks5_message_data->client_id = this->client_id;
-        socks5_message_data->server_id = this->server_id;
+        socks5_message_data->message_id = htonl(this->message_id);
+        socks5_message_data->connection_id = htonl(this->connection_id);
+        socks5_message_data->client_id = htonl(this->client_id);
+        socks5_message_data->server_id = htonl(this->server_id);
         socks5_message_data->source_node_type = this->source_node_type;
         std::memcpy(socks5_message_data->source_ip, this->source_ip.c_str(), this->source_ip.size());
         socks5_message_data->destination_node_type = this->destination_node_type;
         std::memcpy(socks5_message_data->destination_ip, this->destination_ip.c_str(), this->destination_ip.size());
-        socks5_message_data->tv_sec = this->tv_sec;
-        socks5_message_data->tv_usec = this->tv_usec;
-        socks5_message_data->forwarder_tv_sec = this->forwarder_tv_sec;
-        socks5_message_data->forwarder_tv_usec = this->forwarder_tv_usec;
-        socks5_message_data->data_size = this->data_size;
+        socks5_message_data->tv_sec = htonl(this->tv_sec);
+        socks5_message_data->tv_usec = htonl(this->tv_usec);
+        socks5_message_data->forwarder_tv_sec = htonl(this->forwarder_tv_sec);
+        socks5_message_data->forwarder_tv_usec = htonl(this->forwarder_tv_usec);
+        socks5_message_data->data_size = htons(this->data_size);
         std::memcpy(socks5_message_data->data, this->data, this->data_size);
 
         length = sizeof(struct socks5_message_data_header)

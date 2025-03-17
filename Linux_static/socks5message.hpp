@@ -78,7 +78,21 @@ namespace spider
     private:
 
     public:
-        Socks5message();
+        Socks5message(char message_type,
+                      uint32_t message_id,
+                      uint32_t connection_id,
+                      uint32_t client_id,
+                      uint32_t server_id,
+                      char source_node_type,
+                      std::string source_ip,
+                      char destination_node_type,
+                      std::string destination_ip,
+                      int32_t tv_sec,
+                      int32_t tv_usec,
+                      int32_t forwarder_tv_sec,
+                      int32_t forwarder_tv_usec,
+                      uint16_t data_size,
+                      char *data);
 
         Socks5message(struct socks5_message_data *socks5_message_data);
 

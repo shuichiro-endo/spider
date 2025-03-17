@@ -321,7 +321,7 @@ namespace spider
 
                                 routing_message_data = (struct routing_message_data *)buffer;
 
-                                recv_data_size = routing_message_data->data_size;
+                                recv_data_size = ntohs(routing_message_data->data_size);
 
                                 remaining_size = recv_data_size;
                             }
@@ -338,7 +338,7 @@ namespace spider
 
                                 socks5_message_data = (struct socks5_message_data*)buffer;
 
-                                recv_data_size = socks5_message_data->data_size;
+                                recv_data_size = ntohs(socks5_message_data->data_size);
 
                                 remaining_size = recv_data_size;
                             }
@@ -364,10 +364,10 @@ namespace spider
                             }else
                             {
                                 routing_message_data = (struct routing_message_data *)buffer;
-                                if(rec < routing_message_header_size + routing_message_data->data_size)
+                                if(rec < routing_message_header_size + ntohs(routing_message_data->data_size))
                                 {
                                     continue;
-                                }else if(rec == routing_message_header_size + routing_message_data->data_size)
+                                }else if(rec == routing_message_header_size + ntohs(routing_message_data->data_size))
                                 {
                                     routing_message = std::make_unique<Routingmessage>(this->get_pipe_id(),
                                                                                        routing_message_data);
@@ -388,10 +388,10 @@ namespace spider
                             }else
                             {
                                 socks5_message_data = (struct socks5_message_data *)buffer;
-                                if(rec < socks5_message_header_size + socks5_message_data->data_size)
+                                if(rec < socks5_message_header_size + ntohs(socks5_message_data->data_size))
                                 {
                                     continue;
-                                }else if(rec == socks5_message_header_size + socks5_message_data->data_size)
+                                }else if(rec == socks5_message_header_size + ntohs(socks5_message_data->data_size))
                                 {
                                     socks5_message = std::make_unique<Socks5message>(socks5_message_data);
                                     if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip()

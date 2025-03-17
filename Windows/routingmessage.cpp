@@ -23,7 +23,7 @@ namespace spider
     {
         this->pipe_id = pipe_id;
         this->message_type = routing_message_data->message_type;
-        this->data_size = routing_message_data->data_size;
+        this->data_size = ntohs(routing_message_data->data_size);
 
         this->data = (char *)calloc(ROUTING_MESSAGE_DATA_SIZE,
                                     sizeof(char));
@@ -99,7 +99,7 @@ namespace spider
 
         struct routing_message_data *routing_message_data = (struct routing_message_data *)buffer;
         routing_message_data->message_type = this->message_type;
-        routing_message_data->data_size = this->data_size;
+        routing_message_data->data_size = htons(this->data_size);
         std::memcpy(routing_message_data->data, this->data, this->data_size);
 
         length = sizeof(struct routing_message_data_header)
