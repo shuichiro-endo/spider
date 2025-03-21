@@ -82,7 +82,10 @@ namespace spider
         return socks5_message;
     }
 
-    int32_t Node::recv_data(char *buffer, int32_t buffer_size, long tv_sec, long tv_usec)
+    int32_t Node::recv_data(char *buffer,
+                            int32_t buffer_size,
+                            long tv_sec,
+                            long tv_usec)
     {
         int ret = 0;
         int32_t rec = 0;
@@ -160,7 +163,10 @@ namespace spider
         return rec;
     }
 
-    int32_t Node::send_data(char *buffer, int32_t data_size, long tv_sec, long tv_usec)
+    int32_t Node::send_data(char *buffer,
+                            int32_t data_size,
+                            long tv_sec,
+                            long tv_usec)
     {
         int ret = 0;
         int32_t sen = 0;

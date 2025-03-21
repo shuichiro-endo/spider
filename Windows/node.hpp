@@ -49,8 +49,15 @@ namespace spider
                                             int32_t tv_sec,
                                             int32_t tv_usec);
 
-        int32_t recv_data(char *buffer, int32_t buffer_length, long tv_sec, long tv_usec);
-        int32_t send_data(char *buffer, int32_t buffer_length, long tv_sec, long tv_usec);
+        int32_t recv_data(char *buffer,
+                          int32_t buffer_size,
+                          long tv_sec,
+                          long tv_usec);
+
+        int32_t send_data(char *buffer,
+                          int32_t data_size,
+                          long tv_sec,
+                          long tv_usec);
 
         uint32_t generate_random_id();
 
