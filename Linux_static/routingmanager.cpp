@@ -330,7 +330,12 @@ namespace spider
         {
             route = routes_map[route_new_key];
 
-            if(route_new->get_metric() <= route->get_metric())
+            if(route_new->get_metric() < route->get_metric())
+            {
+                routes_map[route_new_key] = route_new;
+                ret = 0;
+            }else if((route_new->get_metric() == route->get_metric())
+                     && (route_new->get_pipe_id() == route->get_pipe_id()))
             {
                 routes_map[route_new_key] = route_new;
                 ret = 0;
