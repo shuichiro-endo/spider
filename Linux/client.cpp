@@ -743,7 +743,7 @@ namespace spider
 #endif
 
         rec = recv_message(buffer,
-                           sen,
+                           buffer_max_length,
                            tv_sec,
                            tv_usec,
                            true);
@@ -1750,7 +1750,7 @@ namespace spider
 #endif
 
         rec = recv_message(buffer,
-                           sen,
+                           buffer_max_length,
                            tv_sec,
                            tv_usec,
                            true);
@@ -2066,7 +2066,7 @@ namespace spider
 #endif
 
         rec = recv_message(buffer,
-                           sen,
+                           buffer_max_length,
                            tv_sec,
                            tv_usec,
                            true);
@@ -2362,7 +2362,7 @@ namespace spider
 #endif
 
         rec = recv_message(buffer,
-                           sen,
+                           buffer_max_length,
                            tv_sec,
                            tv_usec,
                            true);
@@ -2913,7 +2913,7 @@ namespace spider
 #endif
 
         rec = recv_message(buffer,
-                           sen,
+                           buffer_max_length,
                            tv_sec,
                            tv_usec,
                            true);
