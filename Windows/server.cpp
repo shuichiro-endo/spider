@@ -335,18 +335,18 @@ namespace spider
 #endif
 
         socks5_message = std::make_shared<Socks5message>('s',
-                                                         send_message_id,
-                                                         connection_id,
-                                                         client_id,
-                                                         server_id,
+                                                         this->send_message_id,
+                                                         this->connection_id,
+                                                         this->client_id,
+                                                         this->server_id,
                                                          's',
-                                                         server_ip,
+                                                         this->server_ip,
                                                          'c',
-                                                         client_destination_ip,
-                                                         tv_sec,
-                                                         tv_usec,
-                                                         forwarder_tv_sec,
-                                                         forwarder_tv_usec,
+                                                         this->client_destination_ip,
+                                                         this->tv_sec,
+                                                         this->tv_usec,
+                                                         this->forwarder_tv_sec,
+                                                         this->forwarder_tv_usec,
                                                          data_size,
                                                          buffer);
 
