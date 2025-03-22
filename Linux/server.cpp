@@ -3127,10 +3127,10 @@ namespace spider
             socks5_connect_flag = false;
             socks5_connect_add_node_flag = true;
         }else if(cmd == 0xb
-                 && atyp == 0x0)    // SHOW NODE (0xa, show node, original command)
+                 && atyp == 0x0)    // SHOW NODE (0xb, show node, original command)
         {
 #ifdef _DEBUG
-            std::printf("[+] socks5 response cmd: ADD NODE (0xa, original command)\n");
+            std::printf("[+] socks5 response cmd: SHOW NODE (0xb, original command)\n");
 #endif
             sen = send_socks_response_ipv4(buffer,
                                            buffer_max_length,
