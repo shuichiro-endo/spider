@@ -60,6 +60,10 @@ namespace spider
 
         int32_t forwarder();
 
+        uint64_t htonll(uint64_t x);
+
+        uint64_t ntohll(uint64_t x);
+
         std::vector<std::string> split_input(const std::string& input);
 
         int32_t forwarder_shell_recv_data();

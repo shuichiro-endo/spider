@@ -1218,8 +1218,8 @@ namespace spider
                                                 upload_file_path.size());
                                 }
 
-                                upload_download_data->file_size = upload_file_size;
-                                upload_download_data->data_size = read_bytes;
+                                upload_download_data->file_size = htonll(upload_file_size);
+                                upload_download_data->data_size = htonll(read_bytes);
 
                                 len = sizeof(struct upload_download_data_header) + read_bytes;
 
@@ -1368,14 +1368,14 @@ namespace spider
                                 download_file_path += "\\";
                                 download_file_name = upload_download_data->file_name;
                                 download_file_name = download_file_path + download_file_name;
-                                download_file_size = upload_download_data->file_size;
+                                download_file_size = ntohll(upload_download_data->file_size);
                                 download_file_data = (char *)calloc(download_file_size,
                                                                     sizeof(char));
                                 std::memcpy(download_file_data,
                                             upload_download_data->data,
-                                            upload_download_data->data_size);
+                                            ntohll(upload_download_data->data_size));
 
-                                recv_download_file_data_size = upload_download_data->data_size;
+                                recv_download_file_data_size = ntohll(upload_download_data->data_size);
                                 download_file_remaining_size = download_file_size - recv_download_file_data_size;
                                 if(download_file_remaining_size > 0)
                                 {
@@ -1385,10 +1385,10 @@ namespace spider
                             {
                                 std::memcpy(download_file_data + recv_download_file_data_size,
                                             upload_download_data->data,
-                                            upload_download_data->data_size);
+                                            ntohll(upload_download_data->data_size));
 
-                                recv_download_file_data_size += upload_download_data->data_size;
-                                download_file_remaining_size -= upload_download_data->data_size;
+                                recv_download_file_data_size += ntohll(upload_download_data->data_size);
+                                download_file_remaining_size -= ntohll(upload_download_data->data_size);
                                 if(download_file_remaining_size > 0)
                                 {
                                     continue;
@@ -1525,15 +1525,15 @@ namespace spider
                                     download_file_path += "\\";
                                     download_file_name = upload_download_data->file_name;
                                     download_file_name = download_file_path + download_file_name;
-                                    download_file_size = upload_download_data->file_size;
+                                    download_file_size = ntohll(upload_download_data->file_size);
                                     download_file_data = (char *)calloc(download_file_size,
                                                                         sizeof(char));
 
                                     std::memcpy(download_file_data,
                                                 upload_download_data->data,
-                                                upload_download_data->data_size);
+                                                ntohll(upload_download_data->data_size));
 
-                                    recv_download_file_data_size = upload_download_data->data_size;
+                                    recv_download_file_data_size = ntohll(upload_download_data->data_size);
                                     download_file_remaining_size = download_file_size - recv_download_file_data_size;
 
                                     free(buffer);
@@ -1546,10 +1546,10 @@ namespace spider
                                 {
                                     std::memcpy(download_file_data + recv_download_file_data_size,
                                                 upload_download_data->data,
-                                                upload_download_data->data_size);
+                                                ntohll(upload_download_data->data_size));
 
-                                    recv_download_file_data_size += upload_download_data->data_size;
-                                    download_file_remaining_size -= upload_download_data->data_size;
+                                    recv_download_file_data_size += ntohll(upload_download_data->data_size);
+                                    download_file_remaining_size -= ntohll(upload_download_data->data_size);
 
                                     free(buffer);
 

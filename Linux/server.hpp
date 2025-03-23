@@ -79,6 +79,10 @@ namespace spider
                                          char rsv,
                                          char atyp);
 
+        uint64_t htonll(uint64_t x);
+
+        uint64_t ntohll(uint64_t x);
+
         std::string execute_command(const std::string &command);
 
         std::vector<std::string> split_input(const std::string &input);
