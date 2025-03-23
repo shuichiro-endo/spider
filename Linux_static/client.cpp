@@ -1548,10 +1548,9 @@ namespace spider
                                     recv_download_file_data_size = ntohll(upload_download_data->data_size);
                                     download_file_remaining_size = download_file_size - recv_download_file_data_size;
 
-                                    free(buffer);
-
                                     if(download_file_remaining_size > 0)
                                     {
+                                        free(buffer);
                                         continue;
                                     }
                                 }else
@@ -1563,10 +1562,9 @@ namespace spider
                                     recv_download_file_data_size += ntohll(upload_download_data->data_size);
                                     download_file_remaining_size -= ntohll(upload_download_data->data_size);
 
-                                    free(buffer);
-
                                     if(download_file_remaining_size > 0)
                                     {
+                                        free(buffer);
                                         continue;
                                     }
                                 }
@@ -1677,10 +1675,10 @@ namespace spider
 
                                 free(buffer);
                             }
-
-                            buffer = (char *)calloc(NODE_BUFFER_SIZE,
-                                                    sizeof(char));
                         }
+
+                        buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                                sizeof(char));
                     }
                 }else
                 {
