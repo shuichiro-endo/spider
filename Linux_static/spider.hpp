@@ -87,7 +87,7 @@
 
 struct upload_download_data_header
 {
-    char command[10];
+    char command[16];
     char file_name[256];
     char file_path[256];
     uint64_t file_size;
@@ -96,7 +96,7 @@ struct upload_download_data_header
 
 struct upload_download_data
 {
-    char command[10];
+    char command[16];
     char file_name[256];
     char file_path[256];
     uint64_t file_size;
