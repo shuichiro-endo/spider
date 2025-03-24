@@ -15,17 +15,21 @@ namespace spider
     struct socks5_message_data
     {
         char message_type;
-        uint32_t message_id;
         char reserved1;
+        char reserved2;
+        char reserved3;
+        uint32_t message_id;
         uint32_t connection_id;
         uint32_t client_id;
         uint32_t server_id;
         char source_node_type;
-        char reserved2;
+        char reserved4;
         char source_ip[INET6_ADDRSTRLEN + 1];
+        char reserved5;
         char destination_node_type;
-        char reserved3;
+        char reserved6;
         char destination_ip[INET6_ADDRSTRLEN + 1];
+        char reserved7;
         int32_t tv_sec;
         int32_t tv_usec;
         int32_t forwarder_tv_sec;
@@ -37,17 +41,21 @@ namespace spider
     struct socks5_message_data_header
     {
         char message_type;
-        uint32_t message_id;
         char reserved1;
+        char reserved2;
+        char reserved3;
+        uint32_t message_id;
         uint32_t connection_id;
         uint32_t client_id;
         uint32_t server_id;
         char source_node_type;
-        char reserved2;
+        char reserved4;
         char source_ip[INET6_ADDRSTRLEN + 1];
+        char reserved5;
         char destination_node_type;
-        char reserved3;
+        char reserved6;
         char destination_ip[INET6_ADDRSTRLEN + 1];
+        char reserved7;
         int32_t tv_sec;
         int32_t tv_usec;
         int32_t forwarder_tv_sec;
