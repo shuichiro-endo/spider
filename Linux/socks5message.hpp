@@ -35,6 +35,12 @@ namespace spider
         int32_t forwarder_tv_sec;
         int32_t forwarder_tv_usec;
         uint16_t data_size;
+        char reserved8;
+        char reserved9;
+        char reserved10;
+        char reserved11;
+        char reserved12;
+        char reserved13;
         char data[SOCKS5_MESSAGE_DATA_SIZE];
     };
 
@@ -61,6 +67,12 @@ namespace spider
         int32_t forwarder_tv_sec;
         int32_t forwarder_tv_usec;
         uint16_t data_size;
+        char reserved8;
+        char reserved9;
+        char reserved10;
+        char reserved11;
+        char reserved12;
+        char reserved13;
     };
 
     class Socks5message : public Message
