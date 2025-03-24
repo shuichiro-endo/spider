@@ -40,7 +40,7 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                 Linux Ver: 1.14  Author: Shuichiro Endo  
+        =-    -:                 Linux Ver: 1.15  Author: Shuichiro Endo  
 
 
 usage   : ./spider
@@ -120,7 +120,7 @@ Encrypt SOCKS5 packets using aes-256-cbc.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                 Linux Ver: 1.14  Author: Shuichiro Endo  
+        =-    -:                 Linux Ver: 1.15  Author: Shuichiro Endo  
 
 
 --------------------------------- spider ---------------------------------
