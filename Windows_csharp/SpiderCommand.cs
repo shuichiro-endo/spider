@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 
 namespace spider
@@ -1493,7 +1494,153 @@ namespace spider
 
         public void EditRoutingTable()
         {
+            char editMode;  // add:a delete:d
+            string ip;
+            byte metric;
+            uint pipeId;
+            string input;
+            byte[] tmp;
+            char check = 'n';
 
+
+            while(true)
+            {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
+                Console.Write("edit mode (add:a delete:d quit:q)              > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                editMode = input[0];
+                if(editMode == 'a')
+                {
+                    Console.Write("ip address                                     > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    ip = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(ip, spiderIp.SpiderIpv4) == 0) ||
+                       (String.Compare(ip, spiderIp.SpiderIpv6Global) == 0) ||
+                       (String.Compare(ip, spiderIp.SpiderIpv6UniqueLocal) == 0) ||
+                       (String.Compare(ip, spiderIp.SpiderIpv6LinkLocal) == 0))
+                    {
+                        Console.WriteLine("[-] cannot input spider ipv4 and ipv6");
+                        continue;
+                    }
+
+                    Console.Write("metric (0 < metric <= {0,3})                     > ", byte.MaxValue);
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        metric = byte.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        continue;
+                    }
+
+                    if(metric == 0 || metric > byte.MaxValue)
+                    {
+                        Console.WriteLine("[-] input error");
+                        continue;
+                    }
+
+                    pipeManager.ShowPipesMap();
+
+                    Console.Write("pipe id                                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        pipeId = uint.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        continue;
+                    }
+
+                    Console.WriteLine("");
+                    Console.WriteLine("edit mode                 : {0}", editMode);
+                    Console.WriteLine("ip address                : {0}", ip);
+                    Console.WriteLine("metric                    : {0}", metric);
+                    Console.WriteLine("pipe id                   : {0}", pipeId);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];;
+                    if(check == 'y')
+                    {
+                        Route route = new Route('s',
+                                                ip,
+                                                metric,
+                                                pipeId);
+
+                        routingManager.AddRoute(route);
+
+                        continue;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        break;
+                    }else{
+                        break;
+                    }
+                }else if(editMode == 'd')
+                {
+                    Console.Write("ip address                                     > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    ip = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(ip, spiderIp.SpiderIpv4) == 0) ||
+                       (String.Compare(ip, spiderIp.SpiderIpv6Global) == 0) ||
+                       (String.Compare(ip, spiderIp.SpiderIpv6UniqueLocal) == 0) ||
+                       (String.Compare(ip, spiderIp.SpiderIpv6LinkLocal) == 0))
+                    {
+                        Console.WriteLine("[-] cannot input spider ipv4 and ipv6");
+                        continue;
+                    }
+
+                    Console.WriteLine("");
+                    Console.WriteLine("edit mode                 : {0}", editMode);
+                    Console.WriteLine("ip address                : {0}", ip);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        routingManager.DeleteRoute(ip);
+
+                        continue;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        break;
+                    }else{
+                        break;
+                    }
+                }else if(check == 'q')
+                {
+                    break;
+                }else{
+                    break;
+                }
+            }
+
+            return;
         }
 
         private void ClientUdpWorker(string clientListenIp,
