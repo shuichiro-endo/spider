@@ -1612,9 +1612,19 @@ namespace spider
 
         result_size = result.size();
 
-        std::memcpy(buffer,
-                    result.c_str(),
-                    result_size);
+        if(result_size <= socks5_message_data_max_size)
+        {
+            std::memcpy(buffer,
+                        result.c_str(),
+                        result_size);
+        }else
+        {
+            std::memcpy(buffer,
+                        result.c_str(),
+                        socks5_message_data_max_size);
+
+            result_size = socks5_message_data_max_size;
+        }
 
 #ifdef _DEBUG
         std::printf("[+] [client <- server] send_message message_id:%u\n",
