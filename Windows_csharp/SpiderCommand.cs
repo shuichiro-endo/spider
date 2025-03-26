@@ -1521,10 +1521,10 @@ namespace spider
         public void EditRoutingTable()
         {
             char editMode;  // add:a delete:d
-            string ip;
-            byte metric;
-            uint pipeId;
-            string input;
+            string ip = "";
+            byte metric = 0;
+            uint pipeId = 0;
+            string input = "";
             byte[] tmp;
             char check = 'n';
 
@@ -1614,7 +1614,7 @@ namespace spider
                     {
                         continue;
                     }else if(check == 'q'){
-                        break;
+                        return;
                     }else{
                         break;
                     }
@@ -1654,15 +1654,15 @@ namespace spider
                         continue;
                     }else if(check == 'q')
                     {
-                        break;
+                        return;
                     }else{
                         break;
                     }
                 }else if(check == 'q')
                 {
-                    break;
+                    return;
                 }else{
-                    break;
+                    return;
                 }
             }
 
