@@ -514,6 +514,7 @@ namespace spider
             int forwarderTvSec = 0;
             int forwarderTvUsec = 0;
             string input = "";
+            byte[] tmp;
             char check = 'n';
             object[] parameters;
 
@@ -522,7 +523,9 @@ namespace spider
             {
                 Console.Write("client listen ip                               > ");
                 input = Console.ReadLine();
-                clientListenIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientListenIp = Encoding.UTF8.GetString(tmp);
 
                 if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
                    (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
@@ -540,11 +543,15 @@ namespace spider
 
                 Console.Write("client listen port                             > ");
                 input = Console.ReadLine();
-                clientListenPort = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientListenPort = Encoding.UTF8.GetString(tmp);
 
                 Console.Write("destination spider ip                          > ");
                 input = Console.ReadLine();
-                destinationSpiderIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                destinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
                 Console.Write("recv/send tv_sec  (timeout 0-60 sec)           > ");
                 input = Console.ReadLine();
@@ -1182,6 +1189,7 @@ namespace spider
             string pipeDestinationPort = "";
             string pipeListenPort = "";
             string input = "";
+            byte[] tmp;
             char check = 'n';
             object[] parameters;
 
@@ -1196,7 +1204,10 @@ namespace spider
                 {
                     Console.Write("pipe ip                                        > ");
                     input = Console.ReadLine();
-                    pipeIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeIp = Encoding.UTF8.GetString(tmp);
+
                     if((String.Compare(pipeIp, spiderIp.SpiderIpv4) != 0) &&
                        (String.Compare(pipeIp, spiderIp.SpiderIpv6Global) != 0) &&
                        (String.Compare(pipeIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
@@ -1213,11 +1224,15 @@ namespace spider
 
                     Console.Write("pipe destination ip                            > ");
                     input = Console.ReadLine();
-                    pipeDestinationIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeDestinationIp = Encoding.UTF8.GetString(tmp);
 
                     Console.Write("pipe destination port                          > ");
                     input = Console.ReadLine();
-                    pipeDestinationPort = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeDestinationPort = Encoding.UTF8.GetString(tmp);
 
                     Console.WriteLine("");
                     Console.WriteLine("mode                      : {0}", mode);
@@ -1260,7 +1275,10 @@ namespace spider
                 {
                     Console.Write("pipe listen ip                                 > ");
                     input = Console.ReadLine();
-                    pipeIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeIp = Encoding.UTF8.GetString(tmp);
+
                     if((String.Compare(pipeIp, spiderIp.SpiderIpv4) != 0) &&
                        (String.Compare(pipeIp, spiderIp.SpiderIpv6Global) != 0) &&
                        (String.Compare(pipeIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
@@ -1277,7 +1295,9 @@ namespace spider
 
                     Console.Write("pipe listen port                               > ");
                     input = Console.ReadLine();
-                    pipeListenPort = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeListenPort = Encoding.UTF8.GetString(tmp);
 
                     Console.WriteLine("");
                     Console.WriteLine("mode                      : {0}", mode);
@@ -1398,6 +1418,7 @@ namespace spider
             string sourceSpiderIpScopeId = "";
             string destinationSpiderIp = "";
             string input = "";
+            byte[] tmp;
             char check = 'n';
             object[] parameters;
 
@@ -1424,7 +1445,10 @@ namespace spider
                 {
                     Console.Write("source spider ip                               > ");
                     input = Console.ReadLine();
-                    sourceSpiderIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
                     if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
                        (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
                        (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
@@ -1441,7 +1465,9 @@ namespace spider
 
                     Console.Write("destination spider ip                          > ");
                     input = Console.ReadLine();
-                    destinationSpiderIp = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
                     Console.WriteLine("");
                     Console.WriteLine("mode                      : {0}", mode);
