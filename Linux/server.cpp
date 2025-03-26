@@ -1691,7 +1691,7 @@ namespace spider
                            &writefds);
             if(ret){
 #ifdef _DEBUG
-                std::printf("[+] [client <- server] recv_message\n");
+                std::printf("[+] [client -> server] recv_message\n");
 #endif
                 std::memset(buffer,
                             0,
@@ -1708,7 +1708,7 @@ namespace spider
                         len = rec;
                         send_length = 0;
 #ifdef _DEBUG
-                        std::printf("[+] [client <- client] sendto message_id:%u\n",
+                        std::printf("[+] [server -> target] sendto message_id:%u\n",
                                     next_recv_message_id);
 #endif
                         while(len > 0)
@@ -1731,7 +1731,7 @@ namespace spider
                                 }else
                                 {
 #ifdef _DEBUG
-                                    std::printf("[-] forwarder_send_data sendto error: %d\n",
+                                    std::printf("[-] forwarder_udp_recv_send_data sendto error: %d\n",
                                                 errno);
 #endif
 //                                  free(buffer);
@@ -1759,7 +1759,7 @@ namespace spider
                             buffer = msg.second;
                             send_length = 0;
 #ifdef _DEBUG
-                            std::printf("[+] [client <- client] sendto message_id:%u\n",
+                            std::printf("[+] [server -> target] sendto message_id:%u\n",
                                         next_recv_message_id);
 #endif
                             while(len > 0)
@@ -1782,7 +1782,7 @@ namespace spider
                                     }else
                                     {
 #ifdef _DEBUG
-                                        std::printf("[-] forwarder_send_data sendto error: %d\n",
+                                        std::printf("[-] forwarder_udp_recv_send_data sendto error: %d\n",
                                                     errno);
 #endif
 //                                      free(buffer);
@@ -1831,7 +1831,7 @@ namespace spider
                 if(ret)
                 {
 #ifdef _DEBUG
-                    std::printf("[+] [client -> client] recvfrom\n");
+                    std::printf("[+] [server <- target] recvfrom\n");
 #endif
                     std::memset(buffer,
                                 0,
@@ -1855,7 +1855,7 @@ namespace spider
                         }else
                         {
 #ifdef _DEBUG
-                            std::printf("[-] forwarder_recv_data recvfrom error: %d\n",
+                            std::printf("[-] forwarder_udp_recv_send_data recvfrom error: %d\n",
                                         errno);
 #endif
 //                            break;
@@ -1863,7 +1863,7 @@ namespace spider
                     }else
                     {
 #ifdef _DEBUG
-                        std::printf("[+] [client -> server] send_message message_id:%u\n",
+                        std::printf("[+] [client <- server] send_message message_id:%u\n",
                                     send_message_id);
 #endif
                         sen = send_message(buffer,
