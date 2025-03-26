@@ -11,6 +11,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace spider
 {
@@ -707,7 +708,7 @@ namespace spider
         private byte atyp;
         private byte dstAddrLen;
         private byte[] dstAddr;
-        private byte[] dstPort;
+        private byte[] dstPort; // network byte order
 
         public SocksRequestDomainname(byte ver,
                                       byte cmd,
@@ -735,6 +736,28 @@ namespace spider
                 {
                     this.dstPort[i] = dstPort[i];
                 }
+            }catch(Exception ex)
+            {
+                throw new Exception("", ex);
+            }
+        }
+
+        public SocksRequestDomainname(byte ver,
+                                      byte cmd,
+                                      byte rsv,
+                                      byte atyp,
+                                      string ip,
+                                      string port)
+        {
+            try
+            {
+                this.ver = ver;
+                this.cmd = cmd;
+                this.rsv = rsv;
+                this.atyp = atyp;
+                this.dstAddr = Encoding.UTF8.GetBytes(ip);
+                this.dstAddrLen = (byte)this.dstAddr.Length;
+                this.dstPort = BitConverter.GetBytes(HostToNetworkOrderUShort(ushort.Parse(port)));
             }catch(Exception ex)
             {
                 throw new Exception("", ex);
@@ -806,6 +829,30 @@ namespace spider
         {
             get { return dstPort; }
             set { dstPort = value; }
+        }
+
+        public ushort NetworkToHostOrderUShort(ushort value)
+        {
+            if(BitConverter.IsLittleEndian)
+            {
+                byte[] bytes = BitConverter.GetBytes(value);
+                Array.Reverse(bytes);
+                return BitConverter.ToUInt16(bytes, 0);
+            }
+
+            return value;
+        }
+
+        public ushort HostToNetworkOrderUShort(ushort value)
+        {
+            if(BitConverter.IsLittleEndian)
+            {
+                byte[] bytes = BitConverter.GetBytes(value);
+                Array.Reverse(bytes);
+                return BitConverter.ToUInt16(bytes, 0);
+            }
+
+            return value;
         }
 
         public byte[] GetByteArray()

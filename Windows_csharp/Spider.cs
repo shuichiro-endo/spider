@@ -469,7 +469,7 @@ namespace spider
                 Console.WriteLine(" {0}: show node information", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
                 Console.WriteLine(" {0}: show routing table", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
                 Console.WriteLine(" {0}: edit routing table", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
-//                Console.WriteLine(" {0}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
+                Console.WriteLine(" {0}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
 //                Console.WriteLine(" {0}: add node (spider client shell)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
 //                Console.WriteLine(" {0}: add node (spider client) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
 //                Console.WriteLine(" {0}: add node (spider pipe) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
@@ -506,13 +506,13 @@ namespace spider
                         Console.WriteLine("[+] edit routing table");
                         spiderCommand.EditRoutingTable();
                         break;
-/*
+
                     case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP:
                         Console.WriteLine("[+] add node (spider client udp)");
                         Console.WriteLine("[!] This is not SOCKS5 connection. (UDP over TCP)");
                         spiderCommand.AddNodeSpiderClientUdp();
                         break;
-
+/*
                     case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL:
                         Console.WriteLine("[+] add node (spider client shell)");
                         Console.WriteLine("[!] This is not SOCKS5 connection.");

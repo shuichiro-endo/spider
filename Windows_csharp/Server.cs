@@ -18,6 +18,7 @@ namespace spider
     public class Server : Node
     {
         private const int SOCKS5_MESSAGE_DATA_SIZE = 60000;
+        private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
         private const int SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_SEC = 10;
@@ -691,13 +692,158 @@ namespace spider
             return 0;
         }
 
-        private int ForwarderUdpRecvSendData()
+        private void ForwarderUdpRecvSendData()
         {
-            return 0;
+            int rec = 0;
+            int sen = 0;
+            int length = 0;
+
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data;
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            Dictionary<uint, (int, byte[])> msgsMap = new Dictionary<uint, (int, byte[])>();
+            ValueTuple<int, byte[]> msg;
+            recvMessageId = 0;
+
+
+            while(true)
+            {
+                try
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client -> server] RecvMessage");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    rec = RecvMessage(buffer,
+                                      bufferMaxLength,
+                                      FORWARDER_UDP_TIMEOUT,
+                                      0);
+                    if(rec > 0)
+                    {
+                        if(recvMessageId == nextRecvMessageId)
+                        {
+                            length = rec;
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [server -> target] Send message_id:{0}",
+                                              nextRecvMessageId);
+#endif
+                            targetUdpClient.Send(buffer,
+                                                 length,
+                                                 targetIpEndPoint);
+                            sen = length;
+                            nextRecvMessageId++;
+                        }else
+                        {
+                            msg = (rec,
+                                   buffer);
+                            msgsMap.Add(recvMessageId,
+                                        msg);
+
+                            while(msgsMap.ContainsKey(nextRecvMessageId))
+                            {
+                                msg = msgsMap[nextRecvMessageId];
+                                msgsMap.Remove(nextRecvMessageId);
+
+                                length = msg.Item1;
+                                buffer = msg.Item2;
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [server <- target] Send message_id:{0}",
+                                                  nextRecvMessageId);
+#endif
+                                targetUdpClient.Send(buffer,
+                                                     length,
+                                                     targetIpEndPoint);
+                                sen = length;
+                                nextRecvMessageId++;
+                            }
+                        }
+                    }else
+                    {
+                        break;
+                    }
+
+
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [server <- target] Receive");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    data = targetUdpClient.Receive(ref targetIpEndPoint);
+                    rec = data.Length;
+
+                    if(rec > socks5MessageDataMaxSize)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] Receive error: {0}",
+                                          rec);
+#endif
+                        break;
+                    }
+
+                    if(rec > 0)
+                    {
+                        for(int i = 0; i < data.Length; i++)
+                        {
+                            buffer[i] = data[i];
+                        }
+
+#if DEBUGPRINT
+                        Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                          sendMessageId);
+#endif
+                        sen = SendMessage(buffer,
+                                          rec,
+                                          forwarderTvSec,
+                                          forwarderTvUsec);
+
+                        if(sen <= 0)
+                        {
+//                            break;
+                        }
+
+                        sendMessageId++;
+                    }else
+                    {
+//                        break;
+                    }
+                }catch(IOException ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderUdpRecvSendData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderUdpRecvSendData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }
+            }
+
+            return;
         }
 
         private int ForwarderUdp()
         {
+            int timeout = forwarderTvSec * 1000 + forwarderTvUsec / 1000;
+            this.targetUdpClient.Client.ReceiveTimeout = timeout;
+            this.targetUdpClient.Client.SendTimeout = timeout;
+
+            Thread thread = new Thread(new ThreadStart(ForwarderUdpRecvSendData));
+            thread.Start();
+
+            thread.Join();
+
             return 0;
         }
 

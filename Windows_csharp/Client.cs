@@ -19,6 +19,7 @@ namespace spider
     {
         private const int SOCKS5_MESSAGE_DATA_SIZE = 60000;
         private const int SHELL_UPLOAD_DOWNLOAD_DATA_SIZE = 50000;
+        private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
         private const int SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_SEC = 10;
@@ -1229,19 +1230,499 @@ namespace spider
             return -1;
         }
 
-        private int ForwarderUdpRecvSendData(int addrLength)
+        private void ForwarderUdpRecvSendData()
         {
-            return 0;
+            int rec = 0;
+            int sen = 0;
+            int length = 0;
+
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data;
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            Dictionary<uint, (IPEndPoint, int, byte[])> msgsMap = new Dictionary<uint, (IPEndPoint, int, byte[])>();
+            ValueTuple<IPEndPoint, int, byte[]> msg;
+            recvMessageId = 0;
+
+
+            while(true)
+            {
+                try
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client -> client] Receive");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Any,
+                                                           0);
+
+                    data = udpClient.Receive(ref ipEndPoint);
+                    rec = data.Length;
+
+                    if(rec > socks5MessageDataMaxSize)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] Receive error: {0}",
+                                          rec);
+#endif
+                        break;
+                    }
+
+                    if(rec > 0)
+                    {
+                        for(int i = 0; i < data.Length; i++)
+                        {
+                            buffer[i] = data[i];
+                        }
+
+#if DEBUGPRINT
+                        Console.WriteLine("[+] [client -> server] SendMessage message_id:{0}",
+                                          sendMessageId);
+#endif
+                        sen = SendMessage(buffer,
+                                          rec,
+                                          forwarderTvSec,
+                                          forwarderTvUsec);
+                        if(sen <= 0){
+//                            break;
+                        }
+
+                        sendMessageId++;
+                    }else
+                    {
+//                        break;
+                    }
+
+
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client <- server] RecvMessage");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    rec = RecvMessage(buffer,
+                                      bufferMaxLength,
+                                      forwarderTvSec,
+                                      forwarderTvUsec,
+                                      false);
+                    if(rec > 0)
+                    {
+                        if(recvMessageId == nextRecvMessageId)
+                        {
+                            length = rec;
+
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client <- client] Send message_id:{0}",
+                                              nextRecvMessageId);
+#endif
+                            udpClient.Send(buffer,
+                                           length,
+                                           ipEndPoint);
+
+                            sen = length;
+                            nextRecvMessageId++;
+                        }else
+                        {
+                            msg = (ipEndPoint,
+                                   rec,
+                                   buffer);
+                            msgsMap.Add(recvMessageId,
+                                        msg);
+
+                            while(msgsMap.ContainsKey(nextRecvMessageId))
+                            {
+                                msg = msgsMap[nextRecvMessageId];
+                                msgsMap.Remove(nextRecvMessageId);
+
+                                ipEndPoint = msg.Item1;
+                                length = msg.Item2;
+                                buffer = msg.Item3;
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] Send message_id:{0}",
+                                                  nextRecvMessageId);
+#endif
+                                udpClient.Send(buffer,
+                                               length,
+                                               ipEndPoint);
+
+                                sen = length;
+                                nextRecvMessageId++;
+                            }
+                        }
+                    }else
+                    {
+                        break;
+                    }
+                }catch(IOException ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderUdpRecvSendData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderUdpRecvSendData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }
+            }
+
+            return;
         }
 
-        private int ForwarderUdp(int addrLength)
+        private int ForwarderUdp()
         {
+            int timeout = forwarderTvSec * 1000 + forwarderTvUsec / 1000;
+            this.udpClient.Client.ReceiveTimeout = FORWARDER_UDP_TIMEOUT * 1000;
+            this.udpClient.Client.SendTimeout = timeout;
+
+            Thread thread = new Thread(new ThreadStart(ForwarderUdpRecvSendData));
+            thread.Start();
+
+            thread.Join();
+
             return 0;
         }
 
         public int DoSocks5ConnectionUdp()
         {
-            return 0;
+            byte authenticationMethod = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
+            byte[] username = Encoding.UTF8.GetBytes(SOCKS5_USERNAME);
+            byte[] password = Encoding.UTF8.GetBytes(SOCKS5_PASSWORD);
+
+            int rec;
+            int sen;
+            int size;
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+
+            recvMessageId = 0;
+            nextRecvMessageId = 0;
+            sendMessageId = GenerateRandomId();
+
+            SelectionRequest selectionRequest;
+            SelectionResponse selectionResponse;
+            UsernamePasswordAuthenticationRequest usernamePasswordAuthenticationRequest;
+            UsernamePasswordAuthenticationResponse usernamePasswordAuthenticationResponse;
+            SocksRequestDomainname socksRequestDomainname;
+            SocksResponseTmp socksResponseTmp;
+
+            byte[] methods;
+            IPEndPoint ipEndPoint;
+            string clientIpTmp = "";
+            string ipv6LinkLocalPrefix = "fe80:";
+
+
+            // socks SELECTION_REQUEST [client -> server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send selection request\n");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            try
+            {
+                methods = new byte[1];
+                methods[0] = authenticationMethod;
+                selectionRequest = new SelectionRequest(0x5,
+                                                        0x1,
+                                                        methods);
+                size = selectionRequest.CopyToBuffer(ref buffer);
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] selectionRequest error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            sendMessageId++;
+            sen = SendMessage(buffer,
+                              size,
+                              tvSec,
+                              tvUsec);
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send selection request: {0} bytes",
+                              sen);
+#endif
+
+
+            // socks SELECTION_RESPONSE [client <- server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv selection response");
+#endif
+
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              tvSec,
+                              tvUsec,
+                              true);
+            if(rec != SelectionResponse.SELECTION_RESPONSE_SIZE)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client <- server] recv selection response error");
+#endif
+                return -1;
+            }
+
+            nextRecvMessageId = recvMessageId + 1;
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv selection response: {0} bytes",
+                              rec);
+#endif
+
+            try
+            {
+                selectionResponse = new SelectionResponse(buffer);
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] SelectionResponse error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+            if(selectionResponse.Method == 0xFF)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socks5server authentication method error");
+#endif
+            }
+
+            if(selectionResponse.Method  == 0x2)    // USERNAME_PASSWORD_AUTHENTICATION
+            {
+                // socks USERNAME_PASSWORD_AUTHENTICATION_REQUEST [client -> server]
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client -> server] send username password authentication request");
+#endif
+                Array.Clear(buffer,
+                            0,
+                            bufferMaxLength);
+
+                try
+                {
+                    usernamePasswordAuthenticationRequest = new UsernamePasswordAuthenticationRequest(0x1,
+                                                            (byte)username.Length,
+                                                            username,
+                                                            (byte)password.Length,
+                                                            password);
+                    size = usernamePasswordAuthenticationRequest.CopyToBuffer(ref buffer);
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] usernamePasswordAuthenticationRequest error: {0}",
+                                      ex.Message);
+#endif
+                    return -1;
+                }
+
+                sendMessageId++;
+                sen = SendMessage(buffer,
+                                  size,
+                                  tvSec,
+                                  tvUsec);
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client -> server] send username password authentication request: {0} bytes",
+                            sen);
+#endif
+
+
+                // socks USERNAME_PASSWORD_AUTHENTICATION_RESPONSE [client <- server]
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] recv username password authentication response");
+#endif
+
+                rec = RecvMessage(buffer,
+                                  bufferMaxLength,
+                                  tvSec,
+                                  tvUsec,
+                                  false);
+                if(rec <= 0 ||
+                   nextRecvMessageId != recvMessageId)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] [client <- server] recv username password authentication response error");
+#endif
+                    return -1;
+                }
+
+                nextRecvMessageId++;
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] recv username password authentication response: {0} bytes",
+                                  rec);
+#endif
+
+                try
+                {
+                    usernamePasswordAuthenticationResponse = new UsernamePasswordAuthenticationResponse(buffer);
+                }catch(Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] usernamePasswordAuthenticationResponse error: {0}",
+                                      ex.Message);
+#endif
+                    return -1;
+                }
+
+                if(usernamePasswordAuthenticationResponse.Status != 0x0)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] username password authentication error: 0x%02x",
+                                      usernamePasswordAuthenticationResponse.Status);
+#endif
+                    return -1;
+                }
+            }
+
+
+            // socks SOCKS_REQUEST [client -> server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send socks request");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            try
+            {
+                socksRequestDomainname = new SocksRequestDomainname(0x5,
+                                                                    0x8,    // CONNECT UDP (0x8, UDP over TCP, original command)
+                                                                    0x0,
+                                                                    0x3,    // domainname
+                                                                    targetIp,
+                                                                    targetPort);
+                size = socksRequestDomainname.CopyToBuffer(ref buffer);
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socksRequest error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            sendMessageId++;
+            sen = SendMessage(buffer,
+                              size,
+                              tvSec,
+                              tvUsec);
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send socks request: {0} bytes",
+                              sen);
+#endif
+
+
+            // socks SOCKS_RESPONSE [client <- server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv socks response");
+#endif
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              tvSec,
+                              tvUsec,
+                              false);
+            if(rec <= 0 ||
+               nextRecvMessageId != recvMessageId)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client <- server] recv socks response error");
+#endif
+                return -1;
+            }
+
+            nextRecvMessageId++;
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv socks response: {0} bytes",
+                              rec);
+#endif
+
+            try
+            {
+                socksResponseTmp = new SocksResponseTmp(buffer);
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] socksResponse error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            if(socksResponseTmp.Ver != 0x5 &&
+               socksResponseTmp.Rep != 0x0)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socks response error: 0x%02x",
+                                  socksResponseTmp.Rep);
+#endif
+                return -1;
+            }
+
+
+            try
+            {
+                if(clientIp.Contains(":") &&    // ipv6 link local
+                   clientIp.StartsWith(ipv6LinkLocalPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    clientIpTmp = clientIp + "%" + clientIpScopeId;
+                    ipEndPoint = new IPEndPoint(IPAddress.Parse(clientIpTmp),
+                                                int.Parse(clientListenPort));
+                    udpClient = new UdpClient(ipEndPoint);
+#if DEBUGPRINT
+                    Console.WriteLine("[+] bind port {0} on {1}",
+                                      clientListenPort,
+                                      clientIpTmp);
+#endif
+                }else
+                {
+                    ipEndPoint = new IPEndPoint(IPAddress.Parse(clientIp),
+                                                int.Parse(clientListenPort));
+                    udpClient = new UdpClient(ipEndPoint);
+#if DEBUGPRINT
+                    Console.WriteLine("[+] bind port {0} on {1}",
+                                      clientListenPort,
+                                      clientIp);
+#endif
+                }
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] udpClient error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+
+            // forwarder [client <> client <> server <> target]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <> client <> server <> target] ForwarderUdp");
+#endif
+
+            sendMessageId++;
+            ForwarderUdp();
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] worker exit");
+#endif
+
+            return -1;
         }
     }
 }
