@@ -761,6 +761,8 @@ namespace spider
                                 sen = length;
                                 nextRecvMessageId++;
                             }
+
+                            buffer = new byte[NODE_BUFFER_SIZE];
                         }
                     }else
                     {
