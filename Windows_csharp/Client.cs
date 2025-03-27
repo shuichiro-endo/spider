@@ -847,29 +847,983 @@ namespace spider
             return -1;
         }
 
-        private string[] SplitInput(string[] input)
+        private string[] SplitInput(byte[] input)
         {
-            return null;
+            string inputString;
+            string[] tokens;
+
+
+            inputString = Encoding.UTF8.GetString(input);
+            tokens = inputString.Split(' ');
+
+            return tokens;
         }
 
-        private int ForwarderShellRecvData()
+        private void ForwarderShellRecvData()
         {
-            return 0;
+            int rec = 0;
+            int sen = 0;
+            int length = 0;
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data = new byte[NODE_BUFFER_SIZE];
+            byte[] tmp;
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+
+            string result = "";
+            string prompt = "\ncommand >";
+            byte[] input;
+            string[] tokens;
+            string uploadCommand = "upload";
+            FileStream fileStream = null;
+            string uploadFileName = "";
+            string uploadFilePath = "";
+            ulong uploadFileSize = 0;
+            ulong uploadFileRemainingSize = 0;
+            ulong readBytes = 0;
+            ulong dataSize = 0;
+            UploadDownloadData uploadDownloadData;
+
+
+            try
+            {
+                // output prompt
+                Array.Clear(buffer,
+                            0,
+                            bufferMaxLength);
+                tmp = Encoding.UTF8.GetBytes(prompt);
+                length = tmp.Length;
+                for(int i = 0; i < length; i++)
+                {
+                    buffer[i] = tmp[i];
+                }
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- client] Write");
+#endif
+                stream.Write(buffer,
+                             0,
+                             length);
+                sen = length;
+            }catch(IOException ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] ForwarderShellRecvData timeout: {0}",
+                                  ex.Message);
+#endif
+                return;
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] ForwarderShellRecvData error: {0}",
+                                  ex.Message);
+#endif
+                return;
+            }
+
+            while(true)
+            {
+                try
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client -> client] Read");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    rec = stream.Read(buffer,
+                                      0,
+                                      socks5MessageDataMaxSize);
+                    if(rec > 0)
+                    {
+                        input = buffer.Where(b => b != 0x00).ToArray();;
+                        tokens = SplitInput(input);
+
+                        if(tokens.Length == 3 &&
+                           (String.Compare(tokens[0].Replace("\r\n", "").Replace("\n", "").Replace("\r", ""), uploadCommand) == 0))
+                        {
+                            fileStream = null;
+
+                            try
+                            {
+                                fileStream = new FileStream(tokens[1],
+                                                            FileMode.Open,
+                                                            FileAccess.Read);
+
+                                uploadFileSize = (ulong)fileStream.Length;
+                                uploadFileRemainingSize = uploadFileSize;
+
+                                string path = Path.GetDirectoryName(tokens[1]);
+                                uploadFileName = Path.GetFileName(tokens[1]);
+                                uploadFilePath = tokens[2].Replace("\r\n", "").Replace("\n", "").Replace("\r", "");
+
+                                while(uploadFileRemainingSize > 0)
+                                {
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    Array.Clear(data,
+                                                0,
+                                                bufferMaxLength);
+
+                                    readBytes = 0;
+                                    dataSize = 0;
+
+                                    if(uploadFileRemainingSize <= SHELL_UPLOAD_DOWNLOAD_DATA_SIZE)
+                                    {
+                                        readBytes = (ulong)fileStream.Read(data,
+                                                                           0,
+                                                                           (int)uploadFileRemainingSize);
+                                        dataSize = uploadFileRemainingSize;
+                                    }else
+                                    {
+                                        readBytes = (ulong)fileStream.Read(data,
+                                                                           0,
+                                                                           SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
+                                        dataSize = SHELL_UPLOAD_DOWNLOAD_DATA_SIZE;
+                                    }
+
+                                    uploadDownloadData = new UploadDownloadData(uploadCommand,
+                                                                                uploadFileName,
+                                                                                uploadFilePath,
+                                                                                uploadFileSize,
+                                                                                dataSize,
+                                                                                data);
+
+                                    length = uploadDownloadData.CopyToBuffer(ref buffer);
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client -> server] SendMessage message_id{0}",
+                                                      sendMessageId);
+#endif
+
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                    if(sen <= 0)
+                                    {
+                                        break;
+                                    }
+
+                                    sendMessageId++;
+                                    uploadFileRemainingSize -= readBytes;
+                                }
+                            }catch(Exception ex)
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[-] upload file error: {0}",
+                                                  ex.Message);
+#endif
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                result = "[-] upload file error";
+                                result += prompt;
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                length = tmp.Length;
+                                for(int i = 0; i < length; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] Write");
+#endif
+                                stream.Write(buffer,
+                                             0,
+                                             length);
+                                sen = length;
+
+                                continue;
+                            }finally
+                            {
+                                if(fileStream != null)
+                                {
+                                    fileStream.Close();
+                                    fileStream = null;
+                                }
+                            }
+                        }else
+                        {
+                            length = rec;
+
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client -> server] SendMessage message_id:{0}",
+                                               sendMessageId);
+#endif
+                            sen = SendMessage(buffer,
+                                              length,
+                                              forwarderTvSec,
+                                              forwarderTvUsec);
+                            if(sen <= 0)
+                            {
+                                break;
+                            }
+
+                            sendMessageId++;
+                        }
+                    }else
+                    {
+                        break;
+                    }
+                }catch(IOException ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderShellRecvData timeout: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderShellRecvData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }
+            }
+
+            return;
         }
 
-        private int ForwarderShellSendData()
+        private void ForwarderShellSendData()
         {
-            return 0;
+            int rec = 0;
+            int sen = 0;
+            int length = 0;
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data;
+            byte[] tmp;
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+            Dictionary<uint, (int, byte[])> msgsMap = new Dictionary<uint, (int, byte[])>();
+            ValueTuple<int, byte[]> msg;
+            recvMessageId = 0;
+
+            string result = "";
+            string prompt = "\ncommand >";
+            byte[] commandTmp;
+            string command = "";
+            string downloadCommand = "download";
+            FileStream fileStream = null;
+            string downloadFileName = "";
+            string downloadFilePath = "";
+            ulong downloadFileSize = 0;
+            ulong recvDownloadFileDataSize = 0;
+            ulong downloadFileRemainingSize = 0;
+            bool downloadCommandFlag = false;
+            bool downloadFileFlag = false;
+            UploadDownloadDataHeader uploadDownloadDataHeader;
+            UploadDownloadData uploadDownloadData;
+
+
+            while(true)
+            {
+                try
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client <- server] RecvMessage");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    rec = RecvMessage(buffer,
+                                      bufferMaxLength,
+                                      forwarderTvSec,
+                                      forwarderTvUsec,
+                                      false);
+                    if(rec > 0)
+                    {
+                        if(recvMessageId == nextRecvMessageId)
+                        {
+                            nextRecvMessageId++;
+                            downloadCommandFlag = false;
+
+                            try
+                            {
+                                uploadDownloadDataHeader = new UploadDownloadDataHeader(buffer);
+                                commandTmp = uploadDownloadDataHeader.Command.Where(b => b != 0x00).ToArray();
+                                command = Encoding.UTF8.GetString(commandTmp);
+                                if(String.Compare(command, downloadCommand) == 0)
+                                {
+                                    downloadCommandFlag = true;
+                                }else
+                                {
+                                    downloadCommandFlag = false;
+                                }
+                            }catch(Exception ex)
+                            {
+                                downloadCommandFlag = false;
+                            }
+
+                            if(downloadCommandFlag == true)
+                            {
+                                try
+                                {
+                                    if(downloadFileFlag == false)
+                                    {
+                                        downloadFileFlag = true;
+                                        fileStream = null;
+                                        uploadDownloadData = new UploadDownloadData(buffer);
+
+                                        tmp = uploadDownloadData.FilePath.Where(b => b != 0x00).ToArray();
+                                        downloadFilePath = Encoding.UTF8.GetString(tmp);
+                                        downloadFilePath += "\\";
+
+                                        tmp = uploadDownloadData.FileName.Where(b => b != 0x00).ToArray();
+                                        downloadFileName = Encoding.UTF8.GetString(tmp);
+                                        downloadFileName = downloadFilePath + downloadFileName;
+                                        downloadFileSize = uploadDownloadData.FileSize;
+
+                                        fileStream = new FileStream(downloadFileName,
+                                                                    FileMode.Create,
+                                                                    FileAccess.Write);
+
+                                        recvDownloadFileDataSize = uploadDownloadData.DataSize;
+                                        data = uploadDownloadData.Data;
+
+                                        fileStream.Write(data,
+                                                         0,
+                                                         (int)recvDownloadFileDataSize);
+
+                                        downloadFileRemainingSize = downloadFileSize - recvDownloadFileDataSize;
+                                        if(downloadFileRemainingSize > 0)
+                                        {
+                                            continue;
+                                        }
+                                    }else
+                                    {
+                                        uploadDownloadData = new UploadDownloadData(buffer);
+
+                                        recvDownloadFileDataSize = uploadDownloadData.DataSize;
+                                        data = uploadDownloadData.Data;
+
+                                        fileStream.Write(data,
+                                                         0,
+                                                         (int)recvDownloadFileDataSize);
+
+                                        downloadFileRemainingSize -= recvDownloadFileDataSize;
+                                        if(downloadFileRemainingSize > 0)
+                                        {
+                                            continue;
+                                        }
+                                    }
+                                }catch(Exception ex)
+                                {
+#if DEBUGPRINT
+                                    Console.WriteLine("[-] download file error: {0}",
+                                                      ex.Message);
+#endif
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    result = "[-] download file error";
+                                    result += prompt;
+
+                                    tmp = Encoding.UTF8.GetBytes(result);
+                                    length = tmp.Length;
+                                    for(int i = 0; i < length; i++)
+                                    {
+                                        buffer[i] = tmp[i];
+                                    }
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- client] Write");
+#endif
+                                    stream.Write(buffer,
+                                                 0,
+                                                 length);
+                                    sen = length;
+
+                                    downloadCommandFlag = false;
+                                    downloadFileFlag = false;
+                                    downloadFileName = "";
+                                    downloadFilePath = "";
+                                    downloadFileSize = 0;
+                                    recvDownloadFileDataSize = 0;
+                                    downloadFileRemainingSize = 0;
+
+                                    if(fileStream != null)
+                                    {
+                                        fileStream.Close();
+                                        fileStream = null;
+                                    }
+                                    continue;
+                                }
+
+                                fileStream.Close();
+                                fileStream = null;
+
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                result = "[+] download file: ";
+                                result += downloadFileName;
+                                result += prompt;
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                length = tmp.Length;
+                                for(int i = 0; i < length; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] Write");
+#endif
+                                stream.Write(buffer,
+                                             0,
+                                             length);
+                                sen = length;
+
+                                downloadCommandFlag = false;
+                                downloadFileFlag = false;
+                                downloadFileName = "";
+                                downloadFilePath = "";
+                                downloadFileSize = 0;
+                                recvDownloadFileDataSize = 0;
+                                downloadFileRemainingSize = 0;
+
+                                if(sen <= 0)
+                                {
+                                    break;
+                                }
+                            }else
+                            {
+                                length = rec;
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] Write message_id:{0}",
+                                                  nextRecvMessageId - 1);
+#endif
+                                stream.Write(buffer,
+                                             0,
+                                             length);
+                                sen = length;
+                            }
+                        }else
+                        {
+                            msg = (rec,
+                                   buffer);
+                            msgsMap.Add(recvMessageId,
+                                        msg);
+
+                            while(msgsMap.ContainsKey(nextRecvMessageId))
+                            {
+                                msg = msgsMap[nextRecvMessageId];
+                                msgsMap.Remove(nextRecvMessageId);
+
+                                rec = msg.Item1;
+                                buffer = msg.Item2;
+
+                                nextRecvMessageId++;
+                                downloadCommandFlag = false;
+
+                                try
+                                {
+                                    uploadDownloadDataHeader = new UploadDownloadDataHeader(buffer);
+                                    commandTmp = uploadDownloadDataHeader.Command.Where(b => b != 0x00).ToArray();
+                                    command = Encoding.UTF8.GetString(commandTmp);
+                                    if(String.Compare(command, downloadCommand) == 0)
+                                    {
+                                        downloadCommandFlag = true;
+                                    }else
+                                    {
+                                        downloadCommandFlag = false;
+                                    }
+                                }catch(Exception ex)
+                                {
+                                    downloadCommandFlag = false;
+                                }
+
+                                if(downloadCommandFlag == true)
+                                {
+                                    try
+                                    {
+                                        if(downloadFileFlag == false)
+                                        {
+                                            downloadFileFlag = true;
+                                            fileStream = null;
+                                            uploadDownloadData = new UploadDownloadData(buffer);
+
+                                            tmp = uploadDownloadData.FilePath.Where(b => b != 0x00).ToArray();
+                                            downloadFilePath = Encoding.UTF8.GetString(tmp);
+                                            downloadFilePath += "\\";
+
+                                            tmp = uploadDownloadData.FileName.Where(b => b != 0x00).ToArray();
+                                            downloadFileName = Encoding.UTF8.GetString(tmp);
+                                            downloadFileName = downloadFilePath + downloadFileName;
+                                            downloadFileSize = uploadDownloadData.FileSize;
+
+                                            fileStream = new FileStream(downloadFileName,
+                                                                        FileMode.Create,
+                                                                        FileAccess.Write);
+
+                                            recvDownloadFileDataSize = uploadDownloadData.DataSize;
+                                            data = uploadDownloadData.Data;
+
+                                            fileStream.Write(data,
+                                                             0,
+                                                             (int)recvDownloadFileDataSize);
+
+                                            downloadFileRemainingSize = downloadFileSize - recvDownloadFileDataSize;
+                                            if(downloadFileRemainingSize > 0)
+                                            {
+                                                continue;
+                                            }
+                                        }else
+                                        {
+                                            uploadDownloadData = new UploadDownloadData(buffer);
+
+                                            recvDownloadFileDataSize = uploadDownloadData.DataSize;
+                                            data = uploadDownloadData.Data;
+
+                                            fileStream.Write(data,
+                                                             0,
+                                                             (int)recvDownloadFileDataSize);
+
+                                            downloadFileRemainingSize -= recvDownloadFileDataSize;
+                                            if(downloadFileRemainingSize > 0)
+                                            {
+                                                continue;
+                                            }
+                                        }
+                                    }catch(Exception ex)
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] download file error: {0}",
+                                                          ex.Message);
+#endif
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        result = "[-] download file error";
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- client] Write");
+#endif
+                                        stream.Write(buffer,
+                                                     0,
+                                                     length);
+                                        sen = length;
+
+                                        continue;
+                                    }finally
+                                    {
+                                        if(fileStream != null)
+                                        {
+                                            fileStream.Close();
+                                            fileStream = null;
+                                        }
+                                    }
+
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    result = "[+] download file: ";
+                                    result += downloadFileName;
+                                    result += prompt;
+
+                                    tmp = Encoding.UTF8.GetBytes(result);
+                                    length = tmp.Length;
+                                    for(int i = 0; i < length; i++)
+                                    {
+                                        buffer[i] = tmp[i];
+                                    }
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- client] Write");
+#endif
+                                    stream.Write(buffer,
+                                                 0,
+                                                 length);
+                                    sen = length;
+
+                                    downloadCommandFlag = false;
+                                    downloadFileFlag = false;
+                                    downloadFileName = "";
+                                    downloadFilePath = "";
+                                    downloadFileSize = 0;
+                                    recvDownloadFileDataSize = 0;
+                                    downloadFileRemainingSize = 0;
+
+                                    if(sen <= 0)
+                                    {
+                                        break;
+                                    }
+                                }else
+                                {
+                                    length = rec;
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- client] Write message_id:{0}",
+                                                      nextRecvMessageId - 1);
+#endif
+                                    stream.Write(buffer,
+                                                 0,
+                                                 length);
+                                    sen = length;
+                                }
+
+                            }
+
+                            buffer = new byte[NODE_BUFFER_SIZE];
+                        }
+                    }else
+                    {
+                        break;
+                    }
+                }catch(IOException ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderShellSendData timeout: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderShellSendData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }
+            }
+
+            return;
         }
 
         private int ForwarderShell()
         {
+            int timeout = forwarderTvSec * 1000 + ForwarderTvUsec / 1000;
+            this.tcpClient.ReceiveTimeout = timeout;
+            this.tcpClient.SendTimeout = timeout;
+
+            Thread thread1 = new Thread(new ThreadStart(ForwarderShellRecvData));
+            Thread thread2 = new Thread(new ThreadStart(ForwarderShellSendData));
+
+            thread1.Start();
+            thread2.Start();
+
+            thread1.Join();
+            thread2.Join();
+
             return 0;
         }
 
         public int DoSocks5ConnectionShell()
         {
-            return 0;
+            byte authenticationMethod = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
+            byte[] username = Encoding.UTF8.GetBytes(SOCKS5_USERNAME);
+            byte[] password = Encoding.UTF8.GetBytes(SOCKS5_PASSWORD);
+
+            int rec;
+            int sen;
+            int size;
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+
+            recvMessageId = 0;
+            nextRecvMessageId = 0;
+            sendMessageId = GenerateRandomId();
+
+            SelectionRequest selectionRequest;
+            SelectionResponse selectionResponse;
+            UsernamePasswordAuthenticationRequest usernamePasswordAuthenticationRequest;
+            UsernamePasswordAuthenticationResponse usernamePasswordAuthenticationResponse;
+            SocksRequestIpv4 socksRequestIpv4;
+            SocksResponseIpv4 socksResponseIpv4;
+
+            byte[] methods;
+            byte[] dstAddr;
+            byte[] dstPort;
+
+
+            // socks SELECTION_REQUEST [client -> server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send selection request\n");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            try
+            {
+                methods = new byte[1];
+                methods[0] = authenticationMethod;
+                selectionRequest = new SelectionRequest(0x5,
+                                                        0x1,
+                                                        methods);
+                size = selectionRequest.CopyToBuffer(ref buffer);
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] selectionRequest error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            sendMessageId++;
+            sen = SendMessage(buffer,
+                              size,
+                              tvSec,
+                              tvUsec);
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send selection request: {0} bytes",
+                              sen);
+#endif
+
+
+            // socks SELECTION_RESPONSE [client <- server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv selection response");
+#endif
+
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              tvSec,
+                              tvUsec,
+                              true);
+            if(rec != SelectionResponse.SELECTION_RESPONSE_SIZE)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client <- server] recv selection response error");
+#endif
+                return -1;
+            }
+
+            nextRecvMessageId = recvMessageId + 1;
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv selection response: {0} bytes",
+                              rec);
+#endif
+
+            try
+            {
+                selectionResponse = new SelectionResponse(buffer);
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] SelectionResponse error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+            if(selectionResponse.Method == 0xFF)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socks5server authentication method error");
+#endif
+            }
+
+            if(selectionResponse.Method  == 0x2)    // USERNAME_PASSWORD_AUTHENTICATION
+            {
+                // socks USERNAME_PASSWORD_AUTHENTICATION_REQUEST [client -> server]
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client -> server] send username password authentication request");
+#endif
+                Array.Clear(buffer,
+                            0,
+                            bufferMaxLength);
+
+                try
+                {
+                    usernamePasswordAuthenticationRequest = new UsernamePasswordAuthenticationRequest(0x1,
+                                                            (byte)username.Length,
+                                                            username,
+                                                            (byte)password.Length,
+                                                            password);
+                    size = usernamePasswordAuthenticationRequest.CopyToBuffer(ref buffer);
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] usernamePasswordAuthenticationRequest error: {0}",
+                                      ex.Message);
+#endif
+                    return -1;
+                }
+
+                sendMessageId++;
+                sen = SendMessage(buffer,
+                                  size,
+                                  tvSec,
+                                  tvUsec);
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client -> server] send username password authentication request: {0} bytes",
+                            sen);
+#endif
+
+
+                // socks USERNAME_PASSWORD_AUTHENTICATION_RESPONSE [client <- server]
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] recv username password authentication response");
+#endif
+
+                rec = RecvMessage(buffer,
+                                  bufferMaxLength,
+                                  tvSec,
+                                  tvUsec,
+                                  false);
+                if(rec <= 0 ||
+                   nextRecvMessageId != recvMessageId)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] [client <- server] recv username password authentication response error");
+#endif
+                    return -1;
+                }
+
+                nextRecvMessageId++;
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] recv username password authentication response: {0} bytes",
+                                  rec);
+#endif
+
+                try
+                {
+                    usernamePasswordAuthenticationResponse = new UsernamePasswordAuthenticationResponse(buffer);
+                }catch(Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] usernamePasswordAuthenticationResponse error: {0}",
+                                      ex.Message);
+#endif
+                    return -1;
+                }
+
+                if(usernamePasswordAuthenticationResponse.Status != 0x0)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] username password authentication error: 0x%02x",
+                                      usernamePasswordAuthenticationResponse.Status);
+#endif
+                    return -1;
+                }
+            }
+
+
+            // socks SOCKS_REQUEST [client -> server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send socks request");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            try
+            {
+                dstAddr = new byte[4];
+                dstPort = new byte[2];
+                socksRequestIpv4 = new SocksRequestIpv4(0x5,
+                                                        0x9,    // SHELL (0x9, original command)
+                                                        0x0,
+                                                        0x0,    // none
+                                                        dstAddr,
+                                                        dstPort);
+                size = socksRequestIpv4.CopyToBuffer(ref buffer);
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socksRequest error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            sendMessageId++;
+            sen = SendMessage(buffer,
+                              size,
+                              tvSec,
+                              tvUsec);
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send socks request: {0} bytes",
+                              sen);
+#endif
+
+
+            // socks SOCKS_RESPONSE [client <- server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv socks response");
+#endif
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              tvSec,
+                              tvUsec,
+                              false);
+            if(rec <= 0 ||
+               nextRecvMessageId != recvMessageId)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client <- server] recv socks response error");
+#endif
+                return -1;
+            }
+
+            nextRecvMessageId++;
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv socks response: {0} bytes",
+                              rec);
+#endif
+
+            try
+            {
+                socksResponseIpv4 = new SocksResponseIpv4(buffer);
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] socksResponse error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            if(socksResponseIpv4.Ver != 0x5 &&
+               socksResponseIpv4.Rep != 0x0 &&
+               socksResponseIpv4.Atyp != 0x0)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socks response error: 0x%02x",
+                                  socksResponseIpv4.Rep);
+#endif
+                return -1;
+            }
+
+
+            // forwarder [client <> client <> server <> target]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <> client <> server <> target] ForwarderShell");
+#endif
+
+            sendMessageId++;
+            ForwarderShell();
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] worker exit");
+#endif
+
+            return -1;
         }
 
         private int ForwarderAddNode(string config)

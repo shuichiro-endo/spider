@@ -1966,11 +1966,33 @@ namespace spider
             return;
         }
 
-        private void ClientShellWorkder(Client client)
+        private void ClientShellWorkder(object obj)
         {
+            int ret = 0;
+            Client client = obj as Client;
 
 
+            if(client != null)
+            {
+                int timeout = client.TvSec * 1000 + client.TvUsec / 1000;
+                client.TcpClient.ReceiveTimeout = timeout;
+                client.TcpClient.SendTimeout = timeout;
 
+                ret = client.DoSocks5ConnectionShell();
+                if(ret == -1)
+                {
+                    if(clientManager.EraseClient(client.ConnectionId,
+                                                 client.ClientId))
+                    {
+                        if(client.TcpClient != null)
+                        {
+                            client.TcpClient.Dispose();
+                        }
+                    }
+                }
+            }
+
+            return;
         }
 
         private int ListenClientShell(string clientListenIp,
@@ -1982,13 +2004,455 @@ namespace spider
                                       int forwarderTvSec,
                                       int forwarderTvUsec)
         {
+            int ret = 0;
+            string type = "shell";
+            uint connectionId = 0;
+            TcpListener clientTcpListener = null;
+            IPAddress clientListenerIpAddress = null;
+            string clientListenIpTmp = "";
+            TcpClient clientTcpClient = null;
+            Client clientListen;
+            string ipv6LinkLocalPrefix = "fe80:";
+
+
+            try
+            {
+                if(clientListenIp.Contains(":") &&  // ipv6 link local
+                   clientListenIp.StartsWith(ipv6LinkLocalPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    clientListenIpTmp = clientListenIp + "%" + clientListenIpScopeId;
+                    clientListenerIpAddress = IPAddress.Parse(clientListenIpTmp);
+
+                    clientTcpListener = new TcpListener(clientListenerIpAddress,
+                                                        int.Parse(clientListenPort));
+
+                    clientTcpListener.Start();
+
+                    Console.WriteLine("[+] listening port {0} on {1}",
+                                      clientListenPort,
+                                      clientListenIpTmp);
+
+                    clientListen = new Client(type,
+                                              0,
+                                              0,
+                                              0,
+                                              clientListenIp,
+                                              clientListenIpScopeId,
+                                              clientListenPort,
+                                              "",
+                                              destinationSpiderIp,
+                                              clientTcpListener,
+                                              null,
+                                              tvSec,
+                                              tvUsec,
+                                              forwarderTvSec,
+                                              forwarderTvUsec,
+                                              encryption,
+                                              messageManager);
+
+                    do
+                    {
+                        connectionId = GenerateRandomId();
+                        ret = clientManager.InsertClient(connectionId,
+                                                         0,
+                                                         clientListen);
+                    }while(ret != 0);
+
+                    while(true)
+                    {
+                        clientTcpClient = clientTcpListener.AcceptTcpClient();
+
+                        uint clientId = 0;
+                        IPEndPoint clientRemoteEndPoint = clientTcpClient.Client.RemoteEndPoint as IPEndPoint;
+                        IPAddress clientClientIpAddress = null;
+                        int port;
+                        long scopeId;
+                        string clientIp = "";
+                        string clientIpScopeId = "";
+                        string clientPort = "";
+
+                        if(clientRemoteEndPoint != null)
+                        {
+                            clientClientIpAddress = clientRemoteEndPoint.Address;
+                            port = clientRemoteEndPoint.Port;
+                            scopeId = clientClientIpAddress.ScopeId;
+
+                            clientIp = clientClientIpAddress.ToString();
+                            clientIpScopeId = scopeId.ToString();
+                            clientPort = port.ToString();
+
+#if DEBUGPRINT
+                            Console.WriteLine("[+] connected from ip:{0}%{1} port:{2}",
+                                              clientIp,
+                                              clientIpScopeId,
+                                              clientPort);
+#endif
+                            Client client = new Client(type,
+                                                       connectionId,
+                                                       0,
+                                                       0,
+                                                       clientIp,
+                                                       clientIpScopeId,
+                                                       "",
+                                                       clientPort,
+                                                       destinationSpiderIp,
+                                                       null,
+                                                       clientTcpClient,
+                                                       tvSec,
+                                                       tvUsec,
+                                                       forwarderTvSec,
+                                                       forwarderTvUsec,
+                                                       encryption,
+                                                       messageManager);
+
+                            do
+                            {
+                                clientId = GenerateRandomId();
+                                ret = clientManager.InsertClient(connectionId,
+                                                                 clientId,
+                                                                 client);
+                            }while(ret != 0);
+
+                            Thread thread = new Thread(new ParameterizedThreadStart(ClientShellWorkder));
+                            thread.Start(client);
+                        }else
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[-] clientRemoteEndPoint is null");
+#endif
+                            clientTcpClient.Dispose();
+                            continue;
+                        }
+                    }
+                }else
+                {
+                    clientListenerIpAddress = IPAddress.Parse(clientListenIp);
+
+                    clientTcpListener = new TcpListener(clientListenerIpAddress,
+                                                        int.Parse(clientListenPort));
+
+                    clientTcpListener.Start();
+
+                    Console.WriteLine("[+] listening port {0} on {1}",
+                                      clientListenPort,
+                                      clientListenIp);
+
+                    clientListen = new Client(type,
+                                              0,
+                                              0,
+                                              0,
+                                              clientListenIp,
+                                              "",
+                                              clientListenPort,
+                                              "",
+                                              destinationSpiderIp,
+                                              clientTcpListener,
+                                              null,
+                                              tvSec,
+                                              tvUsec,
+                                              forwarderTvSec,
+                                              forwarderTvUsec,
+                                              encryption,
+                                              messageManager);
+
+                    do
+                    {
+                        connectionId = GenerateRandomId();
+                        ret = clientManager.InsertClient(connectionId,
+                                                         0,
+                                                         clientListen);
+                    }while(ret != 0);
+
+                    while(true)
+                    {
+                        clientTcpClient = clientTcpListener.AcceptTcpClient();
+
+                        uint clientId = 0;
+                        IPEndPoint clientRemoteEndPoint = clientTcpClient.Client.RemoteEndPoint as IPEndPoint;
+                        IPAddress clientClientIpAddress = null;
+                        int port;
+                        string clientIp = "";
+                        string clientPort = "";
+
+                        if(clientRemoteEndPoint != null)
+                        {
+                            clientClientIpAddress = clientRemoteEndPoint.Address;
+                            port = clientRemoteEndPoint.Port;
+
+                            clientIp = clientClientIpAddress.ToString();
+                            clientPort = port.ToString();
+
+#if DEBUGPRINT
+                            Console.WriteLine("[+] connected from ip:{0} port:{1}",
+                                              clientIp,
+                                              clientPort);
+#endif
+                            Client client = new Client(type,
+                                                       connectionId,
+                                                       0,
+                                                       0,
+                                                       clientIp,
+                                                       "",
+                                                       "",
+                                                       clientPort,
+                                                       destinationSpiderIp,
+                                                       null,
+                                                       clientTcpClient,
+                                                       tvSec,
+                                                       tvUsec,
+                                                       forwarderTvSec,
+                                                       forwarderTvUsec,
+                                                       encryption,
+                                                       messageManager);
+
+                            do
+                            {
+                                clientId = GenerateRandomId();
+                                ret = clientManager.InsertClient(connectionId,
+                                                                 clientId,
+                                                                 client);
+                            }while(ret != 0);
+
+                            Thread thread = new Thread(new ParameterizedThreadStart(ClientShellWorkder));
+                            thread.Start(client);
+                        }else
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[-] clientRemoteEndPoint is null");
+#endif
+                            clientTcpClient.Dispose();
+                            continue;
+                        }
+                    }
+                }
+            }catch(Exception ex)
+            {
+                Console.WriteLine("[-] ListenClient error: {0}",
+                                  ex.Message);
+            }
+
+            clientManager.EraseClient(connectionId,
+                                      0);
+
+            if(clientTcpListener != null)
+            {
+                clientTcpListener.Stop();
+            }
 
             return 0;
         }
 
+        private void ListenClientShell(object obj)
+        {
+            object[] parameters = obj as object[];
+
+            string clientListenIp = parameters[0] as string;
+            string clientListenIpScopeId = parameters[1] as string;
+            string clientListenPort = parameters[2] as string;
+            string destinationSpiderIp = parameters[3] as string;
+            int tvSec = (int)parameters[4];
+            int tvUsec = (int)parameters[5];
+            int forwarderTvSec = (int)parameters[6];
+            int forwarderTvUsec = (int)parameters[7];
+
+
+            if(clientListenIp != null &&
+                clientListenIpScopeId != null &&
+                clientListenPort != null &&
+                destinationSpiderIp != null)
+            {
+                int ret = ListenClientShell(clientListenIp,
+                                            clientListenIpScopeId,
+                                            clientListenPort,
+                                            destinationSpiderIp,
+                                            tvSec,
+                                            tvUsec,
+                                            forwarderTvSec,
+                                            forwarderTvUsec);
+            }
+
+            return;
+        }
+
         public void AddNodeSpiderClientShell()
         {
+            string clientListenIp = "";
+            string clientListenIpScopeId = "";
+            string clientListenPort = "";
+            string destinationSpiderIp = "";
+            int tvSec = 0;
+            int tvUsec = 0;
+            int forwarderTvSec = 0;
+            int forwarderTvUsec = 0;
+            string input = "";
+            byte[] tmp;
+            char check = 'n';
+            object[] parameters;
 
+
+            while(true)
+            {
+                Console.Write("client listen ip                               > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientListenIp = Encoding.UTF8.GetString(tmp);
+
+                if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
+                   (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                   (String.Compare(clientListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                   (String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                {
+                    Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                    continue;
+                }
+
+                if(String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                {
+                    clientListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                }
+
+                Console.Write("client listen port                             > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientListenPort = Encoding.UTF8.GetString(tmp);
+
+                Console.Write("destination spider ip                          > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                Console.Write("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    tvSec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    tvSec = 3;
+                }
+
+                if(tvSec < 0 || tvSec > 60)
+                {
+                    tvSec = 3;
+                }
+
+                Console.Write("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    tvUsec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    tvUsec = 3;
+                }
+
+                if(tvUsec < 0 || tvUsec > 1000000)
+                {
+                    tvUsec = 0;
+                }
+
+                if(tvSec == 0 && tvUsec == 0){
+                    tvSec = 3;
+                    tvUsec = 0;
+                }
+
+                Console.Write("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    forwarderTvSec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    forwarderTvSec = 300;
+                }
+
+                if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                {
+                    forwarderTvSec = 300;
+                }
+
+                Console.Write("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    forwarderTvUsec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    forwarderTvUsec = 0;
+                }
+
+                if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                {
+                    forwarderTvUsec = 0;
+                }
+
+                if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                {
+                    forwarderTvSec = 300;
+                    forwarderTvUsec = 0;
+                }
+
+                Console.WriteLine("");
+                Console.WriteLine("client listen ip          : {0}", clientListenIp);
+                if(!string.IsNullOrEmpty(clientListenIpScopeId))
+                {
+                    Console.WriteLine("client listen ip scope id : {0}", clientListenIpScopeId);
+                }
+                Console.WriteLine("client listen port        : {0}", clientListenPort);
+                Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                Console.WriteLine("recv/send tv_sec          : {0,7} sec", tvSec);
+                Console.WriteLine("recv/send tv_usec         : {0,7} microsec", tvUsec);
+                Console.WriteLine("forwarder_tv_sec          : {0,7} sec", forwarderTvSec);
+                Console.WriteLine("forwarder_tv_usec         : {0,7} microsec", forwarderTvUsec);
+                Console.WriteLine("");
+
+                Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                check = input[0];
+                if(check == 'y')
+                {
+                    break;
+                }else if(check == 'n')
+                {
+                    continue;
+                }else if(check == 'q'){
+                    return;
+                }else{
+                    return;
+                }
+            }
+
+            parameters = new object[] {clientListenIp,
+                                       clientListenIpScopeId,
+                                       clientListenPort,
+                                       destinationSpiderIp,
+                                       tvSec,
+                                       tvUsec,
+                                       forwarderTvSec,
+                                       forwarderTvUsec};
+
+            Thread thread = new Thread(new ParameterizedThreadStart(ListenClientShell));
+            thread.Start(parameters);
+
+            Thread.Sleep(2000); // 2s
+
+            return;
         }
 
         private void AddNodeToDestinationSpiderWorker(string config,

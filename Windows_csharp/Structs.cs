@@ -6,6 +6,7 @@
 using System;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace spider
 {
@@ -692,27 +693,62 @@ namespace spider
         ulong dataSize;
         byte[] data = new byte[SHELL_UPLOAD_DOWNLOAD_DATA_SIZE];
 
-        public UploadDownloadData(byte[] command,
-                                  byte[] fileName,
-                                  byte[] filePath,
+        public UploadDownloadData(string command,
+                                  string fileName,
+                                  string filePath,
                                   ulong fileSize,
                                   ulong dataSize,
                                   byte[] data)
         {
+            byte[] tmp;
+
             try
             {
-                for(int i = 0; i < 16; i++)
+                tmp = Encoding.UTF8.GetBytes(command);
+                if(tmp.Length <= 16)
                 {
-                    this.command[i] = command[i];
-                }
-                for(int i = 0; i < 256; i++)
+                    for(int i = 0; i < tmp.Length; i++)
+                    {
+                        this.command[i] = tmp[i];
+                    }
+                }else
                 {
-                    this.fileName[i] = fileName[i];
+                    for(int i = 0; i < 16; i++)
+                    {
+                        this.command[i] = tmp[i];
+                    }
                 }
-                for(int i = 0; i < 256; i++)
+
+                tmp = Encoding.UTF8.GetBytes(fileName);
+                if(tmp.Length <= 256)
                 {
-                    this.filePath[i] = filePath[i];
+                    for(int i = 0; i < tmp.Length; i++)
+                    {
+                        this.fileName[i] = tmp[i];
+                    }
+                }else
+                {
+                    for(int i = 0; i < 256; i++)
+                    {
+                        this.fileName[i] = tmp[i];
+                    }
                 }
+
+                tmp = Encoding.UTF8.GetBytes(filePath);
+                if(tmp.Length <= 256)
+                {
+                    for(int i = 0; i < tmp.Length; i++)
+                    {
+                        this.filePath[i] = tmp[i];
+                    }
+                }else
+                {
+                    for(int i = 0; i < 256; i++)
+                    {
+                        this.filePath[i] = tmp[i];
+                    }
+                }
+
                 this.fileSize = fileSize;
                 this.dataSize = dataSize;
                 for(ulong i = 0; i < dataSize; i++)
