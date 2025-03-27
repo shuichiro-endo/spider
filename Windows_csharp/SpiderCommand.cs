@@ -5,6 +5,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -2474,22 +2475,39 @@ namespace spider
 
         }
 
-        private string getLineValue(string line,
-                                    string name)
+        private string getLine(IEnumerator<string> lineEnumerator)
         {
-            string ret = "";
+            string line = null;
 
-            return ret;
+            while(lineEnumerator.MoveNext())
+            {
+                line = lineEnumerator.Current;
+
+                if(line.StartsWith("//", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("\r\n", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("\n", StringComparison.OrdinalIgnoreCase) ||
+                   line.StartsWith("\r", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }else
+                {
+                    return line;
+                }
+            }
+
+            return null;
         }
 
-        private string getLine(byte[] data,
-                               int dataSize,
-                               byte[] lineStart,
-                               byte[] lineEnd)
+        private IEnumerator<string> ReadLinesFromFile(string configFile)
         {
-            string ret = "";
-
-            return ret;
+            using(StreamReader reader = new StreamReader(configFile))
+            {
+                string line;
+                while((line = reader.ReadLine()) != null)
+                {
+                    yield return line;
+                }
+            }
         }
 
         public int ReadConfig(byte[] config)
@@ -2499,6 +2517,726 @@ namespace spider
 
         public int ReadConfigFile(string configFile)
         {
+            string line = "";
+            IEnumerator<string> lineEnumerator;
+
+
+            if(!File.Exists(configFile))
+            {
+                Console.WriteLine("[-] cannot find config file");
+                return -1;
+            }
+
+            lineEnumerator = ReadLinesFromFile(configFile);
+
+            while(true)
+            {
+                try
+                {
+                    line = getLine(lineEnumerator);
+                    if(line == null)
+                    {
+                        break;
+                    }
+
+                    if(String.Compare(line, "[client]") == 0)
+                    {
+                        string clientListenIp = "";
+                        string clientListenIpScopeId = "";
+                        string clientListenPort = "";
+                        string destinationSpiderIp = "";
+                        string tvSecString = "";
+                        string tvUsecString = "";
+                        string forwarderTvSecString = "";
+                        string forwarderTvUsecString = "";
+                        int tvSec = 0;
+                        int tvUsec = 0;
+                        int forwarderTvSec = 0;
+                        int forwarderTvUsec = 0;
+                        object[] parameters;
+
+
+                        // client_listen_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("client_listen_ip:", StringComparison.Ordinal))
+                        {
+                            clientListenIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(clientListenIp))
+                        {
+                            Console.WriteLine("[-] [client] [client_listen_ip] error");
+                            break;
+                        }
+
+                        if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
+                           (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                           (String.Compare(clientListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                           (String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                        {
+                            Console.WriteLine("[-] [client] [client_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                              clientListenIp);
+                            break;
+                        }
+
+                        if(String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                        {
+                            clientListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                        }
+
+
+                        // client_listen_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("client_listen_port:", StringComparison.Ordinal))
+                        {
+                            clientListenPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(clientListenPort))
+                        {
+                            Console.WriteLine("[-] [client] [client_listen_port] error");
+                            break;
+                        }
+
+
+                        // destination_spider_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("destination_spider_ip:", StringComparison.Ordinal))
+                        {
+                            destinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(destinationSpiderIp))
+                        {
+                            Console.WriteLine("[-] [client] [destination_spider_ip] error");
+                            break;
+                        }
+
+
+                        // tv_sec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("tv_sec:", StringComparison.Ordinal))
+                        {
+                            tvSecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(tvSecString))
+                        {
+                            Console.WriteLine("[-] [client] [tv_sec] error");
+                            break;
+                        }
+
+
+                        // tv_usec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("tv_usec:", StringComparison.Ordinal))
+                        {
+                            tvUsecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(tvUsecString))
+                        {
+                            Console.WriteLine("[-] [client] [tv_usec] error");
+                            break;
+                        }
+
+
+                        // forwarder_tv_sec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("forwarder_tv_sec:", StringComparison.Ordinal))
+                        {
+                            forwarderTvSecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(forwarderTvSecString))
+                        {
+                            Console.WriteLine("[-] [client] [forwarder_tv_sec] error");
+                            break;
+                        }
+
+
+                        // forwarder_tv_usec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("forwarder_tv_usec:", StringComparison.Ordinal))
+                        {
+                            forwarderTvUsecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(forwarderTvUsecString))
+                        {
+                            Console.WriteLine("[-] [client] [forwarder_tv_usec] error");
+                            break;
+                        }
+
+
+                        tvSec = int.Parse(tvSecString);
+                        tvUsec = int.Parse(tvUsecString);
+                        forwarderTvSec = int.Parse(forwarderTvSecString);
+                        forwarderTvUsec = int.Parse(forwarderTvUsecString);
+
+                        if(tvSec < 0 || tvSec > 60)
+                        {
+                            tvSec = 3;
+                        }
+
+                        if(tvUsec < 0 || tvUsec > 1000000)
+                        {
+                            tvUsec = 0;
+                        }
+
+                        if(tvSec == 0 && tvUsec == 0){
+                            tvSec = 3;
+                            tvUsec = 0;
+                        }
+
+                        if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                        {
+                            forwarderTvSec = 30;
+                        }
+
+                        if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                        {
+                            forwarderTvUsec = 0;
+                        }
+
+                        if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                        {
+                            forwarderTvSec = 30;
+                            forwarderTvUsec = 0;
+                        }
+
+
+                        parameters = new object[] {clientListenIp,
+                                                   clientListenIpScopeId,
+                                                   clientListenPort,
+                                                   destinationSpiderIp,
+                                                   tvSec,
+                                                   tvUsec,
+                                                   forwarderTvSec,
+                                                   forwarderTvUsec};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ListenClient));
+                        thread.Start(parameters);
+
+                    }else if(String.Compare(line, "[pipe_client]") == 0)
+                    {
+                        char mode = 'c';
+                        string pipeIp = "";
+                        string pipeIpScopeId = "";
+                        string pipeDestinationIp = "";
+                        string pipeDestinationPort = "";
+                        object[] parameters;
+
+
+                        // pipe_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_ip:", StringComparison.Ordinal))
+                        {
+                            pipeIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeIp))
+                        {
+                            Console.WriteLine("[-] [pipe_client] [pipe_ip] error");
+                            break;
+                        }
+
+                        if((String.Compare(pipeIp, spiderIp.SpiderIpv4) != 0) &&
+                           (String.Compare(pipeIp, spiderIp.SpiderIpv6Global) != 0) &&
+                           (String.Compare(pipeIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                           (String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                        {
+                            Console.WriteLine("[-] [pipe_client] [pipe_ip] please input spider ipv4 or ipv6: {0}",
+                                              pipeIp);
+                            break;
+                        }
+
+                        if(String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                        {
+                            pipeIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                        }
+
+
+                        // pipe_destination_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_destination_ip:"))
+                        {
+                            pipeDestinationIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeDestinationIp))
+                        {
+                            Console.WriteLine("[-] [pipe_client] [pipe_destination_ip] error");
+                            break;
+                        }
+
+
+                        // pipe_destination_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_destination_port:"))
+                        {
+                            pipeDestinationPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeDestinationPort))
+                        {
+                            Console.WriteLine("[-] [pipe_client] [pipe_destination_port] error");
+                            break;
+                        }
+
+
+                        parameters = new object[] {mode,
+                                                   pipeIp,
+                                                   pipeIpScopeId,
+                                                   pipeDestinationIp,
+                                                   pipeDestinationPort};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
+                        thread.Start(parameters);
+
+                    }else if(String.Compare(line, "[pipe_server]") == 0)
+                    {
+                        char mode = 's';
+                        string pipeListenIp = "";
+                        string pipeListenIpScopeId = "";
+                        string pipeListenPort = "";
+                        object[] parameters;
+
+
+                        // pipe_listen_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_server] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_listen_ip:"))
+                        {
+                            pipeListenIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeListenIp))
+                        {
+                            Console.WriteLine("[-] [pipe_server] [pipe_listen_ip] error");
+                            break;
+                        }
+
+                        if((String.Compare(pipeListenIp, spiderIp.SpiderIpv4) != 0) &&
+                           (String.Compare(pipeListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                           (String.Compare(pipeListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                           (String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                        {
+                            Console.WriteLine("[-] [pipe_server] [pipe_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                              pipeListenIp);
+                            break;
+                        }
+
+                        if(String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                        {
+                            pipeListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                        }
+
+
+                        // pipe_listen_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_server] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_listen_port:"))
+                        {
+                            pipeListenPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeListenPort))
+                        {
+                            Console.WriteLine("[-] [pipe_server] [pipe_listen_port] error");
+                            break;
+                        }
+
+
+                        parameters = new object[] {mode,
+                                                   pipeListenIp,
+                                                   pipeListenIpScopeId,
+                                                   pipeListenPort};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
+                        thread.Start(parameters);
+
+                    }else if(String.Compare(line, "[client_udp]") == 0)
+                    {
+                        string clientListenIp = "";
+                        string clientListenIpScopeId = "";
+                        string clientListenPort = "";
+                        string destinationSpiderIp = "";
+                        string targetIp = "";
+                        string targetPort = "";
+                        string tvSecString = "";
+                        string tvUsecString = "";
+                        string forwarderTvSecString = "";
+                        string forwarderTvUsecString = "";
+                        int tvSec = 0;
+                        int tvUsec = 0;
+                        int forwarderTvSec = 0;
+                        int forwarderTvUsec = 0;
+                        object[] parameters;
+
+
+                        // client_listen_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("client_listen_ip:", StringComparison.Ordinal))
+                        {
+                            clientListenIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(clientListenIp))
+                        {
+                            Console.WriteLine("[-] [client_udp] [client_listen_ip] error");
+                            break;
+                        }
+
+                        if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
+                           (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                           (String.Compare(clientListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                           (String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                        {
+                            Console.WriteLine("[-] [client_udp] [client_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                              clientListenIp);
+                            break;
+                        }
+
+                        if(String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                        {
+                            clientListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                        }
+
+
+                        // client_listen_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("client_listen_port:", StringComparison.Ordinal))
+                        {
+                            clientListenPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(clientListenPort))
+                        {
+                            Console.WriteLine("[-] [client_udp] [client_listen_port] error");
+                            break;
+                        }
+
+
+                        // destination_spider_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("destination_spider_ip:", StringComparison.Ordinal))
+                        {
+                            destinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(destinationSpiderIp))
+                        {
+                            Console.WriteLine("[-] [client_udp] [destination_spider_ip] error");
+                            break;
+                        }
+
+
+                        // target_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("target_ip:"))
+                        {
+                            targetIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(targetIp))
+                        {
+                            Console.WriteLine("[-] [client_udp] [target_ip] error");
+                            break;
+                        }
+
+                        if(targetIp.Length >= 256)
+                        {
+                            Console.WriteLine("[-] [client_udp] [target_ip] size error");
+                            break;
+                        }
+
+
+                        // target_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("target_port:"))
+                        {
+                            targetPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(targetPort))
+                        {
+                            Console.WriteLine("[-] [client_udp] [target_port] error");
+                            break;
+                        }
+
+
+                        // tv_sec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("tv_sec:", StringComparison.Ordinal))
+                        {
+                            tvSecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(tvSecString))
+                        {
+                            Console.WriteLine("[-] [client_udp] [tv_sec] error");
+                            break;
+                        }
+
+
+                        // tv_usec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("tv_usec:", StringComparison.Ordinal))
+                        {
+                            tvUsecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(tvUsecString))
+                        {
+                            Console.WriteLine("[-] [client_udp] [tv_usec] error");
+                            break;
+                        }
+
+
+                        // forwarder_tv_sec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("forwarder_tv_sec:", StringComparison.Ordinal))
+                        {
+                            forwarderTvSecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(forwarderTvSecString))
+                        {
+                            Console.WriteLine("[-] [client_udp] [forwarder_tv_sec] error");
+                            break;
+                        }
+
+
+                        // forwarder_tv_usec
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [client_udp] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("forwarder_tv_usec:", StringComparison.Ordinal))
+                        {
+                            forwarderTvUsecString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(forwarderTvUsecString))
+                        {
+                            Console.WriteLine("[-] [client_udp] [forwarder_tv_usec] error");
+                            break;
+                        }
+
+
+                        tvSec = int.Parse(tvSecString);
+                        tvUsec = int.Parse(tvUsecString);
+                        forwarderTvSec = int.Parse(forwarderTvSecString);
+                        forwarderTvUsec = int.Parse(forwarderTvUsecString);
+
+                        if(tvSec < 0 || tvSec > 60)
+                        {
+                            tvSec = 3;
+                        }
+
+                        if(tvUsec < 0 || tvUsec > 1000000)
+                        {
+                            tvUsec = 0;
+                        }
+
+                        if(tvSec == 0 && tvUsec == 0){
+                            tvSec = 3;
+                            tvUsec = 0;
+                        }
+
+                        if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                        {
+                            forwarderTvSec = 30;
+                        }
+
+                        if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                        {
+                            forwarderTvUsec = 0;
+                        }
+
+                        if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                        {
+                            forwarderTvSec = 30;
+                            forwarderTvUsec = 0;
+                        }
+
+
+                        parameters = new object[] {clientListenIp,
+                                                   clientListenIpScopeId,
+                                                   clientListenPort,
+                                                   destinationSpiderIp,
+                                                   targetIp,
+                                                   targetPort,
+                                                   tvSec,
+                                                   tvUsec,
+                                                   forwarderTvSec,
+                                                   forwarderTvUsec};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ClientUdpWorker));
+                        thread.Start(parameters);
+
+                    }else if(String.Compare(line, "[sleep]") == 0)
+                    {
+                        string sleepString = "";
+                        int s;
+
+
+                        // sleep
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [sleep] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("sleep:", StringComparison.Ordinal))
+                        {
+                            sleepString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(sleepString))
+                        {
+                            Console.WriteLine("[-] [sleep] [sleep] error");
+                            break;
+                        }
+
+
+                        s = int.Parse(sleepString) * 1000;
+                        Thread.Sleep(s);
+
+                    }
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] read config file error: {0}",
+                                      ex.Message);
+                    return -1;
+                }
+            }
+
+            Thread.Sleep(5000);
+
             return 0;
         }
     }
