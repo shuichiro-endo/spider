@@ -487,6 +487,7 @@ int main(int argc,
                 std::printf(" spider ipv6 link local scope id : %s (%d)\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_link_local_scope_id().c_str()));
             }
         }
+        std::printf(" config file                     : %s\n", config_file.c_str());
         std::printf(" routing mode                    : %s\n", (routing_mode == "s" ? "self" : "auto"));
         std::printf(" xor encryption                  : %s\n", (xor_flag ? "on" : "off"));
         std::printf(" xor key hex string              : %s\n", xor_key_hex_string.c_str());
