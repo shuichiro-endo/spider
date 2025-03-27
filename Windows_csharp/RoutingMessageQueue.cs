@@ -29,9 +29,20 @@ namespace spider
         public void Push(RoutingMessage message)
         {
             guard.Wait();
-            queue.Enqueue(message);
-            guard.Release();
-            token.Release();
+            try
+            {
+                while(token.CurrentCount >= ROUTING_MESSAGE_QUEUE_CAPACITY)
+                {
+                    guard.Release();
+                    Thread.Sleep(10);
+                    guard.Wait();
+                }
+                queue.Enqueue(message);
+                token.Release();
+            }finally
+            {
+                guard.Release();
+            }
         }
 
         public int PushTimeout(RoutingMessage message,
@@ -43,9 +54,20 @@ namespace spider
 
             if(guard.Wait(t))
             {
-                queue.Enqueue(message);
-                guard.Release();
-                token.Release();
+                try
+                {
+                    while(token.CurrentCount >= ROUTING_MESSAGE_QUEUE_CAPACITY)
+                    {
+                        guard.Release();
+                        Thread.Sleep(10);
+                        guard.Wait();
+                    }
+                    queue.Enqueue(message);
+                    token.Release();
+                }finally
+                {
+                    guard.Release();
+                }
             }else
             {
 #if DEBUGPRINT
