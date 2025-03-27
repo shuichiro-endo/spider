@@ -22,10 +22,16 @@ namespace spider
     void Routingmessagequeue::push(std::shared_ptr<Routingmessage> message)
     {
         guard.acquire();
+        while(this->count >= ROUTING_MESSAGE_QUEUE_CAPACITY)
+        {
+            guard.release();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            guard.acquire();
+        }
         queue.push(message);
-        guard.release();
-
+        this->count++;
         token.release();
+        guard.release();
 
         return;
     }
@@ -40,9 +46,16 @@ namespace spider
 
         if(guard.try_acquire_for(duration))
         {
+            while(this->count >= ROUTING_MESSAGE_QUEUE_CAPACITY)
+            {
+                guard.release();
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                guard.acquire();
+            }
             queue.push(message);
-            guard.release();
+            this->count++;
             token.release();
+            guard.release();
         }else
         {
 #ifdef _DEBUG
@@ -57,10 +70,10 @@ namespace spider
     std::shared_ptr<Routingmessage> Routingmessagequeue::pop()
     {
         token.acquire();
-
         guard.acquire();
         std::shared_ptr<Routingmessage> message = queue.front();
         queue.pop();
+        this->count--;
         guard.release();
 
         return message;
@@ -78,6 +91,7 @@ namespace spider
             guard.acquire();
             message = queue.front();
             queue.pop();
+            this->count--;
             guard.release();
         }else
         {

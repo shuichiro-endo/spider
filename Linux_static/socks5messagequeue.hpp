@@ -19,6 +19,7 @@ namespace spider
         std::queue<std::shared_ptr<Socks5message>> queue;
         std::counting_semaphore<SOCKS5_MESSAGE_QUEUE_CAPACITY> token{0};
         std::counting_semaphore<1> guard{1};
+        int32_t count = 0;
 
     public:
         Socks5messagequeue();

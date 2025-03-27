@@ -22,10 +22,18 @@ namespace spider
     void Socks5messagequeue::push(std::shared_ptr<Socks5message> message)
     {
         guard.acquire();
+        while(this->count >= SOCKS5_MESSAGE_QUEUE_CAPACITY)
+        {
+            guard.release();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            guard.acquire();
+        }
         queue.push(message);
+        this->count++;
+        token.release();
         guard.release();
 
-        token.release();
+        return;
     }
 
     int32_t Socks5messagequeue::push_timeout(std::shared_ptr<Socks5message> message,
@@ -38,9 +46,16 @@ namespace spider
 
         if(guard.try_acquire_for(duration))
         {
+            while(this->count >= SOCKS5_MESSAGE_QUEUE_CAPACITY)
+            {
+                guard.release();
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                guard.acquire();
+            }
             queue.push(message);
-            guard.release();
+            this->count++;
             token.release();
+            guard.release();
         }else
         {
 #ifdef DEBUGPRINT
@@ -55,10 +70,10 @@ namespace spider
     std::shared_ptr<Socks5message> Socks5messagequeue::pop()
     {
         token.acquire();
-
         guard.acquire();
         std::shared_ptr<Socks5message> message = queue.front();
         queue.pop();
+        this->count--;
         guard.release();
 
         return message;
@@ -76,6 +91,7 @@ namespace spider
             guard.acquire();
             message = queue.front();
             queue.pop();
+            this->count--;
             guard.release();
         }else
         {
