@@ -20,6 +20,7 @@ namespace spider
         [DllImport("iphlpapi.dll", SetLastError = true)]
         public static extern uint if_nametoindex(string ifname);
 
+        private const int METRIC_MAX = 20;   // 0 < METRIC_MAX <= UINT8_MAX(255), UINT8_MAX(255) < delete route
         private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
@@ -97,7 +98,7 @@ namespace spider
         {
             while(true)
             {
-                Thread.Sleep(1000); // 1s
+                Thread.Sleep(500); // 500ms
 
                 routingManager.DeleteRoutingTable();
             }
@@ -1556,7 +1557,7 @@ namespace spider
                         continue;
                     }
 
-                    Console.Write("metric (0 < metric <= {0,3})                     > ", byte.MaxValue);
+                    Console.Write("metric (0 < metric <= {0,3})                     > ", METRIC_MAX);
                     input = Console.ReadLine();
                     input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
                     try
@@ -1569,7 +1570,7 @@ namespace spider
                         continue;
                     }
 
-                    if(metric == 0 || metric > byte.MaxValue)
+                    if(metric == 0 || metric > METRIC_MAX)
                     {
                         Console.WriteLine("[-] input error");
                         continue;

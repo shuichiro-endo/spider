@@ -257,6 +257,14 @@ namespace spider
                         keys[count] = route_key;
                         count++;
                     }
+                }else if(iterator->second->get_metric() > METRIC_MAX)
+                {
+                    if(count < KEYS_MAP_SIZE)
+                    {
+                        std::string route_key = iterator->second->get_ip();
+                        keys[count] = route_key;
+                        count++;
+                    }
                 }
             }
         }

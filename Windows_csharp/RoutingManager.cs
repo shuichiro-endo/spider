@@ -17,6 +17,7 @@ namespace spider
         private const int ROUTING_MESSAGE_DATA_SIZE = 60000;
         private const int INET6_ADDR_STRING_LENGTH = 46;
         private const int KEYS_MAP_SIZE = 200;
+        private const int METRIC_MAX = 20;   // 0 < METRIC_MAX <= UINT8_MAX(255), UINT8_MAX(255) < delete route
         private const int DELETE_ROUTE_TIME = 5;    // 5s
 
         private SpiderIp spiderIp;
@@ -261,6 +262,14 @@ namespace spider
                         d = now - t;
 
                         if (d.TotalSeconds >= DELETE_ROUTE_TIME)
+                        {
+                            if(count < KEYS_MAP_SIZE)
+                            {
+                                string routeKey = kvp.Value.Ip;
+                                keys[count] = routeKey;
+                                count++;
+                            }
+                        }else if(kvp.Value.Metric > METRIC_MAX)
                         {
                             if(count < KEYS_MAP_SIZE)
                             {

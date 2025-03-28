@@ -82,7 +82,7 @@ namespace spider
     {
         while(1)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));  // 1s
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));  // 500ms
 
             routing_manager->delete_routing_table();
         }
@@ -1948,7 +1948,7 @@ namespace spider
                     continue;
                 }
 
-                std::printf("metric (0 < metric <= %3d)                     > ", UINT8_MAX);
+                std::printf("metric (0 < metric <= %3d)                     > ", METRIC_MAX);
                 std::cin >> metric;
                 if(std::cin.fail())
                 {
@@ -1958,7 +1958,7 @@ namespace spider
                     continue;
                 }
 
-                if(metric == 0 || metric > UINT8_MAX)
+                if(metric == 0 || metric > METRIC_MAX)
                 {
                     std::printf("[-] input error\n");
                     continue;
