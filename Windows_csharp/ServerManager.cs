@@ -96,7 +96,7 @@ namespace spider
             {
                 foreach(var kvp in serversMap)
                 {
-                    Console.WriteLine("|   {0,10}|{1,10}|{2,10}|{3,-46}|{4,5}|{5,-46}|{6,10}|{7,-46}|{8,5}|{9,10}|{10,7}|{11,7}|{12,7}|{13,7}|",
+                    Console.WriteLine("|   {0,10}|{1,10}|{2,10}|{3,-46}|      {4,5}|{5,-46}|        {6,5}|{7,-46}|      {8,5}|        {9,5}|{10,7}|{11,7}|         {12,7}|          {13,7}|",
                                       kvp.Value.ConnectionId,
                                       kvp.Value.ClientId,
                                       kvp.Value.ServerId,
@@ -134,7 +134,7 @@ namespace spider
             {
                 foreach(var kvp in serversMap)
                 {
-                    result += string.Format("|   {0,10}|{1,10}|{2,10}|{3,-46}|{4,5}|{5,-46}|{6,10}|{7,-46}|{8,5}|{9,10}|{10,7}|{11,7}|{12,7}|{13,7}|\n",
+                    result += string.Format("|   {0,10}|{1,10}|{2,10}|{3,-46}|      {4,5}|{5,-46}|        {6,5}|{7,-46}|      {8,5}|        {9,5}|{10,7}|{11,7}|         {12,7}|          {13,7}|\n",
                                             kvp.Value.ConnectionId,
                                             kvp.Value.ClientId,
                                             kvp.Value.ServerId,

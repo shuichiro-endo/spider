@@ -96,7 +96,7 @@ namespace spider
             {
                 foreach(var kvp in clientsMap)
                 {
-                    Console.WriteLine("|{0,-6}|   {1,10}|{2,10}|{3,10}|{4,-46}|{5,-10}|             {6,5}|      {7,5}|{8,-46}|{9,-46}|      {10,5}|        {11,5}|{12,7}|{13,7}|         {14,7}|          {15,7}|",
+                    Console.WriteLine("|{0,-6}|   {1,10}|{2,10}|{3,10}|{4,-46}|{5,-10}        |             {6,5}|      {7,5}|{8,-46}|{9,-46}|      {10,5}|        {11,5}|{12,7}|{13,7}|         {14,7}|          {15,7}|",
                                       kvp.Value.Type,
                                       kvp.Value.ConnectionId,
                                       kvp.Value.ClientId,
