@@ -619,17 +619,19 @@ namespace spider
                                                                      $"/c {command}")
             {
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-
 
             using(Process process = new Process())
             {
                 process.StartInfo = processStartInfo;
                 process.Start();
 
-                result = process.StandardOutput.ReadToEnd();
+                result += process.StandardError.ReadToEnd();
+                result += process.StandardOutput.ReadToEnd();
+
                 process.WaitForExit();
             }
 
