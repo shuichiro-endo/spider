@@ -1596,6 +1596,83 @@ namespace spider
 
         private int ForwarderAddNode()
         {
+            int ret = 0;
+            int rec = 0;
+            int sen = 0;
+
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data;
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+            recvMessageId = 0;
+
+            string config = "";
+            string result = "";
+            int resultSize = 0;
+
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] RecvMessage");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              forwarderTvSec,
+                              forwarderTvUsec);
+            if(rec > 0)
+            {
+                if(recvMessageId == nextRecvMessageId)
+                {
+                    data = buffer.Where(b => b != 0x00).ToArray();
+                    config = Encoding.UTF8.GetString(data);
+
+                    ret = spiderCommand.ReadConfig(config);
+                    if(ret != 0)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] ReadConfig error");
+#endif
+                        result = "ReadConfig ng";
+                    }else
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[+] ReadConfig");
+#endif
+                        result = "ReadConfig ok";
+                    }
+
+                    data = Encoding.UTF8.GetBytes(result);
+                    resultSize = data.Length;
+
+                    for(int i = 0; i < resultSize; i++)
+                    {
+                        buffer[i] = data[i];
+                    }
+
+#if DEBUGPRINT
+                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                      sendMessageId);
+#endif
+
+                    sen = SendMessage(buffer,
+                                      resultSize,
+                                      forwarderTvSec,
+                                      forwarderTvUsec);
+                    if(sen > 0)
+                    {
+                        sendMessageId++;
+                    }
+                }
+            }else
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client -> server] RecvMessage error");
+#endif
+                return -1;
+            }
+
             return 0;
         }
 

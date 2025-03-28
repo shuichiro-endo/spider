@@ -2461,27 +2461,512 @@ namespace spider
                                                       string sourceSpiderIpScopeId,
                                                       string destinationSpiderIp)
         {
+            int ret = 0;
+            uint connectionId = 0;
+            uint clientId = 0;
+            Client client;
 
 
+            client = new Client("add",
+                                0,
+                                0,
+                                0,
+                                sourceSpiderIp,
+                                sourceSpiderIpScopeId,
+                                "",
+                                "",
+                                destinationSpiderIp,
+                                null,
+                                null,
+                                ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_SEC,
+                                ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_USEC,
+                                ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_SEC,
+                                ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_USEC,
+                                encryption,
+                                messageManager);
+
+            do
+            {
+                connectionId = GenerateRandomId();
+                clientId = GenerateRandomId();
+                ret = clientManager.InsertClient(connectionId,
+                                                 clientId,
+                                                 client);
+            }while(ret != 0);
+
+            ret = client.DoSocks5ConnectionAddNode(config);
+            if(ret == -1)
+            {
+                clientManager.EraseClient(client.ConnectionId,
+                                          client.ClientId);
+            }
+
+            return;
+        }
+
+        private void AddNodeToDestinationSpiderWorker(object obj)
+        {
+            object[] parameters = obj as object[];
+
+            string config = parameters[0] as string;
+            string sourceSpiderIp = parameters[1] as string;
+            string sourceSpiderIpScopeId = parameters[2] as string;
+            string destinationSpiderIp = parameters[3] as string;
+
+            if(config != null &&
+               sourceSpiderIp != null &&
+               sourceSpiderIpScopeId != null &&
+               destinationSpiderIp != null)
+            {
+                AddNodeToDestinationSpiderWorker(config,
+                                                 sourceSpiderIp,
+                                                 sourceSpiderIpScopeId,
+                                                 destinationSpiderIp);
+            }
+
+            return;
         }
 
         public void AddNodeSpiderClientToDestinationSpider()
         {
+            string config = "";
+            string sourceSpiderIp = "";
+            string sourceSpiderIpScopeId = "";
+            string destinationSpiderIp = "";
+            string clientListenIp = "";
+            string clientListenPort = "";
+            string clientDestinationSpiderIp = "";
+            int tvSec = 0;
+            int tvUsec = 0;
+            int forwarderTvSec = 0;
+            int forwarderTvUsec = 0;
+            string input = "";
+            byte[] tmp;
+            char check = 'n';
+            object[] parameters;
 
+
+            while(true)
+            {
+                Console.Write("source spider ip                               > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                   (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                   (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                   (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                {
+                    Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                    continue;
+                }
+
+                if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                {
+                    sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                }
+
+                Console.Write("destination spider ip                          > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                Console.Write("client listen ip                               > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientListenIp = Encoding.UTF8.GetString(tmp);
+
+                Console.Write("client listen port                             > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientListenPort = Encoding.UTF8.GetString(tmp);
+
+                Console.Write("client destination spider ip                   > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(input.Trim());
+                clientDestinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                Console.Write("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    tvSec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    tvSec = 3;
+                }
+
+                if(tvSec < 0 || tvSec > 60)
+                {
+                    tvSec = 3;
+                }
+
+                Console.Write("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    tvUsec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    tvUsec = 3;
+                }
+
+                if(tvUsec < 0 || tvUsec > 1000000)
+                {
+                    tvUsec = 0;
+                }
+
+                if(tvSec == 0 && tvUsec == 0){
+                    tvSec = 3;
+                    tvUsec = 0;
+                }
+
+                Console.Write("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    forwarderTvSec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    forwarderTvSec = 30;
+                }
+
+                if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                {
+                    forwarderTvSec = 30;
+                }
+
+                Console.Write("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                try
+                {
+                    forwarderTvUsec = int.Parse(input);
+                }catch(Exception ex)
+                {
+                    Console.WriteLine("[-] input error: {0}",
+                                      ex.Message);
+                    forwarderTvUsec = 0;
+                }
+
+                if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                {
+                    forwarderTvUsec = 0;
+                }
+
+                if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                {
+                    forwarderTvSec = 30;
+                    forwarderTvUsec = 0;
+                }
+
+                Console.WriteLine("");
+                Console.WriteLine("source spider ip             : {0}", sourceSpiderIp);
+                if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                {
+                    Console.WriteLine("source spider ip scope id    : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                }
+                Console.WriteLine("destination spider ip        : {0}", destinationSpiderIp);
+                Console.WriteLine("client listen ip             : {0}", clientListenIp);
+                Console.WriteLine("client listen port           : {0}", clientListenPort);
+                Console.WriteLine("client destination spider ip : {0}", clientDestinationSpiderIp);
+                Console.WriteLine("recv/send tv_sec             : {0,7} sec", tvSec);
+                Console.WriteLine("recv/send tv_usec            : {0,7} microsec", tvUsec);
+                Console.WriteLine("forwarder_tv_sec             : {0,7} sec", forwarderTvSec);
+                Console.WriteLine("forwarder_tv_usec            : {0,7} microsec", forwarderTvUsec);
+                Console.WriteLine("");
+
+                Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                check = input[0];
+                if(check == 'y')
+                {
+                    config = "";
+                    config += "[client]\n";
+
+                    config += "client_listen_ip:";
+                    config += clientListenIp;
+                    config += "\n";
+
+                    config += "client_listen_port:";
+                    config += clientListenPort;
+                    config += "\n";
+
+                    config += "destination_spider_ip:";
+                    config += clientDestinationSpiderIp;
+                    config += "\n";
+
+                    config += "tv_sec:";
+                    config += tvSec.ToString();
+                    config += "\n";
+
+                    config += "tv_usec:";
+                    config += tvUsec.ToString();
+                    config += "\n";
+
+                    config += "forwarder_tv_sec:";
+                    config += forwarderTvSec.ToString();
+                    config += "\n";
+
+                    config += "forwarder_tv_usec:";
+                    config += forwarderTvUsec.ToString();
+                    config += "\n";
+
+                    break;
+                }else if(check == 'n')
+                {
+                    continue;
+                }else if(check == 'q'){
+                    return;
+                }else{
+                    return;
+                }
+            }
+
+            parameters = new object[] {config,
+                                       sourceSpiderIp,
+                                       sourceSpiderIpScopeId,
+                                       destinationSpiderIp};
+
+            Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+            thread.Start(parameters);
+
+            return;
         }
 
         public void AddNodeSpiderPipeToDestinationSpider()
         {
+            string config = "";
+            char mode;  // client:c server:s
+            string sourceSpiderIp = "";
+            string sourceSpiderIpScopeId = "";
+            string destinationSpiderIp = "";
+            string pipeIp = "";
+            string pipeDestinationIp = "";
+            string pipeDestinationPort = "";
+            string pipeListenPort = "";
+            string input = "";
+            byte[] tmp;
+            char check = 'n';
+            object[] parameters;
 
+
+            while(true)
+            {
+                Console.Write("mode (client:c server:s)                       > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                mode = input[0];
+                if(mode == 'c')
+                {
+                    Console.Write("source spider ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
+
+                    if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+                    Console.Write("destination spider ip                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("pipe ip                                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("pipe destination ip                            > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeDestinationIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("pipe destination port                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeDestinationPort = Encoding.UTF8.GetString(tmp);
+
+                    Console.WriteLine("");
+                    Console.WriteLine("mode                      : {0}", mode);
+                    Console.WriteLine("source spider ip          : {0}", sourceSpiderIp);
+                    if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                    {
+                        Console.WriteLine("source spider ip scope id : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                    }
+                    Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                    Console.WriteLine("pipe ip                   : {0}", pipeIp);
+                    Console.WriteLine("pipe destination ip       : {0}", pipeDestinationIp);
+                    Console.WriteLine("pipe destination port     : {0}", pipeDestinationPort);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        config = "";
+                        config += "[pipe_client]\n";
+
+                        config += "pipe_ip:";
+                        config += pipeIp;
+                        config += "\n";
+
+                        config += "pipe_destination_ip:";
+                        config += pipeDestinationIp;
+                        config += "\n";
+
+                        config += "pipe_destination_port:";
+                        config += pipeDestinationPort;
+                        config += "\n";
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+                }else if(mode == 's')
+                {
+                    Console.Write("source spider ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
+
+                    if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+                    Console.Write("destination spider ip                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("pipe listen ip                                 > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("pipe listen port                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    pipeListenPort = Encoding.UTF8.GetString(tmp);
+
+                    Console.WriteLine("");
+                    Console.WriteLine("mode                      : {0}", mode);
+                    Console.WriteLine("source spider ip          : {0}", sourceSpiderIp);
+                    if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                    {
+                        Console.WriteLine("source spider ip scope id : {0} {1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                    }
+                    Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                    Console.WriteLine("pipe listen ip            : {0}", pipeIp);
+                    Console.WriteLine("pipe listen port          : {0}", pipeListenPort);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        config = "";
+                        config += "[pipe_server]\n";
+
+                        config += "pipe_listen_ip:";
+                        config += pipeIp;
+                        config += "\n";
+
+                        config += "pipe_listen_port:";
+                        config += pipeListenPort;
+                        config += "\n";
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+                }else{
+                    return;
+                }
+            }
+
+            parameters = new object[] {config,
+                                       sourceSpiderIp,
+                                       sourceSpiderIpScopeId,
+                                       destinationSpiderIp};
+
+            Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+            thread.Start(parameters);
+
+            return;
         }
 
         private string getLine(IEnumerator<string> lineEnumerator)
         {
             string line = null;
+            byte[] tmp;
 
             while(lineEnumerator.MoveNext())
             {
                 line = lineEnumerator.Current;
+                line = new string(line.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                tmp = Encoding.UTF8.GetBytes(line.Trim());
+                line = Encoding.UTF8.GetString(tmp);
 
                 if(line.StartsWith("//", StringComparison.OrdinalIgnoreCase) ||
                    line.StartsWith("\r\n", StringComparison.OrdinalIgnoreCase) ||
@@ -2510,8 +2995,485 @@ namespace spider
             }
         }
 
-        public int ReadConfig(byte[] config)
+        public int ReadConfig(string config)
         {
+            string[] lines;
+            string line;
+            int index = 0;
+
+            lines = config.Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.RemoveEmptyEntries);
+            if(lines.Length == 0)
+            {
+                return -1;
+            }
+
+            try
+            {
+                line = lines[index];
+                index++;
+                if(String.Compare(lines[0], "[client]") == 0)
+                {
+                    string clientListenIp = "";
+                    string clientListenIpScopeId = "";
+                    string clientListenPort = "";
+                    string destinationSpiderIp = "";
+                    string tvSecString = "";
+                    string tvUsecString = "";
+                    string forwarderTvSecString = "";
+                    string forwarderTvUsecString = "";
+                    int tvSec = 0;
+                    int tvUsec = 0;
+                    int forwarderTvSec = 0;
+                    int forwarderTvUsec = 0;
+                    object[] parameters;
+
+
+                    // client_listen_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("client_listen_ip:", StringComparison.Ordinal))
+                    {
+                        clientListenIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(clientListenIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [client_listen_ip] error");
+#endif
+                        return -1;
+                    }
+
+                    if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
+                        (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                        (String.Compare(clientListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                        (String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [client_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                          clientListenIp);
+#endif
+                        return -1;
+                    }
+
+                    if(String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        clientListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+
+                    // client_listen_port
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("client_listen_port:", StringComparison.Ordinal))
+                    {
+                        clientListenPort = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(clientListenPort))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [client_listen_port] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // destination_spider_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("destination_spider_ip:", StringComparison.Ordinal))
+                    {
+                        destinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(destinationSpiderIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [destination_spider_ip] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // tv_sec
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("tv_sec:", StringComparison.Ordinal))
+                    {
+                        tvSecString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(tvSecString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [tv_sec] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // tv_usec
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("tv_usec:", StringComparison.Ordinal))
+                    {
+                        tvUsecString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(tvUsecString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [tv_usec] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // forwarder_tv_sec
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("forwarder_tv_sec:", StringComparison.Ordinal))
+                    {
+                        forwarderTvSecString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(forwarderTvSecString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [forwarder_tv_sec] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // forwarder_tv_usec
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("forwarder_tv_usec:", StringComparison.Ordinal))
+                    {
+                        forwarderTvUsecString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(forwarderTvUsecString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client] [forwarder_tv_usec] error");
+#endif
+                        return -1;
+                    }
+
+
+                    tvSec = int.Parse(tvSecString);
+                    tvUsec = int.Parse(tvUsecString);
+                    forwarderTvSec = int.Parse(forwarderTvSecString);
+                    forwarderTvUsec = int.Parse(forwarderTvUsecString);
+
+                    if(tvSec < 0 || tvSec > 60)
+                    {
+                        tvSec = 3;
+                    }
+
+                    if(tvUsec < 0 || tvUsec > 1000000)
+                    {
+                        tvUsec = 0;
+                    }
+
+                    if(tvSec == 0 && tvUsec == 0){
+                        tvSec = 3;
+                        tvUsec = 0;
+                    }
+
+                    if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                    {
+                        forwarderTvSec = 30;
+                    }
+
+                    if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                    {
+                        forwarderTvUsec = 0;
+                    }
+
+                    if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                    {
+                        forwarderTvSec = 30;
+                        forwarderTvUsec = 0;
+                    }
+
+
+                    parameters = new object[] {clientListenIp,
+                                               clientListenIpScopeId,
+                                               clientListenPort,
+                                               destinationSpiderIp,
+                                               tvSec,
+                                               tvUsec,
+                                               forwarderTvSec,
+                                               forwarderTvUsec};
+
+                    Thread thread = new Thread(new ParameterizedThreadStart(ListenClient));
+                    thread.Start(parameters);
+
+                }else if(String.Compare(line, "[pipe_client]") == 0)
+                {
+                    char mode = 'c';
+                    string pipeIp = "";
+                    string pipeIpScopeId = "";
+                    string pipeDestinationIp = "";
+                    string pipeDestinationPort = "";
+                    object[] parameters;
+
+
+                    // pipe_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_ip:", StringComparison.Ordinal))
+                    {
+                        pipeIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] [pipe_ip] error");
+#endif
+                        return -1;
+                    }
+
+                    if((String.Compare(pipeIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(pipeIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(pipeIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] [pipe_ip] please input spider ipv4 or ipv6: {0}",
+                                          pipeIp);
+#endif
+                        return -1;
+                    }
+
+                    if(String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        pipeIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+
+                    // pipe_destination_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_destination_ip:"))
+                    {
+                        pipeDestinationIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeDestinationIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] [pipe_destination_ip] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // pipe_destination_port
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_destination_port:"))
+                    {
+                        pipeDestinationPort = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeDestinationPort))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client] [pipe_destination_port] error");
+#endif
+                        return -1;
+                    }
+
+
+                    parameters = new object[] {mode,
+                                               pipeIp,
+                                               pipeIpScopeId,
+                                               pipeDestinationIp,
+                                               pipeDestinationPort};
+
+                    Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
+                    thread.Start(parameters);
+
+                }else if(String.Compare(line, "[pipe_server]") == 0)
+                {
+                    char mode = 's';
+                    string pipeListenIp = "";
+                    string pipeListenIpScopeId = "";
+                    string pipeListenPort = "";
+                    object[] parameters;
+
+
+                    // pipe_listen_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_listen_ip:"))
+                    {
+                        pipeListenIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeListenIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server] [pipe_listen_ip] error");
+#endif
+                        return -1;
+                    }
+
+                    if((String.Compare(pipeListenIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(pipeListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(pipeListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server] [pipe_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                          pipeListenIp);
+#endif
+                        return -1;
+                    }
+
+                    if(String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        pipeListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+
+                    // pipe_listen_port
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_listen_port:"))
+                    {
+                        pipeListenPort = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeListenPort))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server] [pipe_listen_port] error");
+#endif
+                        return -1;
+                    }
+
+
+                    parameters = new object[] {mode,
+                                               pipeListenIp,
+                                               pipeListenIpScopeId,
+                                               pipeListenPort};
+
+                    Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
+                    thread.Start(parameters);
+
+                }
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] read config error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
             return 0;
         }
 

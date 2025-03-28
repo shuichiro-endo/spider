@@ -472,8 +472,8 @@ namespace spider
                 Console.WriteLine(" {0}: edit routing table", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
                 Console.WriteLine(" {0}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
                 Console.WriteLine(" {0}: add node (spider client shell)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
-//                Console.WriteLine(" {0}: add node (spider client) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
-//                Console.WriteLine(" {0}: add node (spider pipe) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
+                Console.WriteLine(" {0}: add node (spider client) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
+                Console.WriteLine(" {0}: add node (spider pipe) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
                 Console.WriteLine(" {0}: exit", SPIDER_COMMAND_EXIT);
                 Console.WriteLine("--------------------------------------------------------------------------");
                 Console.WriteLine("");
@@ -519,7 +519,7 @@ namespace spider
                         Console.WriteLine("[!] This is not SOCKS5 connection.");
                         spiderCommand.AddNodeSpiderClientShell();
                         break;
-/*
+
                     case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER:
                         Console.WriteLine("[+] add node (spider client) to destination spider");
                         spiderCommand.AddNodeSpiderClientToDestinationSpider();
@@ -529,7 +529,7 @@ namespace spider
                         Console.WriteLine("[+] add node (spider pipe) to destination spider");
                         spiderCommand.AddNodeSpiderPipeToDestinationSpider();
                         break;
-*/
+
                     case SPIDER_COMMAND_EXIT:
                         Console.WriteLine("[+] exit");
                         Environment.Exit(0);
