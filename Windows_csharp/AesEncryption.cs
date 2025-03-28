@@ -21,7 +21,6 @@ namespace spider
         private int aesIvHexStringSize;
         private byte[] key;
         private byte[] iv;
-        private Aes aes = null;
         ICryptoTransform encryptor = null;
         ICryptoTransform decryptor = null;
 
@@ -51,14 +50,6 @@ namespace spider
                                  this.aesIvHexStringSize,
                                  ref this.iv,
                                  AES_BLOCK_LEN);
-
-                this.aes = Aes.Create();
-                this.aes.Key = key;
-                this.aes.IV = iv;
-                this.aes.Mode = CipherMode.CBC;
-
-                encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-                decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
             }else
             {
                 Console.WriteLine("[-] aes key or iv size error: key({0}):{1} iv({2}):{3}",
@@ -104,6 +95,10 @@ namespace spider
                                     int dataSize,
                                     int bufferSize)
         {
+            byte[] decryptedData;
+            Aes aes = null;
+
+
             if(dataSize + AES_BLOCK_LEN > bufferSize)
             {
 #if DEBUGPRINT
@@ -117,19 +112,57 @@ namespace spider
 //            PrintBytes(data, dataSize);
 #endif
 
-            using(var ms = new MemoryStream())
+            try
             {
-                using(var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                decryptedData = new byte[dataSize];
+                for(int i = 0; i < dataSize; i++)
                 {
-                    cs.Write(data, 0, data.Length);
-                    cs.FlushFinalBlock();
+                    decryptedData[i] = data[i];
                 }
 
-                byte[] encryptedData = ms.ToArray();
+                aes = Aes.Create();
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
 
-                data = encryptedData;
+                encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
 
-                return encryptedData.Length;
+                using(var ms = new MemoryStream())
+                {
+                    using(var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                    {
+                        cs.Write(decryptedData, 0, decryptedData.Length);
+                        cs.FlushFinalBlock();
+                    }
+
+                    byte[] encryptedData = ms.ToArray();
+
+                    Array.Clear(data,
+                                0,
+                                bufferSize);
+
+                    for(int i = 0; i < encryptedData.Length; i++)
+                    {
+                        data[i] = encryptedData[i];
+                    }
+
+                    return encryptedData.Length;
+                }
+            }catch(CryptographicException ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] aes encrypt error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] aes encrypt error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
             }
         }
 
@@ -137,6 +170,10 @@ namespace spider
                                     int dataSize,
                                     int bufferSize)
         {
+            byte[] encryptedData;
+            Aes aes = null;
+
+
             if(dataSize % AES_BLOCK_LEN != 0)
             {
 #if DEBUGPRINT
@@ -146,20 +183,58 @@ namespace spider
                 return -1;
             }
 
-            using(var ms = new MemoryStream(data))
-            using(var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
-            using(var resultStream = new MemoryStream())
+            try
             {
-                cs.CopyTo(resultStream);
-                byte[] decryptedData = resultStream.ToArray();
+                encryptedData = new byte[dataSize];
+                for(int i = 0; i < dataSize; i++)
+                {
+                    encryptedData[i] = data[i];
+                }
 
-                data = decryptedData;
+                aes = Aes.Create();
+                aes.Key = key;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+
+                decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+
+                using(var ms = new MemoryStream(encryptedData))
+                using(var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                using(var resultStream = new MemoryStream())
+                {
+                    cs.CopyTo(resultStream);
+                    byte[] decryptedData = resultStream.ToArray();
+
+                    Array.Clear(data,
+                                0,
+                                bufferSize);
+
+                    for(int i = 0; i < decryptedData.Length; i++)
+                    {
+                        data[i] = decryptedData[i];
+                    }
 
 #if DEBUGPRINT
-//                PrintBytes(data, decryptedData.Length);
+//                    PrintBytes(data, decryptedData.Length);
 #endif
 
-                return decryptedData.Length;
+                    return decryptedData.Length;
+                }
+            }catch(CryptographicException ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] aes decrypt error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] aes decrypt error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
             }
         }
     }
