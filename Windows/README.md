@@ -45,7 +45,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 1.17  Author: Shuichiro Endo
+        =-    -:               Windows Ver: 1.18  Author: Shuichiro Endo
 
 
 usage   : spider.exe
@@ -125,13 +125,14 @@ Encrypt SOCKS5 packets using aes-256-cbc.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 1.17  Author: Shuichiro Endo
+        =-    -:               Windows Ver: 1.18  Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
  spider ipv4                     : 192.168.0.31
  spider ipv6 link local          : fe80::ca60:dc71:546d:8235
  spider ipv6 link local scope id : 14
+ config file                     : 
  routing mode                    : auto
  xor encryption                  : off
  xor key hex string              :
