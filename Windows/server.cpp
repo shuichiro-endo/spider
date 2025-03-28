@@ -738,6 +738,10 @@ namespace spider
             return result;
         }
 
+        SetHandleInformation(handle_read_pipe,
+                             HANDLE_FLAG_INHERIT,
+                             0);
+
         ZeroMemory(&pi,
                    sizeof(pi));
 
