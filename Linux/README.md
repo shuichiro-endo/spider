@@ -432,6 +432,10 @@ Set the ip address of the spider itself.
 Set the ip address of the destination spider that you want to see the node information.
 
 ### 4: show routing table
+> [!IMPORTANT]
+> If the value of the metric is abnormal, the spider with that IP address has been disconnected.
+> 
+> After disconnection, the value of the metric continues to rise, but routes that exceed the METRIC_MAX (default value = 20) value are automatically deleted.
 ```
 command > 4
 [+] show routing table
@@ -445,10 +449,6 @@ command > 4
 ------------------------------------------------------------------------------------------------
 
 ```
-> [!IMPORTANT]
-> If the value of the metric is abnormal, the spider with that IP address has been disconnected.
-> 
-> After disconnection, the value of the metric continues to rise, but routes that exceed the METRIC_MAX (default value = 20) value are automatically deleted.
 
 ### 5: edit routing table
 1. add route
@@ -506,7 +506,7 @@ command > 5
 
 edit mode (add:a delete:d quit:q)  > a
 ip address                         > fe80::a00:27ff:fe25:c316
-metric (0 < metric  <= 20)         > 1
+metric (0 < metric <=  20)         > 1
 ---------------------------------------------------------------------------------------------------- pipe ------------------------------------------------------------------------------------------------------
 |pipe id   |mode|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -607,7 +607,7 @@ If you want to quit, set 'q'.
 #### ip address (add)
 Set the ip address of the destination spider that you want to add to the routing table.
 
-#### metric (0 < metric <= 255) (add)
+#### metric (0 < metric <= 20) (add)
 Set the metric (the number of spiders to pass through) to the destination spider.
 
 #### pipe id (add)
