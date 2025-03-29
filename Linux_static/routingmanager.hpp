@@ -48,6 +48,8 @@ namespace spider
 
         void show_routing_table();
 
+        std::string show_routing_table_string();
+
         void send_routing_table();
 
         void update_routing_table();

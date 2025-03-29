@@ -110,6 +110,41 @@ namespace spider
         return;
     }
 
+    std::string Routingmanager::show_routing_table_string()
+    {
+        std::string result = "";
+
+
+        result += "---------------------------------------- routing  table ----------------------------------------\n";
+
+        result += "|mode|ip address                                    |metric|pipe id   |time                    |\n";
+
+        result += "------------------------------------------------------------------------------------------------\n";
+
+        std::unique_lock<std::mutex> lock(routes_map_mutex);
+
+        for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
+        {
+            struct timeval t = iterator->second->get_time();
+            std::ostringstream oss;
+
+            oss << "|" << std::left << std::setw(1) << iterator->second->get_mode() << "   "
+            << "|" << std::left << std::setw(46) << iterator->second->get_ip().c_str()
+            << "|   " << std::right << std::setw(3) << (uint32_t)(iterator->second->get_metric())
+            << "|" << std::right << std::setw(10) << iterator->second->get_pipe_id()
+            << "|" << std::left << std::setw(24) << std::string(ctime(&t.tv_sec), 24) << "|\n";
+
+            std::string tmp = oss.str();
+            result += tmp;
+        }
+
+        lock.unlock();
+
+        result += "------------------------------------------------------------------------------------------------\n\n";
+
+        return result;
+    }
+
     void Routingmanager::send_routing_table()
     {
         std::shared_ptr<Routingmessage> routing_message = std::make_unique<Routingmessage>();

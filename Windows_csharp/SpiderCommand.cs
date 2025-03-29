@@ -26,10 +26,15 @@ namespace spider
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
         private const int SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_USEC = 0;
+        private const int SHOW_ROUTING_TABLE_WORKER_TV_SEC = 10;
+        private const int SHOW_ROUTING_TABLE_WORKER_TV_USEC = 0;
+        private const int SHOW_ROUTING_TABLE_WORKER_FORWARDER_TV_SEC = 10;
+        private const int SHOW_ROUTING_TABLE_WORKER_FORWARDER_TV_USEC = 0;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_SEC = 10;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_USEC = 0;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_SEC = 60;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_USEC = 0;
+
 
         private SpiderIp spiderIp;
         private Encryption encryption;
@@ -160,6 +165,7 @@ namespace spider
                                         clientManager,
                                         serverManager,
                                         pipeManager,
+                                        routingManager,
                                         messageManager,
                                         this);
 
@@ -1354,7 +1360,7 @@ namespace spider
             Client client;
 
 
-            client = new Client("show",
+            client = new Client("show n",
                                 0,
                                 0,
                                 0,
@@ -1513,9 +1519,164 @@ namespace spider
             return;
         }
 
+        private void ShowRoutingTableWorker(string sourceSpiderIp,
+                                            string sourceSpiderIpScopeId,
+                                            string destinationSpiderIp)
+        {
+            int ret = 0;
+            uint connectionId = 0;
+            uint clientId = 0;
+            Client client;
+
+
+            client = new Client("show r",
+                                0,
+                                0,
+                                0,
+                                sourceSpiderIp,
+                                sourceSpiderIpScopeId,
+                                "",
+                                "",
+                                destinationSpiderIp,
+                                null,
+                                null,
+                                SHOW_ROUTING_TABLE_WORKER_TV_SEC,
+                                SHOW_ROUTING_TABLE_WORKER_TV_USEC,
+                                SHOW_ROUTING_TABLE_WORKER_FORWARDER_TV_SEC,
+                                SHOW_ROUTING_TABLE_WORKER_FORWARDER_TV_USEC,
+                                encryption,
+                                messageManager);
+
+            do
+            {
+                connectionId = GenerateRandomId();
+                clientId = GenerateRandomId();
+                ret = clientManager.InsertClient(connectionId,
+                                                 clientId,
+                                                 client);
+            }while(ret != 0);
+
+            ret = client.DoSocks5ConnectionShowRoute();
+            if(ret == -1)
+            {
+                clientManager.EraseClient(client.ConnectionId,
+                                          client.ClientId);
+            }
+
+            return;
+        }
+
+
+        private void ShowRoutingTableWorker(object obj)
+        {
+            object[] parameters = obj as object[];
+
+            string sourceSpiderIp = parameters[0] as string;
+            string sourceSpiderIpScopeId = parameters[1] as string;
+            string destinationSpiderIp = parameters[2] as string;
+
+
+            if(sourceSpiderIp != null &&
+               sourceSpiderIpScopeId != null &&
+               destinationSpiderIp != null)
+            {
+                ShowRoutingTableWorker(sourceSpiderIp,
+                                       sourceSpiderIpScopeId,
+                                       destinationSpiderIp);
+            }
+
+            return;
+        }
+
         public void ShowRoutingTable()
         {
-            routingManager.ShowRoutingTable();
+            char mode;  // self:s other:o
+            string sourceSpiderIp = "";
+            string sourceSpiderIpScopeId = "";
+            string destinationSpiderIp = "";
+            string input = "";
+            byte[] tmp;
+            char check = 'n';
+            object[] parameters;
+
+
+            while(true)
+            {
+                Console.Write("mode (self:s other:o)                          > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                mode = input[0];
+                if(mode == 's')   // self
+                {
+                    routingManager.ShowRoutingTable();
+
+                    break;
+                }else if(mode == 'o')   // other
+                {
+                    Console.Write("source spider ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
+
+                    if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+                    Console.Write("destination spider ip                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.WriteLine("");
+                    Console.WriteLine("mode                      : {0}", mode);
+                    Console.WriteLine("source spider ip          : {0}", sourceSpiderIp);
+                    if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                    {
+                        Console.WriteLine("source spider ip scope id : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                    }
+                    Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        parameters = new object[] {sourceSpiderIp,
+                                                   sourceSpiderIpScopeId,
+                                                   destinationSpiderIp};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ShowRoutingTableWorker));
+                        thread.Start(parameters);
+
+                        Thread.Sleep(20000);    // 20s
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+                }else{
+                    return;
+                }
+            }
 
             return;
         }

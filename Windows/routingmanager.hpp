@@ -50,6 +50,8 @@ namespace spider
 
         void send_routing_table();
 
+        std::string show_routing_table_string();
+
         void update_routing_table();
 
         void delete_routing_table();

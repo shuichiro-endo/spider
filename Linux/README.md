@@ -436,19 +436,86 @@ Set the ip address of the destination spider that you want to see the node infor
 > If the value of the metric is abnormal, the spider with that IP address has been disconnected.
 > 
 > After disconnection, the value of the metric continues to rise, but routes that exceed the METRIC_MAX (default value = 20) value are automatically deleted.
+1. self
 ```
 command > 4
 [+] show routing table
+mode (self:s other:o)                          > s
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Sun Feb 23 18:28:42 2025|
-|a   |192.168.0.26                                  |     1| 669606159|Sun Feb 23 18:30:30 2025|
-|a   |fe80::a00:27ff:fe25:c316                      |     1| 669606159|Sun Feb 23 18:30:30 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sun Feb 23 18:28:42 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat Mar 29 13:12:39 2025|
+|a   |192.168.0.26                                  |     1|2277811895|Sat Mar 29 13:12:58 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|2277811895|Sat Mar 29 13:12:58 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat Mar 29 13:12:39 2025|
 ------------------------------------------------------------------------------------------------
 
 ```
+2. other (other spider)
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+- ipv4
+```
+command > 4
+[+] show routing table
+mode (self:s other:o)                          > o
+source spider ip                               > 192.168.0.25
+destination spider ip                          > 192.168.0.26
+
+mode                      : o
+source spider ip          : 192.168.0.25
+destination spider ip     : 192.168.0.26
+
+ok? (yes:y no:n quit:q)                        > y
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|a   |192.168.0.25                                  |     1|4188256117|Sat Mar 29 13:13:49 2025|
+|-   |192.168.0.26                                  |     0|         0|Sat Mar 29 13:12:14 2025|
+|-   |fe80::a00:27ff:fe25:c316                      |     0|         0|Sat Mar 29 13:12:14 2025|
+|a   |fe80::a00:27ff:febe:3a77                      |     1|4188256117|Sat Mar 29 13:13:49 2025|
+------------------------------------------------------------------------------------------------
+
+```
+- ipv6
+```
+command > 4
+[+] show routing table
+mode (self:s other:o)                          > o
+source spider ip                               > fe80::a00:27ff:febe:3a77
+destination spider ip                          > fe80::a00:27ff:fe25:c316
+
+mode                      : o
+source spider ip          : fe80::a00:27ff:febe:3a77
+source spider ip scope id : enp0s3 (2)
+destination spider ip     : fe80::a00:27ff:fe25:c316
+
+ok? (yes:y no:n quit:q)                        > y
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|a   |192.168.0.25                                  |     1| 809531751|Sat Mar 29 13:15:56 2025|
+|-   |192.168.0.26                                  |     0|         0|Sat Mar 29 13:14:43 2025|
+|-   |fe80::a00:27ff:fe25:c316                      |     0|         0|Sat Mar 29 13:14:43 2025|
+|a   |fe80::a00:27ff:febe:3a77                      |     1| 809531751|Sat Mar 29 13:15:56 2025|
+------------------------------------------------------------------------------------------------
+
+```
+#### mode (self:s other:o)
+Set the type of mode.
+
+If you want to see the routing table of the spider itself, set 's'.
+
+If you want to see the routing table of other spider, set 'o'.
+
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+
+#### source spider ip (other)
+Set the ip address of the spider itself.
+
+#### destination spider ip (other)
+Set the ip address of the destination spider that you want to see the routing table.
 
 ### 5: edit routing table
 1. add route

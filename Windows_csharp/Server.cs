@@ -25,6 +25,10 @@ namespace spider
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
         private const int SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_FORWARDER_TV_USEC = 0;
+        private const int SHOW_ROUTING_TABLE_WORKER_TV_SEC = 10;
+        private const int SHOW_ROUTING_TABLE_WORKER_TV_USEC = 0;
+        private const int SHOW_ROUTING_TABLE_WORKER_FORWARDER_TV_SEC = 10;
+        private const int SHOW_ROUTING_TABLE_WORKER_FORWARDER_TV_USEC = 0;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_SEC = 10;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_TV_USEC = 0;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_SEC = 60;
@@ -58,6 +62,7 @@ namespace spider
         private ClientManager clientManager;
         private ServerManager serverManager;
         private PipeManager pipeManager;
+        private RoutingManager routingManager;
         private SpiderCommand spiderCommand;
 
         public Server(SpiderIp spiderIp,
@@ -75,6 +80,7 @@ namespace spider
                       ClientManager clientManager,
                       ServerManager serverManager,
                       PipeManager pipeManager,
+                      RoutingManager routingManager,
                       MessageManager messageManager,
                       SpiderCommand spiderCommand)
         : base(null,
@@ -96,6 +102,7 @@ namespace spider
             this.clientManager = clientManager;
             this.serverManager = serverManager;
             this.pipeManager = pipeManager;
+            this.routingManager = routingManager;
             this.messageManager = messageManager;
             this.spiderCommand = spiderCommand;
 
@@ -1733,6 +1740,56 @@ namespace spider
             return 0;
         }
 
+        private int ForwarderShowRoute()
+        {
+            int sen = 0;
+
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            byte[] data;
+            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            recvMessageId = 0;
+
+            string result = "";
+            int resultSize = 0;
+
+
+            result += routingManager.ShowRoutingTableString();
+
+            data = Encoding.UTF8.GetBytes(result);
+            resultSize = data.Length;
+
+            if(resultSize <= socks5MessageDataMaxSize)
+            {
+                for(int i = 0; i < resultSize; i++)
+                {
+                    buffer[i] = data[i];
+                }
+            }else
+            {
+                for(int i = 0; i < socks5MessageDataMaxSize; i++)
+                {
+                    buffer[i] = data[i];
+                }
+
+                resultSize = socks5MessageDataMaxSize;
+            }
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                              sendMessageId);
+#endif
+            sen = SendMessage(buffer,
+                              resultSize,
+                              forwarderTvSec,
+                              forwarderTvUsec);
+            if(sen > 0)
+            {
+                sendMessageId++;
+            }
+
+            return 0;
+        }
+
         private void ForwarderUdpRecvSendData()
         {
             int rec = 0;
@@ -1896,6 +1953,7 @@ namespace spider
             bool socks5ConnectShellFlag = false;
             bool socks5ConnectAddNodeFlag = false;
             bool socks5ConnectShowNodeFlag = false;
+            bool socks5ConnectShowRouteFlag = false;
             bool socks5ConnectUdpFlag = false;
 
             byte authenticationMethod = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
@@ -2245,7 +2303,8 @@ namespace spider
                cmd != 0x8 &&    // CONNECT UDP (0x8, UDP over TCP, original command)
                cmd != 0x9 &&    // SHELL (0x9, shell, original command)
                cmd != 0xa &&    // ADD NODE (0xa, add node, original command)
-               cmd != 0xb)      // SHOW NODE (0xa, show node, original command)
+               cmd != 0xb &&    // SHOW NODE (0xb, show node information, original command)
+               cmd != 0xc)      // SHOW ROUTE (0xc, show routing table, original command)
             {
 #if DEBUGPRINT
                 Console.WriteLine("[-] socks request cmd({0}) error",
@@ -2459,7 +2518,8 @@ namespace spider
                 targetPort = port.ToString();
             }else if((cmd != 0x9 &&
                       cmd != 0xa &&
-                      cmd != 0xb) &&
+                      cmd != 0xb &&
+                      cmd != 0xc) &&
                      atyp != 0x0)
             {
 #if DEBUGPRINT
@@ -3199,7 +3259,7 @@ namespace spider
                 socks5ConnectFlag = false;
                 socks5ConnectAddNodeFlag = true;
             }else if(cmd == 0xb &&
-                     atyp == 0x0)    // SHOW NODE (0xb, show node, original command)
+                     atyp == 0x0)    // SHOW NODE (0xb, show node information, original command)
             {
 #if DEBUGPRINT
                 Console.WriteLine("[+] socks5 response cmd: SHOW NODE (0xb, original command)");
@@ -3219,6 +3279,27 @@ namespace spider
 
                 socks5ConnectFlag = false;
                 socks5ConnectShowNodeFlag = true;
+            }else if(cmd == 0xc &&
+                     atyp == 0x0)    // SHOW ROUTE (0xc, show routing table, original command)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] socks5 response cmd: SHOW NODE (0xb, original command)");
+#endif
+                sen = SendSocksResponseIpv4(buffer,
+                                            bufferMaxLength,
+                                            0x5,
+                                            0x0,
+                                            0x0,
+                                            0x0);
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] socks request: {0} bytes, socks response: {1} bytes",
+                                  rec,
+                                  sen);
+#endif
+
+                socks5ConnectFlag = false;
+                socks5ConnectShowRouteFlag = true;
             }else
             {
 #if DEBUGPRINT
@@ -3253,6 +3334,9 @@ namespace spider
             }else if(socks5ConnectShowNodeFlag == true)
             {
                 ret = ForwarderShowNode();
+            }else if(socks5ConnectShowRouteFlag == true)
+            {
+                ret = ForwarderShowRoute();
             }else if(socks5ConnectUdpFlag == true)
             {
                 ret = ForwarderUdp();

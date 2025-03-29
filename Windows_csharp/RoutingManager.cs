@@ -120,6 +120,34 @@ namespace spider
             return;
         }
 
+        public string ShowRoutingTableString()
+        {
+            string result = "";
+
+            result += "---------------------------------------- routing  table ----------------------------------------\n";
+
+            result += "|mode|ip address                                    |metric|pipe id   |time                    |\n";
+
+            result += "------------------------------------------------------------------------------------------------\n";
+
+            lock(routesMapLock)
+            {
+                foreach(var kvp in routesMap)
+                {
+                    result += string.Format("|{0}   |{1,-46}|   {2,3}|{3,10}|{4,-24}|\n",
+                                            kvp.Value.Mode,
+                                            kvp.Value.Ip,
+                                            kvp.Value.Metric,
+                                            kvp.Value.PipeId,
+                                            kvp.Value.Time);
+                }
+            }
+
+            result += "------------------------------------------------------------------------------------------------\n";
+
+            return result;
+        }
+
         public void SendRoutingTable()
         {
             RoutingMessage routingMessage = new RoutingMessage();
