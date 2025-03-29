@@ -96,7 +96,7 @@ Set the ip address and port number of the destination pipe server node.
 #### [-r routing_mode(auto:a self:s)]
 In auto mode with the -r option, routing information is automatically exchanged between spiders.
 
-In self mode, routing information is not exchanged between spiders, so please set the routing information manually.
+In self mode, routing information is not exchanged between spiders, so please set the routing information manually. (See [5: edit routing table](https://github.com/shuichiro-endo/spider/tree/main/Linux#5-edit-routing-table))
 
 If the -r option is not set, it is in auto mode by default.
 
