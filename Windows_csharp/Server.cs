@@ -3283,7 +3283,7 @@ namespace spider
                      atyp == 0x0)    // SHOW ROUTE (0xc, show routing table, original command)
             {
 #if DEBUGPRINT
-                Console.WriteLine("[+] socks5 response cmd: SHOW NODE (0xb, original command)");
+                Console.WriteLine("[+] socks5 response cmd: SHOW ROUTE (0xc, original command)");
 #endif
                 sen = SendSocksResponseIpv4(buffer,
                                             bufferMaxLength,
