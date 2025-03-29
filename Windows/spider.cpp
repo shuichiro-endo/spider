@@ -1,7 +1,7 @@
 /*
  * Title:  spider spider.cpp (Windows)
  * Author: Shuichiro Endo
- * Ver:    1.18
+ * Ver:    1.19
  */
 
 #define NOMINMAX
@@ -53,7 +53,7 @@ namespace spider
         std::printf("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     \n");
         std::printf("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     \n");
         std::printf("        :*-  :*-   .:.              _//                                   \n");
-        std::printf("        =-    -:               Windows Ver: 1.18  Author: Shuichiro Endo  \n");
+        std::printf("        =-    -:               Windows Ver: 1.19  Author: Shuichiro Endo  \n");
         std::printf("\n");
     }
 
