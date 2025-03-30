@@ -106,10 +106,10 @@ In self mode, routing information is not exchanged between spiders, so please se
 If the -r option is not set, it is in auto mode by default.
 
 #### [-e x(xor encryption)] [-k key(hexstring)]
-Encrypt SOCKS5 packets using xor.
+Encrypt SOCKS5 packets between spider client and spider server using xor.
 
 #### [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
-Encrypt SOCKS5 packets using aes-256-cbc.
+Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc.
 
 [This program (tools/generate_aes_key_hex_string.py)](https://github.com/shuichiro-endo/spider/blob/main/tools/generate_aes_key_hex_string.py) can be used for key generation.
 
