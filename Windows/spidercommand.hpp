@@ -77,6 +77,18 @@ namespace spider
                                        std::string source_spider_ip_scope_id,
                                        std::string destination_spider_ip);
 
+        void client_tcp_worker(std::shared_ptr<Client> client);
+        int listen_client_tcp(std::string client_listen_ip,
+                              std::string client_listen_ip_scope_id,
+                              std::string client_listen_port,
+                              std::string destination_spider_ip,
+                              std::string target_ip,
+                              std::string target_port,
+                              int32_t tv_sec,
+                              int32_t tv_usec,
+                              int32_t forwarder_tv_sec,
+                              int32_t forwarder_tv_usec);
+
         void client_udp_worker(std::string client_listen_ip,
                                 std::string client_listen_ip_scope_id,
                                 std::string client_listen_port,
@@ -141,6 +153,8 @@ namespace spider
         void show_routing_table();
 
         void edit_routing_table();
+
+        void add_node_spider_client_tcp();
 
         void add_node_spider_client_udp();
 

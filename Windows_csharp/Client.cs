@@ -104,6 +104,47 @@ namespace spider
                       string destinationSpiderIp,
                       string targetIp,
                       string targetPort,
+                      TcpListener tcpListener,
+                      TcpClient tcpClient,
+                      int tvSec,
+                      int tvUsec,
+                      int forwarderTvSec,
+                      int forwarderTvUsec,
+                      Encryption encryption,
+                      MessageManager messageManager)
+        : base(tcpListener,
+               tcpClient,
+               messageManager)
+        {
+            this.type = type;
+            this.connectionId = connectionId;
+            this.clientId = clientId;
+            this.serverId = serverId;
+            this.clientIp = clientIp;
+            this.clientIpScopeId = clientIpScopeId;
+            this.clientListenPort = clientListenPort;
+            this.clientPort = clientPort;
+            this.destinationSpiderIp = destinationSpiderIp;
+            this.targetIp = targetIp;
+            this.targetPort = targetPort;
+            this.tvSec = tvSec;
+            this.tvUsec = tvUsec;
+            this.forwarderTvSec = forwarderTvSec;
+            this.forwarderTvUsec = forwarderTvUsec;
+            this.encryption = encryption;
+        }
+
+        public Client(string type,
+                      uint connectionId,
+                      uint clientId,
+                      uint serverId,
+                      string clientIp,
+                      string clientIpScopeId,
+                      string clientListenPort,
+                      string clientPort,
+                      string destinationSpiderIp,
+                      string targetIp,
+                      string targetPort,
                       UdpClient udpClient,
                       int tvSec,
                       int tvUsec,
@@ -3060,6 +3101,301 @@ namespace spider
             thread.Join();
 
             return 0;
+        }
+
+        public int DoSocks5ConnectionTcp()
+        {
+            byte authenticationMethod = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
+            byte[] username = Encoding.UTF8.GetBytes(SOCKS5_USERNAME);
+            byte[] password = Encoding.UTF8.GetBytes(SOCKS5_PASSWORD);
+
+            int rec;
+            int sen;
+            int size;
+            byte[] buffer = new byte[NODE_BUFFER_SIZE];
+            int bufferMaxLength = NODE_BUFFER_SIZE;
+
+            recvMessageId = 0;
+            nextRecvMessageId = 0;
+            sendMessageId = GenerateRandomId();
+
+            SelectionRequest selectionRequest;
+            SelectionResponse selectionResponse;
+            UsernamePasswordAuthenticationRequest usernamePasswordAuthenticationRequest;
+            UsernamePasswordAuthenticationResponse usernamePasswordAuthenticationResponse;
+            SocksRequestDomainname socksRequestDomainname;
+            SocksResponseTmp socksResponseTmp;
+
+            byte[] methods;
+
+
+            // socks SELECTION_REQUEST [client -> server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send selection request\n");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            try
+            {
+                methods = new byte[1];
+                methods[0] = authenticationMethod;
+                selectionRequest = new SelectionRequest(0x5,
+                                                        0x1,
+                                                        methods);
+                size = selectionRequest.CopyToBuffer(ref buffer);
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] selectionRequest error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            sendMessageId++;
+            sen = SendMessage(buffer,
+                              size,
+                              tvSec,
+                              tvUsec);
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send selection request: {0} bytes",
+                              sen);
+#endif
+
+
+            // socks SELECTION_RESPONSE [client <- server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv selection response");
+#endif
+
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              tvSec,
+                              tvUsec,
+                              true);
+            if(rec != SelectionResponse.SELECTION_RESPONSE_SIZE)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client <- server] recv selection response error");
+#endif
+                return -1;
+            }
+
+            nextRecvMessageId = recvMessageId + 1;
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv selection response: {0} bytes",
+                              rec);
+#endif
+
+            try
+            {
+                selectionResponse = new SelectionResponse(buffer);
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] SelectionResponse error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+            if(selectionResponse.Method == 0xFF)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socks5server authentication method error");
+#endif
+            }
+
+            if(selectionResponse.Method  == 0x2)    // USERNAME_PASSWORD_AUTHENTICATION
+            {
+                // socks USERNAME_PASSWORD_AUTHENTICATION_REQUEST [client -> server]
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client -> server] send username password authentication request");
+#endif
+                Array.Clear(buffer,
+                            0,
+                            bufferMaxLength);
+
+                try
+                {
+                    usernamePasswordAuthenticationRequest = new UsernamePasswordAuthenticationRequest(0x1,
+                                                            (byte)username.Length,
+                                                            username,
+                                                            (byte)password.Length,
+                                                            password);
+                    size = usernamePasswordAuthenticationRequest.CopyToBuffer(ref buffer);
+                }catch (Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] usernamePasswordAuthenticationRequest error: {0}",
+                                      ex.Message);
+#endif
+                    return -1;
+                }
+
+                sendMessageId++;
+                sen = SendMessage(buffer,
+                                  size,
+                                  tvSec,
+                                  tvUsec);
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client -> server] send username password authentication request: {0} bytes",
+                            sen);
+#endif
+
+
+                // socks USERNAME_PASSWORD_AUTHENTICATION_RESPONSE [client <- server]
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] recv username password authentication response");
+#endif
+
+                rec = RecvMessage(buffer,
+                                  bufferMaxLength,
+                                  tvSec,
+                                  tvUsec,
+                                  false);
+                if(rec <= 0 ||
+                   nextRecvMessageId != recvMessageId)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] [client <- server] recv username password authentication response error");
+#endif
+                    return -1;
+                }
+
+                nextRecvMessageId++;
+
+#if DEBUGPRINT
+                Console.WriteLine("[+] [client <- server] recv username password authentication response: {0} bytes",
+                                  rec);
+#endif
+
+                try
+                {
+                    usernamePasswordAuthenticationResponse = new UsernamePasswordAuthenticationResponse(buffer);
+                }catch(Exception ex)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[+] usernamePasswordAuthenticationResponse error: {0}",
+                                      ex.Message);
+#endif
+                    return -1;
+                }
+
+                if(usernamePasswordAuthenticationResponse.Status != 0x0)
+                {
+#if DEBUGPRINT
+                    Console.WriteLine("[-] username password authentication error: 0x%02x",
+                                      usernamePasswordAuthenticationResponse.Status);
+#endif
+                    return -1;
+                }
+            }
+
+
+            // socks SOCKS_REQUEST [client -> server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send socks request");
+#endif
+            Array.Clear(buffer,
+                        0,
+                        bufferMaxLength);
+
+            try
+            {
+                socksRequestDomainname = new SocksRequestDomainname(0x5,
+                                                                    0x1,    // CONNECT (0x1)
+                                                                    0x0,
+                                                                    0x3,    // domainname
+                                                                    targetIp,
+                                                                    targetPort);
+                size = socksRequestDomainname.CopyToBuffer(ref buffer);
+            }catch (Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socksRequest error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            sendMessageId++;
+            sen = SendMessage(buffer,
+                              size,
+                              tvSec,
+                              tvUsec);
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client -> server] send socks request: {0} bytes",
+                              sen);
+#endif
+
+
+            // socks SOCKS_RESPONSE [client <- server]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv socks response");
+#endif
+            rec = RecvMessage(buffer,
+                              bufferMaxLength,
+                              tvSec,
+                              tvUsec,
+                              false);
+            if(rec <= 0 ||
+               nextRecvMessageId != recvMessageId)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] [client <- server] recv socks response error");
+#endif
+                return -1;
+            }
+
+            nextRecvMessageId++;
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <- server] recv socks response: {0} bytes",
+                              rec);
+#endif
+
+            try
+            {
+                socksResponseTmp = new SocksResponseTmp(buffer);
+            }catch(Exception ex)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[+] socksResponse error: {0}",
+                                  ex.Message);
+#endif
+                return -1;
+            }
+
+            if(socksResponseTmp.Ver != 0x5 &&
+               socksResponseTmp.Rep != 0x0)
+            {
+#if DEBUGPRINT
+                Console.WriteLine("[-] socks response error: 0x%02x",
+                                  socksResponseTmp.Rep);
+#endif
+                return -1;
+            }
+
+
+            // forwarder [client <> client <> server <> target]
+#if DEBUGPRINT
+            Console.WriteLine("[+] [client <> client <> server <> target] Forwarder");
+#endif
+
+            sendMessageId++;
+            Forwarder();
+
+#if DEBUGPRINT
+            Console.WriteLine("[+] worker exit");
+#endif
+
+            return -1;
         }
 
         public int DoSocks5ConnectionUdp()

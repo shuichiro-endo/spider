@@ -2240,6 +2240,637 @@ namespace spider
         return;
     }
 
+    void Spidercommand::client_tcp_worker(std::shared_ptr<Client> client)
+    {
+        int32_t ret = 0;
+
+        ret = client->do_socks5_connection_tcp();
+        if(ret == -1)
+        {
+            if(client_manager->erase_client(client->get_connection_id(),
+                                            client->get_client_id()))
+            {
+                close(client->get_sock());
+            }
+        }
+
+        return;
+    }
+
+    int Spidercommand::listen_client_tcp(std::string client_listen_ip,
+                                         std::string client_listen_ip_scope_id,
+                                         std::string client_listen_port,
+                                         std::string destination_spider_ip,
+                                         std::string target_ip,
+                                         std::string target_port,
+                                         int32_t tv_sec,
+                                         int32_t tv_usec,
+                                         int32_t forwarder_tv_sec,
+                                         int32_t forwarder_tv_usec)
+    {
+        int ret = 0;
+        uint32_t connection_id = 0;
+        struct sockaddr_in client_listen_addr, client_addr;
+        struct sockaddr_in *tmp_ipv4;
+        struct sockaddr_in6 client_listen_addr6, client_addr6;
+        struct sockaddr_in6 *tmp_ipv6;
+        struct addrinfo hints;
+        struct addrinfo *client_listen_addr_info;
+        int32_t client_listen_sock = -1;
+        int32_t client_sock = -1;
+        int family = 0;
+        int reuse = 1;
+        int flags = 0;
+        int client_addr_length = sizeof(client_addr);
+        int client_addr6_length = sizeof(client_addr6);
+        char client_listen_addr6_string[INET6_ADDRSTRLEN + 1] = {0};
+        char *client_listen_addr6_string_pointer = client_listen_addr6_string;
+        char client_addr6_string[INET6_ADDRSTRLEN + 1] = {0};
+        char *client_addr6_string_pointer = client_addr6_string;
+        std::shared_ptr<Client> client_listen;
+        std::pair<uint32_t, uint32_t> client_listen_key;
+
+        std::memset((char *)&client_listen_addr,
+                    0,
+                    sizeof(struct sockaddr_in));
+
+        std::memset((char *)&client_addr,
+                    0,
+                    sizeof(struct sockaddr_in));
+
+        std::memset((char *)&client_listen_addr6,
+                    0,
+                    sizeof(struct sockaddr_in6));
+
+        std::memset((char *)&client_addr6,
+                    0,
+                    sizeof(struct sockaddr_in6));
+
+        std::memset((char *)&hints,
+                    0,
+                    sizeof(struct addrinfo));
+
+
+        if(client_listen_ip.find(":") == std::string::npos)  // ipv4 address
+        {
+            hints.ai_family = AF_INET;
+            ret = getaddrinfo(client_listen_ip.c_str(),
+                              client_listen_port.c_str(),
+                              &hints,
+                              &client_listen_addr_info);
+            if(ret != 0)
+            {
+                std::printf("[-] cannot resolv the address: %s\n",
+                            client_listen_ip.c_str());
+                return -1;
+            }
+        }else   // ipv6 address
+        {
+            hints.ai_family = AF_INET6;
+            ret = getaddrinfo(client_listen_ip.c_str(),
+                              client_listen_port.c_str(),
+                              &hints,
+                              &client_listen_addr_info);
+            if(ret != 0)
+            {
+                std::printf("[-] cannot resolv the address: %s\n",
+                            client_listen_ip.c_str());
+                return -1;
+            }
+        }
+
+        if(client_listen_addr_info->ai_family == AF_INET)
+        {
+            tmp_ipv4 = (struct sockaddr_in *)client_listen_addr_info->ai_addr;
+
+            family = AF_INET;
+            client_listen_addr.sin_family = AF_INET;
+            std::memcpy(&client_listen_addr.sin_addr,
+                        &tmp_ipv4->sin_addr,
+                        sizeof(struct in_addr));
+            std::memcpy(&client_listen_addr.sin_port,
+                        &tmp_ipv4->sin_port,
+                        2);
+
+            freeaddrinfo(client_listen_addr_info);
+        }else if(client_listen_addr_info->ai_family == AF_INET6)
+        {
+            tmp_ipv6 = (struct sockaddr_in6 *)client_listen_addr_info->ai_addr;
+
+            family = AF_INET6;
+            client_listen_addr6.sin6_family = AF_INET6;
+            std::memcpy(&client_listen_addr6.sin6_addr,
+                        &tmp_ipv6->sin6_addr,
+                        sizeof(struct in6_addr));
+            std::memcpy(&client_listen_addr6.sin6_port,
+                        &tmp_ipv6->sin6_port,
+                        2);
+
+            if(client_listen_ip_scope_id.size() != 0)
+            {
+                client_listen_addr6.sin6_scope_id = if_nametoindex(client_listen_ip_scope_id.c_str());
+            }
+
+            freeaddrinfo(client_listen_addr_info);
+        }else
+        {
+            std::printf("[-] not implemented\n");
+            freeaddrinfo(client_listen_addr_info);
+            return -1;
+        }
+
+        if(family == AF_INET)   // IPv4
+        {
+            client_listen_sock = socket(AF_INET,
+                                        SOCK_STREAM,
+                                        0);
+            reuse = 1;
+            setsockopt(client_listen_sock,
+                       SOL_SOCKET,
+                       SO_REUSEADDR,
+                       &reuse,
+                       sizeof(int));
+
+            // bind
+            ret = bind(client_listen_sock,
+                       (struct sockaddr *)&client_listen_addr,
+                       sizeof(client_listen_addr));
+            if(ret == -1)
+            {
+                std::printf("[-] bind error: %d\n",
+                            errno);
+                close(client_listen_sock);
+                return -1;
+            }
+
+            // listen
+            listen(client_listen_sock,
+                   5);
+            std::printf("[+] listening port %d on %s\n",
+                        ntohs(client_listen_addr.sin_port),
+                        inet_ntoa(client_listen_addr.sin_addr));
+
+            client_listen = std::make_shared<Client>("tcp",
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     client_listen_ip,
+                                                     "",
+                                                     client_listen_port,
+                                                     "",
+                                                     destination_spider_ip,
+                                                     target_ip,
+                                                     target_port,
+                                                     client_listen_sock,
+                                                     tv_sec,
+                                                     tv_usec,
+                                                     forwarder_tv_sec,
+                                                     forwarder_tv_usec,
+                                                     encryption,
+                                                     message_manager);
+
+            do
+            {
+                connection_id = generate_random_id();
+                ret = client_manager->insert_client(connection_id,
+                                                    0,
+                                                    client_listen);
+            }while(ret != 0);
+
+            while(1)
+            {
+                // accept
+                client_sock = accept(client_listen_sock,
+                                     (struct sockaddr *)&client_addr,
+                                     (socklen_t *)&client_addr_length);
+#ifdef _DEBUG
+                std::printf("[+] connected from ip:%s port:%d\n",
+                            inet_ntoa(client_addr.sin_addr),
+                            ntohs(client_addr.sin_port));
+#endif
+
+                flags = fcntl(client_sock,
+                              F_GETFL,
+                              0);
+                flags &= ~O_NONBLOCK;
+                fcntl(client_sock,
+                      F_SETFL,
+                      flags);
+
+                uint32_t client_id = 0;
+                std::string client_ip = inet_ntoa(client_addr.sin_addr);
+                std::string client_port = std::to_string(ntohs(client_addr.sin_port));
+                std::shared_ptr<Client> client = std::make_shared<Client>("tcp",
+                                                                          connection_id,
+                                                                          0,
+                                                                          0,
+                                                                          client_ip,
+                                                                          "",
+                                                                          "",
+                                                                          client_port,
+                                                                          destination_spider_ip,
+                                                                          target_ip,
+                                                                          target_port,
+                                                                          client_sock,
+                                                                          tv_sec,
+                                                                          tv_usec,
+                                                                          forwarder_tv_sec,
+                                                                          forwarder_tv_usec,
+                                                                          encryption,
+                                                                          message_manager);
+
+                do
+                {
+                    client_id = generate_random_id();
+                    ret = client_manager->insert_client(connection_id,
+                                                        client_id,
+                                                        client);
+                }while(ret != 0);
+
+                std::thread thread(&Spidercommand::client_tcp_worker,
+                                   this,
+                                   client);
+                thread.detach();
+            }
+
+            client_manager->erase_client(connection_id,
+                                         0);
+        }else if(family == AF_INET6)
+        {
+            client_listen_sock = socket(AF_INET6,
+                                        SOCK_STREAM,
+                                        0);
+            reuse = 1;
+            setsockopt(client_listen_sock,
+                       SOL_SOCKET,
+                       SO_REUSEADDR,
+                       &reuse,
+                       sizeof(int));
+
+            // bind
+            ret = bind(client_listen_sock,
+                       (struct sockaddr *)&client_listen_addr6,
+                       sizeof(client_listen_addr6));
+            if(ret == -1)
+            {
+                std::printf("[-] bind error: %d\n",
+                            errno);
+                close(client_listen_sock);
+                return -1;
+            }
+
+            // listen
+            listen(client_listen_sock,
+                   5);
+
+            inet_ntop(AF_INET6,
+                      &client_listen_addr6.sin6_addr,
+                      client_listen_addr6_string_pointer,
+                      INET6_ADDRSTRLEN);
+
+            if(client_listen_addr6.sin6_scope_id > 0)
+            {
+                std::printf("[+] listening port %d on %s%%%d\n",
+                            ntohs(client_listen_addr6.sin6_port),
+                            client_listen_addr6_string_pointer,
+                            client_listen_addr6.sin6_scope_id);
+            }else
+            {
+                std::printf("[+] listening port %d on %s\n",
+                            ntohs(client_listen_addr6.sin6_port),
+                            client_listen_addr6_string_pointer);
+            }
+
+            client_listen = std::make_shared<Client>("tcp",
+                                                     0,
+                                                     0,
+                                                     0,
+                                                     client_listen_ip,
+                                                     client_listen_ip_scope_id,
+                                                     client_listen_port,
+                                                     "",
+                                                     destination_spider_ip,
+                                                     target_ip,
+                                                     target_port,
+                                                     client_listen_sock,
+                                                     tv_sec,
+                                                     tv_usec,
+                                                     forwarder_tv_sec,
+                                                     forwarder_tv_usec,
+                                                     encryption,
+                                                     message_manager);
+
+            do
+            {
+                connection_id = generate_random_id();
+                ret = client_manager->insert_client(connection_id,
+                                                    0,
+                                                    client_listen);
+            }while(ret != 0);
+
+            while(1)
+            {
+                // accept
+                client_sock = accept(client_listen_sock,
+                                     (struct sockaddr *)&client_addr6,
+                                     (socklen_t *)&client_addr6_length);
+
+                inet_ntop(AF_INET6,
+                          &client_addr6.sin6_addr,
+                          client_addr6_string_pointer,
+                          INET6_ADDRSTRLEN);
+#ifdef _DEBUG
+                if(client_addr6.sin6_scope_id > 0)
+                {
+                    std::printf("[+] connected from ip:%s%%%d port:%d\n",
+                                client_addr6_string_pointer,
+                                client_addr6.sin6_scope_id,
+                                ntohs(client_addr6.sin6_port));
+                }else
+                {
+                    std::printf("[+] connected from ip:%s port:%d\n",
+                                client_addr6_string_pointer,
+                                ntohs(client_addr6.sin6_port));
+                }
+#endif
+
+                flags = fcntl(client_sock,
+                              F_GETFL,
+                              0);
+                flags &= ~O_NONBLOCK;
+                fcntl(client_sock,
+                      F_SETFL,
+                      flags);
+
+                uint32_t client_id = 0;
+                std::string client_ip;
+                std::string client_ip_scope_id;
+                std::string client_port;
+                client_ip = client_addr6_string_pointer;
+                client_ip_scope_id = std::to_string(client_addr6.sin6_scope_id);
+                client_port = std::to_string(ntohs(client_addr6.sin6_port));
+                std::shared_ptr<Client> client = std::make_shared<Client>("tcp",
+                                                                          connection_id,
+                                                                          0,
+                                                                          0,
+                                                                          client_ip,
+                                                                          client_ip_scope_id,
+                                                                          "",
+                                                                          client_port,
+                                                                          destination_spider_ip,
+                                                                          target_ip,
+                                                                          target_port,
+                                                                          client_sock,
+                                                                          tv_sec,
+                                                                          tv_usec,
+                                                                          forwarder_tv_sec,
+                                                                          forwarder_tv_usec,
+                                                                          encryption,
+                                                                          message_manager);
+
+                do
+                {
+                    client_id = generate_random_id();
+                    ret = client_manager->insert_client(connection_id,
+                                                        client_id,
+                                                        client);
+                }while(ret != 0);
+
+                std::thread thread(&Spidercommand::client_tcp_worker,
+                                   this,
+                                   client);
+                thread.detach();
+            }
+
+            client_manager->erase_client(connection_id,
+                                         0);
+        }
+
+        close(client_listen_sock);
+        return 0;
+    }
+
+    void Spidercommand::add_node_spider_client_tcp()
+    {
+        std::string client_listen_ip;
+        std::string client_listen_ip_scope_id;
+        std::string client_listen_port;
+        std::string destination_spider_ip;
+        std::string target_ip;      // ipv4, domainname, ipv6
+        std::string target_port;
+        int32_t tv_sec = 0;
+        int32_t tv_usec = 0;
+        int32_t forwarder_tv_sec = 0;
+        int32_t forwarder_tv_usec = 0;
+        char check = 'n';
+
+
+        while(1)
+        {
+            std::printf("client listen ip                               > ");
+            std::cin >> client_listen_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(client_listen_ip != spider_ip->get_spider_ipv4()
+               && client_listen_ip != spider_ip->get_spider_ipv6_global()
+               && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+               && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+                std::printf("[-] please input spider ipv4 or ipv6\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+            std::printf("client listen port                             > ");
+            std::cin >> client_listen_port;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("destination spider ip                          > ");
+            std::cin >> destination_spider_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("target ip (ipv4<16, domainname<256, ipv6<46)   > ");
+            std::cin >> target_ip;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            if(target_ip.size() >= 256)
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("target port                                    > ");
+            std::cin >> target_port;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
+
+            std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+            std::cin >> tv_sec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                tv_sec = 3;
+            }else if(tv_sec < 0 || tv_sec > 60)
+            {
+                tv_sec = 3;
+            }
+
+            std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+            std::cin >> tv_usec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                tv_usec = 0;
+            }else if(tv_usec < 0 || tv_usec > 1000000)
+            {
+                tv_usec = 0;
+            }
+
+            if(tv_sec == 0 && tv_usec == 0)
+            {
+                tv_sec = 3;
+                tv_usec = 0;
+            }
+
+            std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+            std::cin >> forwarder_tv_sec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                forwarder_tv_sec = 30;
+            }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+            {
+                forwarder_tv_sec = 30;
+            }
+
+            std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+            std::cin >> forwarder_tv_usec;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                forwarder_tv_usec = 0;
+            }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+            {
+                forwarder_tv_usec = 0;
+            }
+
+            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+            {
+                forwarder_tv_sec = 30;
+                forwarder_tv_usec = 0;
+            }
+
+            std::printf("\n");
+            std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
+            if(!client_listen_ip_scope_id.empty())
+            {
+                std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
+            }
+            std::printf("client listen port        : %s\n", client_listen_port.c_str());
+            std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+            std::printf("target ip                 : %s\n", target_ip.c_str());
+            std::printf("target port               : %s\n", target_port.c_str());
+            std::printf("recv/send tv_sec          : %7d sec\n", tv_sec);
+            std::printf("recv/send tv_usec         : %7d microsec\n", tv_usec);
+            std::printf("forwarder_tv_sec          : %7d sec\n", forwarder_tv_sec);
+            std::printf("forwarder_tv_usec         : %7d microsec\n", forwarder_tv_usec);
+            std::printf("FORWARDER_TCP_TIMEOUT     : %7d sec\n", FORWARDER_TCP_TIMEOUT);
+            std::printf("\n");
+
+            std::printf("ok? (yes:y no:n quit:q)                        > ");
+            std::cin >> check;
+            if(std::cin.fail())
+            {
+                std::printf("[-] input error\n");
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(check == 'y')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                break;
+            }else if(check == 'n')
+            {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }else if(check == 'q'){
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }else{
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                return;
+            }
+
+        }
+
+        std::thread thread(&Spidercommand::listen_client_tcp,
+                           this,
+                           client_listen_ip,
+                           client_listen_ip_scope_id,
+                           client_listen_port,
+                           destination_spider_ip,
+                           target_ip,
+                           target_port,
+                           tv_sec,
+                           tv_usec,
+                           forwarder_tv_sec,
+                           forwarder_tv_usec);
+        thread.detach();
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+
+        return;
+    }
+
     void Spidercommand::client_udp_worker(std::string client_listen_ip,
                                           std::string client_listen_ip_scope_id,
                                           std::string client_listen_port,

@@ -495,16 +495,17 @@ int main(int argc,
         std::printf(" aes key hex string              : %s\n", aes_key_hex_string.c_str());
         std::printf(" aes iv hex string               : %s\n", aes_iv_hex_string.c_str());
         std::printf("----------------------------- spider command -----------------------------\n");
-        std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
-        std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
-        std::printf(" %d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
-        std::printf(" %d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
-        std::printf(" %d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
-        std::printf(" %d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
-        std::printf(" %d: add node (spider client shell)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
-        std::printf(" %d: add node (spider client) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
-        std::printf(" %d: add node (spider pipe) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
-        std::printf(" %d: exit\n", SPIDER_COMMAND_EXIT);
+        std::printf(" %2d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
+        std::printf(" %2d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
+        std::printf(" %2d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
+        std::printf(" %2d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
+        std::printf(" %2d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
+        std::printf(" %2d: add node (spider client tcp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
+        std::printf(" %2d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
+        std::printf(" %2d: add node (spider client shell)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+        std::printf(" %2d: add node (spider client) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
+        std::printf(" %2d: add node (spider pipe) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
+        std::printf(" %2d: exit\n", SPIDER_COMMAND_EXIT);
         std::printf("--------------------------------------------------------------------------\n");
         std::printf("\n");
         std::printf("command > ");
@@ -548,9 +549,15 @@ int main(int argc,
                 spider_command->edit_routing_table();
                 break;
 
+            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP:
+                std::printf("[+] add node (spider client tcp)\n");
+                std::printf("[!] This is not SOCKS5 connection. (Something like TCP over TCP)\n");
+                spider_command->add_node_spider_client_tcp();
+                break;
+
             case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP:
                 std::printf("[+] add node (spider client udp)\n");
-                std::printf("[!] This is not SOCKS5 connection. (UDP over TCP)\n");
+                std::printf("[!] This is not SOCKS5 connection. (Something like UDP over TCP)\n");
                 spider_command->add_node_spider_client_udp();
                 break;
 

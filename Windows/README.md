@@ -132,7 +132,7 @@ Encrypt SOCKS5 packets using aes-256-cbc.
  spider ipv4                     : 192.168.0.31
  spider ipv6 link local          : fe80::ca60:dc71:546d:8235
  spider ipv6 link local scope id : 14
- config file                     : 
+ config file                     :
  routing mode                    : auto
  xor encryption                  : off
  xor key hex string              :
@@ -140,16 +140,17 @@ Encrypt SOCKS5 packets using aes-256-cbc.
  aes key hex string              :
  aes iv hex string               :
 ----------------------------- spider command -----------------------------
- 1: add node (spider client)
- 2: add node (spider pipe)
- 3: show node information
- 4: show routing table
- 5: edit routing table
- 6: add node (spider client udp)
- 7: add node (spider client shell)
- 8: add node (spider client) to destination spider
- 9: add node (spider pipe) to destination spider
- 0: exit
+  1: add node (spider client)
+  2: add node (spider pipe)
+  3: show node information
+  4: show routing table
+  5: edit routing table
+  6: add node (spider client tcp)
+  7: add node (spider client udp)
+  8: add node (spider client shell)
+  9: add node (spider client) to destination spider
+ 10: add node (spider pipe) to destination spider
+  0: exit
 --------------------------------------------------------------------------
 
 command >

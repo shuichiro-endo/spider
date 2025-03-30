@@ -177,6 +177,8 @@ namespace spider
 
         int32_t do_socks5_connection_show_route();
 
+        int32_t do_socks5_connection_tcp();
+
         int32_t do_socks5_connection_udp();
     };
 }

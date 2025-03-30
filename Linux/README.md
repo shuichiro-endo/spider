@@ -136,16 +136,17 @@ Encrypt SOCKS5 packets using aes-256-cbc.
  aes key hex string              : 
  aes iv hex string               : 
 ----------------------------- spider command -----------------------------
- 1: add node (spider client)
- 2: add node (spider pipe)
- 3: show node information
- 4: show routing table
- 5: edit routing table
- 6: add node (spider client udp)
- 7: add node (spider client shell)
- 8: add node (spider client) to destination spider
- 9: add node (spider pipe) to destination spider
- 0: exit
+  1: add node (spider client)
+  2: add node (spider pipe)
+  3: show node information
+  4: show routing table
+  5: edit routing table
+  6: add node (spider client tcp)
+  7: add node (spider client udp)
+  8: add node (spider client shell)
+  9: add node (spider client) to destination spider
+ 10: add node (spider pipe) to destination spider
+  0: exit
 --------------------------------------------------------------------------
 
 command >
@@ -153,6 +154,10 @@ command >
 ```
 
 ### 1: add node (spider client)
+> [!IMPORTANT]
+> This is SOCKS5 connection.
+>
+> [tcp client] <-TCP-> [socks5 client] <-SOCKS5(TCP)-> [spider client] <-SOCKS5(TCP)-> [spider server] <-TCP-> [destination server]
 - ipv4
 ```
 command > 1
@@ -683,9 +688,174 @@ Set the pipe id for sending packets to the destination spider.
 #### ip address (delete)
 Set the ip address of the destination spider that you want to delete from the routing table.
 
-### 6: add node (spider client udp)
+### 6: add node (spider client tcp)
 > [!IMPORTANT]
-> This is not SOCKS5 connection. (UDP over TCP)
+> This is not SOCKS5 connection. (Something like TCP over TCP)
+>
+> [tcp client] <-TCP-> [spider client] <-SOCKS5(TCP)-> [spider server] <-TCP-> [destination server]
+> 
+> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
+
+> [!NOTE]
+> Please set the 'client listen port' to the destination port of the TCP connection tool. (e.g. curl -v http://192.168.0.25:10000)
+> 
+> The server startup time is set to 5 minutes (spider.hpp FORWARDER_TCP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
+- ipv4
+```
+command > 6
+[+] add node (spider client tcp)
+[!] This is not SOCKS5 connection. (Something like TCP over TCP)
+client listen ip                               > 192.168.0.25
+client listen port                             > 10000
+destination spider ip                          > 192.168.0.26
+target ip (ipv4<16, domainname<256, ipv6<46)   > 192.168.0.26
+target port                                    > 8080
+recv/send tv_sec  (timeout 0-60 sec)           > 0
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 0
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+client listen ip          : 192.168.0.25
+client listen port        : 10000
+destination spider ip     : 192.168.0.26
+target ip                 : 192.168.0.26
+target port               : 8080
+recv/send tv_sec          :       3 sec
+recv/send tv_usec         :       0 microsec
+forwarder_tv_sec          :      30 sec
+forwarder_tv_usec         :       0 microsec
+FORWARDER_TCP_TIMEOUT     :     300 sec
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+```
+> curl -v http://192.168.0.25:10000
+*   Trying 192.168.0.25:10000...
+* Connected to 192.168.0.25 (192.168.0.25) port 10000 (#0)
+> GET / HTTP/1.1
+> Host: 192.168.0.25:10000
+> User-Agent: curl/7.88.1
+> Accept: */*
+> 
+* HTTP 1.0, assume close after body
+< HTTP/1.0 200 OK
+< Server: SimpleHTTP/0.6 Python/3.11.2
+< Date: Sun, 30 Mar 2025 03:58:14 GMT
+< Content-type: text/html; charset=utf-8
+< Content-Length: 232
+< 
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Directory listing for /</title>
+</head>
+<body>
+<h1>Directory listing for /</h1>
+<hr>
+<ul>
+<li><a href="spider.jpg">spider.jpg</a></li>
+</ul>
+<hr>
+</body>
+</html>
+* Closing connection 0
+
+```
+- ipv6
+```
+command > 6
+[+] add node (spider client tcp)
+[!] This is not SOCKS5 connection. (Something like TCP over TCP)
+client listen ip                               > fe80::a00:27ff:febe:3a77
+client listen port                             > 10000
+destination spider ip                          > fe80::a00:27ff:fe25:c316
+target ip (ipv4<16, domainname<256, ipv6<46)   > fe80::a00:27ff:fe25:c316
+target port                                    > 8080
+recv/send tv_sec  (timeout 0-60 sec)           > 0
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 0
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+client listen ip          : fe80::a00:27ff:febe:3a77
+client listen ip scope id : enp0s3 (2)
+client listen port        : 10000
+destination spider ip     : fe80::a00:27ff:fe25:c316
+target ip                 : fe80::a00:27ff:fe25:c316
+target port               : 8080
+recv/send tv_sec          :       3 sec
+recv/send tv_usec         :       0 microsec
+forwarder_tv_sec          :      30 sec
+forwarder_tv_usec         :       0 microsec
+FORWARDER_TCP_TIMEOUT     :     300 sec
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+```
+> curl -v 'http://[fe80::a00:27ff:febe:3a77%2]:10000'
+*   Trying [fe80::a00:27ff:febe:3a77]:10000...
+* Connected to fe80::a00:27ff:febe:3a77 (fe80::a00:27ff:febe:3a77) port 10000 (#0)
+> GET / HTTP/1.1
+> Host: [fe80::a00:27ff:febe:3a77]:10000
+> User-Agent: curl/7.88.1
+> Accept: */*
+> 
+* HTTP 1.0, assume close after body
+< HTTP/1.0 200 OK
+< Server: SimpleHTTP/0.6 Python/3.11.2
+< Date: Sun, 30 Mar 2025 04:19:53 GMT
+< Content-type: text/html; charset=utf-8
+< Content-Length: 232
+< 
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Directory listing for /</title>
+</head>
+<body>
+<h1>Directory listing for /</h1>
+<hr>
+<ul>
+<li><a href="spider.jpg">spider.jpg</a></li>
+</ul>
+<hr>
+</body>
+</html>
+* Closing connection 0
+
+```
+#### client listen ip
+Set the ip address of the interface that the client node will listen on.
+
+#### client listen port
+Set the port number that the client node will listen on.
+
+#### destination spider ip
+Set the ip address of the destination spider.
+
+> [!IMPORTANT]
+> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
+
+#### target ip (ipv4<16, domainname<256, ipv6<46)
+Set the ip address of the destination server (TCP).
+
+#### target port
+Set the port number of the destination server (TCP).
+
+#### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
+Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
+
+#### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
+Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
+
+### 7: add node (spider client udp)
+> [!IMPORTANT]
+> This is not SOCKS5 connection. (Something like UDP over TCP)
+>
+> [udp client] <-UDP-> [spider client] <-SOCKS5(TCP)-> [spider server] <-UDP-> [destination server]
 > 
 > The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
 
@@ -695,9 +865,9 @@ Set the ip address of the destination spider that you want to delete from the ro
 > The server startup time is set to 5 minutes (spider.hpp FORWARDER_UDP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
 - ipv4
 ```
-command > 6
+command > 7
 [+] add node (spider client udp)
-[!] This is not SOCKS5 connection. (UDP over TCP)
+[!] This is not SOCKS5 connection. (Something like UDP over TCP)
 client listen ip                               > 192.168.0.25
 client listen port                             > 10053
 destination spider ip                          > 192.168.0.26
@@ -748,9 +918,9 @@ google.com.		149	IN	A	142.250.76.142
 ```
 - ipv6
 ```
-command > 6
+command > 7
 [+] add node (spider client udp)
-[!] This is not SOCKS5 connection. (UDP over TCP)
+[!] This is not SOCKS5 connection. (Something like UDP over TCP)
 client listen ip                               > fe80::a00:27ff:febe:3a77
 client listen port                             > 10053
 destination spider ip                          > 192.168.0.26
@@ -777,7 +947,7 @@ ok? (yes:y no:n quit:q) > y
 
 ```
 ```
-dig @fe80::a00:27ff:febe:3a77%2 -p 10053 google.com +notcp
+> dig @fe80::a00:27ff:febe:3a77%2 -p 10053 google.com +notcp
 
 ; <<>> DiG 9.18.24-1-Debian <<>> @fe80::a00:27ff:febe:3a77%2 -p 10053 google.com +notcp
 ; (1 server found)
@@ -824,14 +994,14 @@ Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password 
 #### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
 Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
 
-### 7: add node (spider client shell)
+### 8: add node (spider client shell)
 > [!IMPORTANT]
 > This is not SOCKS5 connection.
 > 
 > It is necessary to create a route in advance using pipes.
 - ipv4
 ```
-command > 7
+command > 8
 [+] add node (spider client shell)
 [!] This is not SOCKS5 connection.
 client listen ip                               > 192.168.0.25
@@ -891,7 +1061,7 @@ command >exit
 ```
 - ipv6
 ```
-command > 7
+command > 8
 [+] add node (spider client shell)
 [!] This is not SOCKS5 connection.
 client listen ip                               > fe80::a00:27ff:febe:3a77
@@ -973,12 +1143,12 @@ Set the forwarder timeout value longer. (300s - 3600s)
 > [!IMPORTANT]
 > The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
-### 8: add node (spider client) to destination spider
+### 9: add node (spider client) to destination spider
 > [!IMPORTANT]
 > It is necessary to create a route in advance using pipes.
 - ipv4
 ```
-command > 8
+command > 9
 [+] add node (spider client) to destination spider
 source spider ip                               > 192.168.0.25
 destination spider ip                          > 192.168.0.26
@@ -1005,7 +1175,7 @@ ok? (yes:y no:n quit:q)                        > y
 ```
 - ipv6
 ```
-command > 8
+command > 9
 [+] add node (spider client) to destination spider
 source spider ip                               > fe80::a00:27ff:febe:3a77
 destination spider ip                          > fe80::a00:27ff:fe25:c316
@@ -1063,13 +1233,13 @@ Set the timeout for packet forwarding between the SOCKS5 client and the destinat
 > [!IMPORTANT]
 > The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
-### 9: add node (spider pipe) to destination spider
+### 10: add node (spider pipe) to destination spider
 > [!IMPORTANT]
 > It is necessary to create a route in advance using pipes.
 1. pipe (server)
 - ipv4
 ```
-command > 9
+command > 10
 [+] add node (spider pipe) to destination spider
 mode (client:c server:s)                       > s
 source spider ip                               > 192.168.0.25
@@ -1088,7 +1258,7 @@ ok? (yes:y no:n quit:q)                        > y
 ```
 - ipv6
 ```
-command > 9
+command > 10
 [+] add node (spider pipe) to destination spider
 mode (client:c server:s)                       > s
 source spider ip                               > fe80::a00:27ff:febe:3a77
@@ -1109,7 +1279,7 @@ ok? (yes:y no:n quit:q)                        > y
 2. pipe (client)
 - ipv4
 ```
-command > 9
+command > 10
 [+] add node (spider pipe) to destination spider
 mode (client:c server:s)                       > c
 source spider ip                               > 192.168.0.25
@@ -1130,7 +1300,7 @@ ok? (yes:y no:n quit:q)                        > y
 ```
 - ipv6
 ```
-command > 9
+command > 10
 [+] add node (spider pipe) to destination spider
 mode (client:c server:s)                       > c
 source spider ip                               > fe80::a00:27ff:febe:3a77
