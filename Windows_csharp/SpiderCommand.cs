@@ -2129,7 +2129,7 @@ namespace spider
             return;
         }
 
-        private void ClientShellWorkder(object obj)
+        private void ClientShellWorker(object obj)
         {
             int ret = 0;
             Client client = obj as Client;
@@ -2276,7 +2276,7 @@ namespace spider
                                                                  client);
                             }while(ret != 0);
 
-                            Thread thread = new Thread(new ParameterizedThreadStart(ClientShellWorkder));
+                            Thread thread = new Thread(new ParameterizedThreadStart(ClientShellWorker));
                             thread.Start(client);
                         }else
                         {
@@ -2376,7 +2376,7 @@ namespace spider
                                                                  client);
                             }while(ret != 0);
 
-                            Thread thread = new Thread(new ParameterizedThreadStart(ClientShellWorkder));
+                            Thread thread = new Thread(new ParameterizedThreadStart(ClientShellWorker));
                             thread.Start(client);
                         }else
                         {

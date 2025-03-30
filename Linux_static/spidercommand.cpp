@@ -2093,16 +2093,16 @@ namespace spider
         return;
     }
 
-    void Spidercommand::client_udp_workder(std::string client_listen_ip,
-                                           std::string client_listen_ip_scope_id,
-                                           std::string client_listen_port,
-                                           std::string destination_spider_ip,
-                                           std::string target_ip,
-                                           std::string target_port,
-                                           int32_t tv_sec,
-                                           int32_t tv_usec,
-                                           int32_t forwarder_tv_sec,
-                                           int32_t forwarder_tv_usec)
+    void Spidercommand::client_udp_worker(std::string client_listen_ip,
+                                          std::string client_listen_ip_scope_id,
+                                          std::string client_listen_port,
+                                          std::string destination_spider_ip,
+                                          std::string target_ip,
+                                          std::string target_port,
+                                          int32_t tv_sec,
+                                          int32_t tv_usec,
+                                          int32_t forwarder_tv_sec,
+                                          int32_t forwarder_tv_usec)
     {
         int32_t ret = 0;
         uint32_t connection_id = 0;
@@ -2361,7 +2361,7 @@ namespace spider
 
         }
 
-        std::thread thread(&Spidercommand::client_udp_workder,
+        std::thread thread(&Spidercommand::client_udp_worker,
                            this,
                            client_listen_ip,
                            client_listen_ip_scope_id,
@@ -4832,7 +4832,7 @@ namespace spider
                 }
 
 
-                std::thread thread(&Spidercommand::client_udp_workder,
+                std::thread thread(&Spidercommand::client_udp_worker,
                                    this,
                                    client_listen_ip,
                                    client_listen_ip_scope_id,
