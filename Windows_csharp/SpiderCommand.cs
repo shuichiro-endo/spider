@@ -21,7 +21,6 @@ namespace spider
         public static extern uint if_nametoindex(string ifname);
 
         private const int METRIC_MAX = 20;   // 0 < METRIC_MAX <= UINT8_MAX(255), UINT8_MAX(255) < delete route
-        private const int FORWARDER_TCP_TIMEOUT = 300;
         private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
@@ -2324,7 +2323,6 @@ namespace spider
                 Console.WriteLine("recv/send tv_usec         : {0,7} microsec", tvUsec);
                 Console.WriteLine("forwarder_tv_sec          : {0,7} sec", forwarderTvSec);
                 Console.WriteLine("forwarder_tv_usec         : {0,7} microsec", forwarderTvUsec);
-                Console.WriteLine("FORWARDER_TCP_TIMEOUT     : {0,7} sec", FORWARDER_TCP_TIMEOUT);
                 Console.WriteLine("");
 
                 Console.Write("ok? (yes:y no:n quit:q)                        > ");

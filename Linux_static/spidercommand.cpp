@@ -2629,7 +2629,6 @@ namespace spider
             std::printf("recv/send tv_usec         : %7d microsec\n", tv_usec);
             std::printf("forwarder_tv_sec          : %7d sec\n", forwarder_tv_sec);
             std::printf("forwarder_tv_usec         : %7d microsec\n", forwarder_tv_usec);
-            std::printf("FORWARDER_TCP_TIMEOUT     : %7d sec\n", FORWARDER_TCP_TIMEOUT);
             std::printf("\n");
 
             std::printf("ok? (yes:y no:n quit:q)                        > ");

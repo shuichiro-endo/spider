@@ -693,13 +693,9 @@ Set the ip address of the destination spider that you want to delete from the ro
 > This is not SOCKS5 connection. (Something like TCP over TCP)
 >
 > [tcp client] <-TCP-> [spider client] <-SOCKS5(TCP)-> [spider server] <-TCP-> [destination server]
-> 
-> The server starts when the client is created. Therefore, it is necessary to create a route in advance using pipes.
 
 > [!NOTE]
 > Please set the 'client listen port' to the destination port of the TCP connection tool. (e.g. curl -v http://192.168.0.25:10000)
-> 
-> The server startup time is set to 5 minutes (spider.hpp FORWARDER_TCP_TIMEOUT) by default. The timeout period is reset each time communication occurs.
 - ipv4
 ```
 command > 6
@@ -724,7 +720,6 @@ recv/send tv_sec          :       3 sec
 recv/send tv_usec         :       0 microsec
 forwarder_tv_sec          :      30 sec
 forwarder_tv_usec         :       0 microsec
-FORWARDER_TCP_TIMEOUT     :     300 sec
 
 ok? (yes:y no:n quit:q)                        > y
 
@@ -788,7 +783,6 @@ recv/send tv_sec          :       3 sec
 recv/send tv_usec         :       0 microsec
 forwarder_tv_sec          :      30 sec
 forwarder_tv_usec         :       0 microsec
-FORWARDER_TCP_TIMEOUT     :     300 sec
 
 ok? (yes:y no:n quit:q)                        > y
 
