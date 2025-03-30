@@ -45,7 +45,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 1.20  Author: Shuichiro Endo
+        =-    -:               Windows Ver: 1.21  Author: Shuichiro Endo
 
 
 usage   : spider.exe
@@ -125,7 +125,7 @@ Encrypt SOCKS5 packets using aes-256-cbc.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 1.20  Author: Shuichiro Endo
+        =-    -:               Windows Ver: 1.21  Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
