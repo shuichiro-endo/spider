@@ -17359,18 +17359,20 @@ namespace spider
             Console.WriteLine("        : {0} -u fd00::xxxx:xxxx:xxxx:xxxx", fileName);
             Console.WriteLine("        : {0} -l fe80::xxxx:xxxx:xxxx:xxxx%14", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%14", fileName);
-            Console.WriteLine("        : {0} -f config_sample.txt", fileName);
+            Console.WriteLine("        : {0} -f C:\\Users\\test\\Desktop\\spider\\Windows_csharp_powershell\\config_sample.txt", fileName);
             Console.WriteLine("        : {0} -d -i 192.168.0.25 -p 1025", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -r s", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -e x -k deadbeef", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a", fileName);
             Console.WriteLine("");
+
+            Thread.Sleep(30000);    // 30s
         }
 
         public void Main(string[] args)
         {
             int ret = 0;
-            string fileName = "spider.exe";
+            string fileName = ".\\spider.ps1";
             string spiderIpv4 = "";
             string spiderIpv6Global = "";
             string spiderIpv6UniqueLocal = "";
@@ -17849,7 +17851,7 @@ Add-Type -TypeDefinition $csharpcode -Language CSharp
 
 $spider = New-Object spider.Spider
 
-$args = @()
+#$args = @()
 #$args = @("-h")
 #$args = @("-4", "192.168.0.31")
 #$args = @("-d", "-i", "192.168.0.25", "-p", "1025")
