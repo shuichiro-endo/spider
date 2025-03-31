@@ -1,6 +1,7 @@
 #
 #  Title:  spider spider.ps1 (Windows csharp powershell)
 #  Author: Shuichiro Endo
+#  Ver:    1.21
 #
 
 $csharpcode = @"
@@ -17332,7 +17333,7 @@ namespace spider
             Console.WriteLine("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     ");
             Console.WriteLine("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     ");
             Console.WriteLine("        :*-  :*-   .:.              _//                                   ");
-            Console.WriteLine("        =-    -:       Windows csharp Ver: 1.21   Author: Shuichiro Endo  ");
+            Console.WriteLine("        =-    -: Windows c# powershell Ver: 1.21  Author: Shuichiro Endo  ");
             Console.WriteLine("");
         }
 
