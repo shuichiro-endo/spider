@@ -1238,6 +1238,8 @@ namespace spider
 
                                 send_message_id++;
                                 upload_file_remaining_size -= read_bytes;
+
+                                std::this_thread::sleep_for(std::chrono::microseconds(1000));  // 1000µs
                             }
 
                             upload_file.close();

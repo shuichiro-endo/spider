@@ -1055,6 +1055,8 @@ namespace spider
 
                                     sendMessageId++;
                                     uploadFileRemainingSize -= readBytes;
+
+                                    Thread.Sleep(1);    // 1ms
                                 }
                             }catch(Exception ex)
                             {

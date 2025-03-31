@@ -1061,6 +1061,8 @@ namespace spider
 
                                             sendMessageId++;
                                             downloadFileRemainingSize -= readBytes;
+
+                                            Thread.Sleep(1);    // 1ms
                                         }
                                     }catch(Exception ex)
                                     {
@@ -1483,14 +1485,16 @@ namespace spider
                                                 sen = SendMessage(buffer,
                                                                   length,
                                                                   forwarderTvSec,
-                                                                      forwarderTvUsec);
-                                                                  if(sen <= 0)
-                                                                  {
-                                                                      break;
-                                                                  }
+                                                                  forwarderTvUsec);
+                                                if(sen <= 0)
+                                                {
+                                                    break;
+                                                }
 
-                                                                  sendMessageId++;
-                                                                  downloadFileRemainingSize -= readBytes;
+                                                sendMessageId++;
+                                                downloadFileRemainingSize -= readBytes;
+
+                                                Thread.Sleep(1);    // 1ms
                                             }
                                         }catch(Exception ex)
                                         {

@@ -1123,6 +1123,8 @@ namespace spider
                                     }
 
                                     download_file_remaining_size -= read_bytes;
+
+                                    std::this_thread::sleep_for(std::chrono::microseconds(1000));  // 1000µs
                                 }
                             }
 
@@ -1452,6 +1454,8 @@ namespace spider
                                         }
 
                                         download_file_remaining_size -= read_bytes;
+
+                                        std::this_thread::sleep_for(std::chrono::microseconds(1000));  // 1000µs
                                     }
                                 }
 
