@@ -453,129 +453,138 @@ int main(int argc,
     }
 
 
-    int spider_command_input = 0;
-
-    while(1)
+    if(daemon_flag == true)
     {
-        std::printf("\n");
-        std::printf("--------------------------------- spider ---------------------------------\n");
-        if(!spider_ip->get_spider_ipv4().empty())
+        while(1)
         {
-            std::printf(" spider ipv4                     : %s\n", spider_ip->get_spider_ipv4().c_str());
+            std::this_thread::sleep_for(std::chrono::seconds(3600));  // 3600s
         }
-        if(!spider_ip->get_spider_ipv6_global().empty())
+    }else
+    {
+        int spider_command_input = 0;
+
+        while(1)
         {
-            std::printf(" spider ipv6 global              : %s\n", spider_ip->get_spider_ipv6_global().c_str());
-        }
-        if(!spider_ip->get_spider_ipv6_unique_local().empty())
-        {
-            std::printf(" spider ipv6 unique local        : %s\n", spider_ip->get_spider_ipv6_unique_local().c_str());
-        }
-        if(!spider_ip->get_spider_ipv6_link_local().empty())
-        {
-            std::printf(" spider ipv6 link local          : %s\n", spider_ip->get_spider_ipv6_link_local().c_str());
-            if(!spider_ip->get_spider_ipv6_link_local_scope_id().empty())
+            std::printf("\n");
+            std::printf("--------------------------------- spider ---------------------------------\n");
+            if(!spider_ip->get_spider_ipv4().empty())
             {
-                std::printf(" spider ipv6 link local scope id : %s (%d)\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_link_local_scope_id().c_str()));
+                std::printf(" spider ipv4                     : %s\n", spider_ip->get_spider_ipv4().c_str());
             }
-        }
-        std::printf(" config file                     : %s\n", config_file.c_str());
-        std::printf(" routing mode                    : %s\n", (routing_mode == "s" ? "self" : "auto"));
-        std::printf(" xor encryption                  : %s\n", (xor_flag ? "on" : "off"));
-        std::printf(" xor key hex string              : %s\n", xor_key_hex_string.c_str());
-        std::printf(" aes encryption                  : %s\n", (aes_flag ? "on" : "off"));
-        std::printf(" aes key hex string              : %s\n", aes_key_hex_string.c_str());
-        std::printf(" aes iv hex string               : %s\n", aes_iv_hex_string.c_str());
-        std::printf("----------------------------- spider command -----------------------------\n");
-        std::printf(" %2d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
-        std::printf(" %2d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
-        std::printf(" %2d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
-        std::printf(" %2d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
-        std::printf(" %2d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
-        std::printf(" %2d: add node (spider client tcp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
-        std::printf(" %2d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
-        std::printf(" %2d: add node (spider client shell)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
-        std::printf(" %2d: add node (spider client) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
-        std::printf(" %2d: add node (spider pipe) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
-        std::printf(" %2d: exit\n", SPIDER_COMMAND_EXIT);
-        std::printf("--------------------------------------------------------------------------\n");
-        std::printf("\n");
-        std::printf("command > ");
+            if(!spider_ip->get_spider_ipv6_global().empty())
+            {
+                std::printf(" spider ipv6 global              : %s\n", spider_ip->get_spider_ipv6_global().c_str());
+            }
+            if(!spider_ip->get_spider_ipv6_unique_local().empty())
+            {
+                std::printf(" spider ipv6 unique local        : %s\n", spider_ip->get_spider_ipv6_unique_local().c_str());
+            }
+            if(!spider_ip->get_spider_ipv6_link_local().empty())
+            {
+                std::printf(" spider ipv6 link local          : %s\n", spider_ip->get_spider_ipv6_link_local().c_str());
+                if(!spider_ip->get_spider_ipv6_link_local_scope_id().empty())
+                {
+                    std::printf(" spider ipv6 link local scope id : %s (%d)\n", spider_ip->get_spider_ipv6_link_local_scope_id().c_str(), if_nametoindex(spider_ip->get_spider_ipv6_link_local_scope_id().c_str()));
+                }
+            }
+            std::printf(" config file                     : %s\n", config_file.c_str());
+            std::printf(" routing mode                    : %s\n", (routing_mode == "s" ? "self" : "auto"));
+            std::printf(" xor encryption                  : %s\n", (xor_flag ? "on" : "off"));
+            std::printf(" xor key hex string              : %s\n", xor_key_hex_string.c_str());
+            std::printf(" aes encryption                  : %s\n", (aes_flag ? "on" : "off"));
+            std::printf(" aes key hex string              : %s\n", aes_key_hex_string.c_str());
+            std::printf(" aes iv hex string               : %s\n", aes_iv_hex_string.c_str());
+            std::printf("----------------------------- spider command -----------------------------\n");
+            std::printf(" %2d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
+            std::printf(" %2d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
+            std::printf(" %2d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
+            std::printf(" %2d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
+            std::printf(" %2d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
+            std::printf(" %2d: add node (spider client tcp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
+            std::printf(" %2d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
+            std::printf(" %2d: add node (spider client shell)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+            std::printf(" %2d: add node (spider client) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
+            std::printf(" %2d: add node (spider pipe) to destination spider\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
+            std::printf(" %2d: exit\n", SPIDER_COMMAND_EXIT);
+            std::printf("--------------------------------------------------------------------------\n");
+            std::printf("\n");
+            std::printf("command > ");
 
-        std::cin >> spider_command_input;
+            std::cin >> spider_command_input;
 
-        if(std::cin.fail())
-        {
+            if(std::cin.fail())
+            {
 #ifdef _DEBUG
-            std::printf("[-] spider command error\n");
+                std::printf("[-] spider command error\n");
 #endif
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            continue;
-        }
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                continue;
+            }
 
-        switch(spider_command_input)
-        {
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
-                std::printf("[+] add node (spider client)\n");
-                spider_command->add_node_spider_client();
-                break;
+            switch(spider_command_input)
+            {
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
+                    std::printf("[+] add node (spider client)\n");
+                    spider_command->add_node_spider_client();
+                    break;
 
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE:
-                std::printf("[+] add node (spider pipe)\n");
-                spider_command->add_node_spider_pipe();
-                break;
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE:
+                    std::printf("[+] add node (spider pipe)\n");
+                    spider_command->add_node_spider_pipe();
+                    break;
 
-            case SPIDER_COMMAND_SHOW_NODE_INFORMATION:
-                std::printf("[+] show node information\n");
-                spider_command->show_node_information();
-                break;
+                case SPIDER_COMMAND_SHOW_NODE_INFORMATION:
+                    std::printf("[+] show node information\n");
+                    spider_command->show_node_information();
+                    break;
 
-            case SPIDER_COMMAND_SHOW_ROUTING_TABLE:
-                std::printf("[+] show routing table\n");
-                spider_command->show_routing_table();
-                break;
+                case SPIDER_COMMAND_SHOW_ROUTING_TABLE:
+                    std::printf("[+] show routing table\n");
+                    spider_command->show_routing_table();
+                    break;
 
-            case SPIDER_COMMAND_EDIT_ROUTING_TABLE:
-                std::printf("[+] edit routing table\n");
-                spider_command->edit_routing_table();
-                break;
+                case SPIDER_COMMAND_EDIT_ROUTING_TABLE:
+                    std::printf("[+] edit routing table\n");
+                    spider_command->edit_routing_table();
+                    break;
 
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP:
-                std::printf("[+] add node (spider client tcp)\n");
-                std::printf("[!] This is not SOCKS5 connection. (Something like TCP over TCP)\n");
-                spider_command->add_node_spider_client_tcp();
-                break;
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP:
+                    std::printf("[+] add node (spider client tcp)\n");
+                    std::printf("[!] This is not SOCKS5 connection. (Something like TCP over TCP)\n");
+                    spider_command->add_node_spider_client_tcp();
+                    break;
 
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP:
-                std::printf("[+] add node (spider client udp)\n");
-                std::printf("[!] This is not SOCKS5 connection. (Something like UDP over TCP)\n");
-                spider_command->add_node_spider_client_udp();
-                break;
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP:
+                    std::printf("[+] add node (spider client udp)\n");
+                    std::printf("[!] This is not SOCKS5 connection. (Something like UDP over TCP)\n");
+                    spider_command->add_node_spider_client_udp();
+                    break;
 
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL:
-                std::printf("[+] add node (spider client shell)\n");
-                std::printf("[!] This is not SOCKS5 connection.\n");
-                spider_command->add_node_spider_client_shell();
-                break;
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL:
+                    std::printf("[+] add node (spider client shell)\n");
+                    std::printf("[!] This is not SOCKS5 connection.\n");
+                    spider_command->add_node_spider_client_shell();
+                    break;
 
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER:
-                std::printf("[+] add node (spider client) to destination spider\n");
-                spider_command->add_node_spider_client_to_destination_spider();
-                break;
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER:
+                    std::printf("[+] add node (spider client) to destination spider\n");
+                    spider_command->add_node_spider_client_to_destination_spider();
+                    break;
 
-            case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER:
-                std::printf("[+] add node (spider pipe) to destination spider\n");
-                spider_command->add_node_spider_pipe_to_destination_spider();
-                break;
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER:
+                    std::printf("[+] add node (spider pipe) to destination spider\n");
+                    spider_command->add_node_spider_pipe_to_destination_spider();
+                    break;
 
-            case SPIDER_COMMAND_EXIT:
-                std::printf("[+] exit\n");
-                exit(0);
-                break;
+                case SPIDER_COMMAND_EXIT:
+                    std::printf("[+] exit\n");
+                    exit(0);
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
     }
 
