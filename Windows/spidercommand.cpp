@@ -622,6 +622,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("client listen ip                               > ");
             std::cin >> client_listen_ip;
             if(std::cin.fail())
@@ -1501,6 +1504,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("mode (client:c server:s)                       > ");
             std::cin >> mode;
             if(std::cin.fail())
@@ -1800,6 +1806,9 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
+                routing_manager->show_routing_table();
+                std::printf("\n");
+
                 std::printf("source spider ip                               > ");
                 std::cin >> source_spider_ip;
                 if(std::cin.fail())
@@ -1975,6 +1984,9 @@ namespace spider
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                routing_manager->show_routing_table();
+                std::printf("\n");
 
                 std::printf("source spider ip                               > ");
                 std::cin >> source_spider_ip;
@@ -2708,6 +2720,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("client listen ip                               > ");
             std::cin >> client_listen_ip;
             if(std::cin.fail())
@@ -2985,6 +3000,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("client listen ip                               > ");
             std::cin >> client_listen_ip;
             if(std::cin.fail())
@@ -3625,6 +3643,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("client listen ip                               > ");
             std::cin >> client_listen_ip;
             if(std::cin.fail())
@@ -3862,6 +3883,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("source spider ip                               > ");
             std::cin >> source_spider_ip;
             if(std::cin.fail())
@@ -4098,6 +4122,9 @@ namespace spider
 
         while(1)
         {
+            routing_manager->show_routing_table();
+            std::printf("\n");
+
             std::printf("mode (client:c server:s)                       > ");
             std::cin >> mode;
             if(std::cin.fail())

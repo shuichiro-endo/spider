@@ -12942,6 +12942,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("client listen ip                               > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -13617,6 +13620,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("mode (client:c server:s)                       > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -13864,6 +13870,9 @@ namespace spider
                     break;
                 }else if(mode == 'o')   // other
                 {
+                    routingManager.ShowRoutingTable();
+                    Console.WriteLine("");
+
                     Console.Write("source spider ip                               > ");
                     input = Console.ReadLine();
                     input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -14026,6 +14035,9 @@ namespace spider
                     break;
                 }else if(mode == 'o')   // other
                 {
+                    routingManager.ShowRoutingTable();
+                    Console.WriteLine("");
+
                     Console.Write("source spider ip                               > ");
                     input = Console.ReadLine();
                     input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -14589,6 +14601,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("client listen ip                               > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -14887,6 +14902,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("client listen ip                               > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -15397,6 +15415,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("client listen ip                               > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -15652,6 +15673,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("source spider ip                               > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -15873,6 +15897,9 @@ namespace spider
 
             while(true)
             {
+                routingManager.ShowRoutingTable();
+                Console.WriteLine("");
+
                 Console.Write("mode (client:c server:s)                       > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
