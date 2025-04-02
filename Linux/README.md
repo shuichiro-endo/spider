@@ -78,6 +78,13 @@ Create nodes configured in the config file at startup.
 #### [-d (daemon)]
 Start as a daemon.
 
+The spider process will stop when it receives the SIGUSR1 signal.
+
+The following commands can be used to stop.
+```
+ps aux | grep "spider" | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
+```
+
 > [!CAUTION]
 > Be careful, as it will become invisible.
 >
