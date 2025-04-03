@@ -28,7 +28,7 @@
 // [client]
 // client_listen_ip:192.168.0.25
 // client_listen_port:9050
-// destination_spider_ip:192.168.0.26
+// client_destination_spider_ip:192.168.0.26
 // tv_sec:3
 // tv_usec:0
 // forwarder_tv_sec:30
@@ -37,7 +37,7 @@
 // [client]
 // client_listen_ip:fe80::a00:27ff:febe:3a77
 // client_listen_port:9000
-// destination_spider_ip:192.168.0.26
+// client_destination_spider_ip:192.168.0.26
 // tv_sec:3
 // tv_usec:0
 // forwarder_tv_sec:30
@@ -93,7 +93,7 @@ pipe_listen_port:1026
 // [client]
 // client_listen_ip:
 // client_listen_port:
-// destination_spider_ip:
+// client_destination_spider_ip:
 // tv_sec:
 // tv_usec:
 // forwarder_tv_sec:

@@ -865,7 +865,7 @@ namespace spider
                         config += clientListenPort;
                         config += "\n";
 
-                        config += "destination_spider_ip:";
+                        config += "client_destination_spider_ip:";
                         config += clientDestinationSpiderIp;
                         config += "\n";
 
@@ -3733,7 +3733,7 @@ namespace spider
                     string clientListenIp = "";
                     string clientListenIpScopeId = "";
                     string clientListenPort = "";
-                    string destinationSpiderIp = "";
+                    string clientDestinationSpiderIp = "";
                     string tvSecString = "";
                     string tvUsecString = "";
                     string forwarderTvSecString = "";
@@ -3812,7 +3812,7 @@ namespace spider
                     }
 
 
-                    // destination_spider_ip
+                    // client_destination_spider_ip
                     line = lines[index];
                     index++;
                     if(line == null)
@@ -3823,15 +3823,15 @@ namespace spider
                         return -1;
                     }
 
-                    if(line.StartsWith("destination_spider_ip:", StringComparison.Ordinal))
+                    if(line.StartsWith("client_destination_spider_ip:", StringComparison.Ordinal))
                     {
-                        destinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
+                        clientDestinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
                     }
 
-                    if(string.IsNullOrEmpty(destinationSpiderIp))
+                    if(string.IsNullOrEmpty(clientDestinationSpiderIp))
                     {
 #if DEBUGPRINT
-                        Console.WriteLine("[-] [client] [destination_spider_ip] error");
+                        Console.WriteLine("[-] [client] [client_destination_spider_ip] error");
 #endif
                         return -1;
                     }
@@ -3977,7 +3977,7 @@ namespace spider
                     parameters = new object[] {clientListenIp,
                                                clientListenIpScopeId,
                                                clientListenPort,
-                                               destinationSpiderIp,
+                                               clientDestinationSpiderIp,
                                                tvSec,
                                                tvUsec,
                                                forwarderTvSec,
@@ -4223,7 +4223,7 @@ namespace spider
                         string clientListenIp = "";
                         string clientListenIpScopeId = "";
                         string clientListenPort = "";
-                        string destinationSpiderIp = "";
+                        string clientDestinationSpiderIp = "";
                         string tvSecString = "";
                         string tvUsecString = "";
                         string forwarderTvSecString = "";
@@ -4290,7 +4290,7 @@ namespace spider
                         }
 
 
-                        // destination_spider_ip
+                        // client_destination_spider_ip
                         line = getLine(lineEnumerator);
                         if(line == null)
                         {
@@ -4298,14 +4298,14 @@ namespace spider
                             break;
                         }
 
-                        if(line.StartsWith("destination_spider_ip:", StringComparison.Ordinal))
+                        if(line.StartsWith("client_destination_spider_ip:", StringComparison.Ordinal))
                         {
-                            destinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
+                            clientDestinationSpiderIp = line.Substring(line.IndexOf(":") + 1);
                         }
 
-                        if(string.IsNullOrEmpty(destinationSpiderIp))
+                        if(string.IsNullOrEmpty(clientDestinationSpiderIp))
                         {
-                            Console.WriteLine("[-] [client] [destination_spider_ip] error");
+                            Console.WriteLine("[-] [client] [client_destination_spider_ip] error");
                             break;
                         }
 
@@ -4430,7 +4430,7 @@ namespace spider
                         parameters = new object[] {clientListenIp,
                                                    clientListenIpScopeId,
                                                    clientListenPort,
-                                                   destinationSpiderIp,
+                                                   clientDestinationSpiderIp,
                                                    tvSec,
                                                    tvUsec,
                                                    forwarderTvSec,

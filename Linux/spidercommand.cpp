@@ -967,7 +967,7 @@ namespace spider
                     config += client_listen_port;
                     config += "\n";
 
-                    config += "destination_spider_ip:";
+                    config += "client_destination_spider_ip:";
                     config += client_destination_spider_ip;
                     config += "\n";
 
@@ -4451,7 +4451,7 @@ namespace spider
             std::string client_listen_ip;
             std::string client_listen_ip_scope_id;
             std::string client_listen_port;
-            std::string destination_spider_ip;
+            std::string client_destination_spider_ip;
             std::string tv_sec_string;
             std::string tv_usec_string;
             std::string forwarder_tv_sec_string;
@@ -4535,7 +4535,7 @@ namespace spider
             }
 
 
-            // destination_spider_ip
+            // client_destination_spider_ip
             line = get_line(config.data(),
                             config.size(),
                             &line_start,
@@ -4548,16 +4548,16 @@ namespace spider
                 return -1;
             }
 
-            if(line.find("destination_spider_ip:") != std::string::npos)
+            if(line.find("client_destination_spider_ip:") != std::string::npos)
             {
-                destination_spider_ip = get_line_value(line,
-                                                       "destination_spider_ip:");
+                client_destination_spider_ip = get_line_value(line,
+                                                              "client_destination_spider_ip:");
             }
 
-            if(destination_spider_ip.empty())
+            if(client_destination_spider_ip.empty())
             {
 #ifdef _DEBUG
-                std::printf("[-] [client] [destination_spider_ip] error\n");
+                std::printf("[-] [client] [client_destination_spider_ip] error\n");
 #endif
                 return -1;
             }
@@ -4717,7 +4717,7 @@ namespace spider
                                client_listen_ip,
                                client_listen_ip_scope_id,
                                client_listen_port,
-                               destination_spider_ip,
+                               client_destination_spider_ip,
                                tv_sec,
                                tv_usec,
                                forwarder_tv_sec,
@@ -4988,7 +4988,7 @@ namespace spider
                 std::string client_listen_ip;
                 std::string client_listen_ip_scope_id;
                 std::string client_listen_port;
-                std::string destination_spider_ip;
+                std::string client_destination_spider_ip;
                 std::string tv_sec_string;
                 std::string tv_usec_string;
                 std::string forwarder_tv_sec_string;
@@ -5062,7 +5062,7 @@ namespace spider
                 }
 
 
-                // destination_spider_ip
+                // client_destination_spider_ip
                 line = get_line(config.data(),
                                 config.size(),
                                 &line_start,
@@ -5073,15 +5073,15 @@ namespace spider
                     break;
                 }
 
-                if(line.find("destination_spider_ip:") != std::string::npos)
+                if(line.find("client_destination_spider_ip:") != std::string::npos)
                 {
-                    destination_spider_ip = get_line_value(line,
-                                                           "destination_spider_ip:");
+                    client_destination_spider_ip = get_line_value(line,
+                                                                  "client_destination_spider_ip:");
                 }
 
-                if(destination_spider_ip.empty())
+                if(client_destination_spider_ip.empty())
                 {
-                    std::printf("[-] [client] [destination_spider_ip] error\n");
+                    std::printf("[-] [client] [client_destination_spider_ip] error\n");
                     break;
                 }
 
@@ -5224,7 +5224,7 @@ namespace spider
                                    client_listen_ip,
                                    client_listen_ip_scope_id,
                                    client_listen_port,
-                                   destination_spider_ip,
+                                   client_destination_spider_ip,
                                    tv_sec,
                                    tv_usec,
                                    forwarder_tv_sec,
