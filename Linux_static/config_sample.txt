@@ -43,16 +43,39 @@
 // forwarder_tv_sec:30
 // forwarder_tv_usec:0
 //
+// [client_tcp]
+// client_listen_ip:192.168.0.25
+// client_listen_port:10022
+// client_destination_spider_ip:192.168.0.26
+// target_ip:192.168.0.27
+// target_port:22
+// tv_sec:3
+// tv_usec:0
+// forwarder_tv_sec:30
+// forwarder_tv_usec:0
+//
 // [client_udp]
 // client_listen_ip:192.168.0.25
 // client_listen_port:10053
-// destination_spider_ip:192.168.0.26
+// client_destination_spider_ip:192.168.0.26
 // target_ip:1.1.1.1
 // target_port:53
 // tv_sec:3
 // tv_usec:0
 // forwarder_tv_sec:30
 // forwarder_tv_usec:0
+//
+// [client_shell]
+// client_listen_ip:192.168.0.25
+// client_listen_port:10000
+// client_destination_spider_ip:192.168.0.26
+// tv_sec:3
+// tv_usec:0
+// forwarder_tv_sec:30
+// forwarder_tv_usec:0
+
+
+
 
 
 // [pipe_server]
@@ -104,16 +127,47 @@ pipe_listen_port:1026
 
 
 
-// [client_udp]
+// [client_tcp]
 // client_listen_ip:
 // client_listen_port:
-// destination_spider_ip:
+// client_destination_spider_ip:
 // target_ip:
 // target_port:
 // tv_sec:
 // tv_usec:
 // forwarder_tv_sec:
 // forwarder_tv_usec:
+
+
+
+
+
+
+// [client_udp]
+// client_listen_ip:
+// client_listen_port:
+// client_destination_spider_ip:
+// target_ip:
+// target_port:
+// tv_sec:
+// tv_usec:
+// forwarder_tv_sec:
+// forwarder_tv_usec:
+
+
+
+
+
+
+// [client_shell]
+// client_listen_ip:
+// client_listen_port:
+// client_destination_spider_ip:
+// tv_sec:
+// tv_usec:
+// forwarder_tv_sec:
+// forwarder_tv_usec:
+
 
 
 
