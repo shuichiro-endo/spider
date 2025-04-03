@@ -4687,10 +4687,15 @@ namespace spider
 
     void Spidercommand::add_node_spider_client_shell()
     {
+        std::string config = "";
+        char mode;  // self:s other:o
+        std::string source_spider_ip;
+        std::string source_spider_ip_scope_id;
+        std::string destination_spider_ip;
         std::string client_listen_ip;
         std::string client_listen_ip_scope_id;
         std::string client_listen_port;
-        std::string destination_spider_ip;
+        std::string client_destination_spider_ip;
         int32_t tv_sec = 0;
         int32_t tv_usec = 0;
         int32_t forwarder_tv_sec = 0;
@@ -4703,172 +4708,412 @@ namespace spider
             routing_manager->show_routing_table();
             std::printf("\n");
 
-            std::printf("client listen ip                               > ");
-            std::cin >> client_listen_ip;
+            std::printf("mode (self:s other:o)                          > ");
+            std::cin >> mode;
             if(std::cin.fail())
             {
                 std::printf("[-] input error\n");
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
-            }
-
-            if(client_listen_ip != spider_ip->get_spider_ipv4()
-                && client_listen_ip != spider_ip->get_spider_ipv6_global()
-                && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
-                && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
-            {
-                std::printf("[-] please input spider ipv4 or ipv6\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
-            {
-                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-            }
-
-            std::printf("client listen port                             > ");
-            std::cin >> client_listen_port;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("destination spider ip                          > ");
-            std::cin >> destination_spider_ip;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
-            std::cin >> tv_sec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                tv_sec = 3;
-            }else if(tv_sec < 0 || tv_sec > 60)
-            {
-                tv_sec = 3;
-            }
-
-            std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
-            std::cin >> tv_usec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                tv_usec = 0;
-            }else if(tv_usec < 0 || tv_usec > 1000000)
-            {
-                tv_usec = 0;
-            }
-
-            if(tv_sec == 0 && tv_usec == 0){
-                tv_sec = 3;
-                tv_usec = 0;
-            }
-
-            std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
-            std::cin >> forwarder_tv_sec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_sec = 300;
-            }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
-            {
-                forwarder_tv_sec = 300;
-            }
-
-            std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
-            std::cin >> forwarder_tv_usec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_usec = 0;
-            }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
-            {
-                forwarder_tv_usec = 0;
-            }
-
-            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
-            {
-                forwarder_tv_sec = 300;
-                forwarder_tv_usec = 0;
-            }
-
-            std::printf("\n");
-            std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
-            if(!client_listen_ip_scope_id.empty())
-            {
-                std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
-            }
-            std::printf("client listen port        : %s\n", client_listen_port.c_str());
-            std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
-            std::printf("recv/send tv_sec          : %7d sec\n", tv_sec);
-            std::printf("recv/send tv_usec         : %7d microsec\n", tv_usec);
-            std::printf("forwarder_tv_sec          : %7d sec\n", forwarder_tv_sec);
-            std::printf("forwarder_tv_usec         : %7d microsec\n", forwarder_tv_usec);
-            std::printf("\n");
-
-            std::printf("ok? (yes:y no:n quit:q)                        > ");
-            std::cin >> check;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(check == 'y')
+            }else if(mode == 's')   // self
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                break;
-            }else if(check == 'n')
+
+                std::printf("client listen ip                               > ");
+                std::cin >> client_listen_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(client_listen_ip != spider_ip->get_spider_ipv4()
+                   && client_listen_ip != spider_ip->get_spider_ipv6_global()
+                   && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("client listen port                             > ");
+                std::cin >> client_listen_port;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client destination spider ip                   > ");
+                std::cin >> client_destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                std::cin >> tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_sec = 3;
+                }else if(tv_sec < 0 || tv_sec > 60)
+                {
+                    tv_sec = 3;
+                }
+
+                std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_usec = 0;
+                }else if(tv_usec < 0 || tv_usec > 1000000)
+                {
+                    tv_usec = 0;
+                }
+
+                if(tv_sec == 0 && tv_usec == 0){
+                    tv_sec = 3;
+                    tv_usec = 0;
+                }
+
+                std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                std::cin >> forwarder_tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_sec = 300;
+                }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+                {
+                    forwarder_tv_sec = 300;
+                }
+
+                std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> forwarder_tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_usec = 0;
+                }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+                {
+                    forwarder_tv_usec = 0;
+                }
+
+                if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+                {
+                    forwarder_tv_sec = 300;
+                    forwarder_tv_usec = 0;
+                }
+
+                std::printf("\n");
+                std::printf("client listen ip             : %s\n", client_listen_ip.c_str());
+                if(!client_listen_ip_scope_id.empty())
+                {
+                    std::printf("client listen ip scope id    : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
+                }
+                std::printf("client listen port           : %s\n", client_listen_port.c_str());
+                std::printf("client destination spider ip : %s\n", client_destination_spider_ip.c_str());
+                std::printf("recv/send tv_sec             : %7d sec\n", tv_sec);
+                std::printf("recv/send tv_usec            : %7d microsec\n", tv_usec);
+                std::printf("forwarder_tv_sec             : %7d sec\n", forwarder_tv_sec);
+                std::printf("forwarder_tv_usec            : %7d microsec\n", forwarder_tv_usec);
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    std::thread thread(&Spidercommand::listen_client_shell,
+                                       this,
+                                       client_listen_ip,
+                                       client_listen_ip_scope_id,
+                                       client_listen_port,
+                                       client_destination_spider_ip,
+                                       tv_sec,
+                                       tv_usec,
+                                       forwarder_tv_sec,
+                                       forwarder_tv_usec);
+                    thread.detach();
+
+                    std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+            }else if(mode == 'o')   // other
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(check == 'q'){
+
+                std::printf("source spider ip                               > ");
+                std::cin >> source_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip != spider_ip->get_spider_ipv4()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("destination spider ip                          > ");
+                std::cin >> destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client listen ip                               > ");
+                std::cin >> client_listen_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client listen port                             > ");
+                std::cin >> client_listen_port;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client destination spider ip                   > ");
+                std::cin >> client_destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                std::cin >> tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_sec = 3;
+                }else if(tv_sec < 0 || tv_sec > 60)
+                {
+                    tv_sec = 3;
+                }
+
+                std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_usec = 0;
+                }else if(tv_usec < 0 || tv_usec > 1000000)
+                {
+                    tv_usec = 0;
+                }
+
+                if(tv_sec == 0 && tv_usec == 0){
+                    tv_sec = 3;
+                    tv_usec = 0;
+                }
+
+                std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                std::cin >> forwarder_tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_sec = 300;
+                }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+                {
+                    forwarder_tv_sec = 300;
+                }
+
+                std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> forwarder_tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_usec = 0;
+                }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+                {
+                    forwarder_tv_usec = 0;
+                }
+
+                if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+                {
+                    forwarder_tv_sec = 300;
+                    forwarder_tv_usec = 0;
+                }
+
+                std::printf("\n");
+                std::printf("source spider ip             : %s\n", source_spider_ip.c_str());
+                if(!source_spider_ip_scope_id.empty())
+                {
+                    std::printf("source spider ip scope id    : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                }
+                std::printf("destination spider ip        : %s\n", destination_spider_ip.c_str());
+                std::printf("client listen ip             : %s\n", client_listen_ip.c_str());
+                std::printf("client listen port           : %s\n", client_listen_port.c_str());
+                std::printf("client destination spider ip : %s\n", client_destination_spider_ip.c_str());
+                std::printf("recv/send tv_sec             : %7d sec\n", tv_sec);
+                std::printf("recv/send tv_usec            : %7d microsec\n", tv_usec);
+                std::printf("forwarder_tv_sec             : %7d sec\n", forwarder_tv_sec);
+                std::printf("forwarder_tv_usec            : %7d microsec\n", forwarder_tv_usec);
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    config = "";
+                    config += "[client_shell]\n";
+
+                    config += "client_listen_ip:";
+                    config += client_listen_ip;
+                    config += "\n";
+
+                    config += "client_listen_port:";
+                    config += client_listen_port;
+                    config += "\n";
+
+                    config += "client_destination_spider_ip:";
+                    config += client_destination_spider_ip;
+                    config += "\n";
+
+                    config += "tv_sec:";
+                    config += std::to_string(tv_sec);
+                    config += "\n";
+
+                    config += "tv_usec:";
+                    config += std::to_string(tv_usec);
+                    config += "\n";
+
+                    config += "forwarder_tv_sec:";
+                    config += std::to_string(forwarder_tv_sec);
+                    config += "\n";
+
+                    config += "forwarder_tv_usec:";
+                    config += std::to_string(forwarder_tv_usec);
+                    config += "\n";
+
+                    std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                       this,
+                                       config,
+                                       source_spider_ip,
+                                       source_spider_ip_scope_id,
+                                       destination_spider_ip);
+                    thread.detach();
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+            }else
+            {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 return;
-            }else{
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
             }
-
         }
-
-        std::thread thread(&Spidercommand::listen_client_shell,
-                           this,
-                           client_listen_ip,
-                           client_listen_ip_scope_id,
-                           client_listen_port,
-                           destination_spider_ip,
-                           tv_sec,
-                           tv_usec,
-                           forwarder_tv_sec,
-                           forwarder_tv_usec);
-        thread.detach();
-
-        std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
 
         return;
     }
