@@ -48,7 +48,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:       Windows csharp Ver: 1.22   Author: Shuichiro Endo
+        =-    -:       Windows csharp Ver: 1.23   Author: Shuichiro Endo
 
 
 usage   : spider.exe
@@ -128,7 +128,7 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:       Windows csharp Ver: 1.22   Author: Shuichiro Endo
+        =-    -:       Windows csharp Ver: 1.23   Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
