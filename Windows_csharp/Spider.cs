@@ -21,8 +21,8 @@ namespace spider
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-        private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT                       = "1";
-        private const string SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE                         = "2";
+        private const string SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE                         = "1";
+        private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT                       = "2";
         private const string SPIDER_COMMAND_SHOW_NODE_INFORMATION                        = "3";
         private const string SPIDER_COMMAND_SHOW_ROUTING_TABLE                           = "4";
         private const string SPIDER_COMMAND_EDIT_ROUTING_TABLE                           = "5";
@@ -464,8 +464,8 @@ namespace spider
                 Console.WriteLine(" aes key hex string              : {0}", aesKeyHexString);
                 Console.WriteLine(" aes iv hex string               : {0}", aesIvHexString);
                 Console.WriteLine("----------------------------- spider command -----------------------------");
-                Console.WriteLine(" {0}: add node (spider client)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
                 Console.WriteLine(" {0}: add node (spider pipe)", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
+                Console.WriteLine(" {0}: add node (spider client)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
                 Console.WriteLine(" {0}: show node information", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
                 Console.WriteLine(" {0}: show routing table", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
                 Console.WriteLine(" {0}: edit routing table", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
@@ -481,14 +481,14 @@ namespace spider
 
                 switch(spiderCommandInput)
                 {
-                    case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
-                        Console.WriteLine("[+] add node (spider client)");
-                        spiderCommand.AddNodeSpiderClient();
-                        break;
-
                     case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE:
                         Console.WriteLine("[+] add node (spider pipe)");
                         spiderCommand.AddNodeSpiderPipe();
+                        break;
+
+                    case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
+                        Console.WriteLine("[+] add node (spider client)");
+                        spiderCommand.AddNodeSpiderClient();
                         break;
 
                     case SPIDER_COMMAND_SHOW_NODE_INFORMATION:

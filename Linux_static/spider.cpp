@@ -503,8 +503,8 @@ int main(int argc,
             std::printf(" aes key hex string              : %s\n", aes_key_hex_string.c_str());
             std::printf(" aes iv hex string               : %s\n", aes_iv_hex_string.c_str());
             std::printf("----------------------------- spider command -----------------------------\n");
-            std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
             std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
+            std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
             std::printf(" %d: show node information\n", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
             std::printf(" %d: show routing table\n", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
             std::printf(" %d: edit routing table\n", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
@@ -530,14 +530,14 @@ int main(int argc,
 
             switch(spider_command_input)
             {
-                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
-                    std::printf("[+] add node (spider client)\n");
-                    spider_command->add_node_spider_client();
-                    break;
-
                 case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE:
                     std::printf("[+] add node (spider pipe)\n");
                     spider_command->add_node_spider_pipe();
+                    break;
+
+                case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT:
+                    std::printf("[+] add node (spider client)\n");
+                    spider_command->add_node_spider_client();
                     break;
 
                 case SPIDER_COMMAND_SHOW_NODE_INFORMATION:

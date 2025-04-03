@@ -44,8 +44,8 @@
 #define SOCKS5_USERNAME "socks5user"
 #define SOCKS5_PASSWORD "supersecretpassword"
 
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT                       1
-#define SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE                         2
+#define SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE                         1
+#define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT                       2
 #define SPIDER_COMMAND_SHOW_NODE_INFORMATION                        3
 #define SPIDER_COMMAND_SHOW_ROUTING_TABLE                           4
 #define SPIDER_COMMAND_EDIT_ROUTING_TABLE                           5
