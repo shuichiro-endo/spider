@@ -29,8 +29,6 @@ namespace spider
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP                   = "6";
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP                   = "7";
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL                 = "8";
-        private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER = "9";
-        private const string SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER   = "10";
         private const string SPIDER_COMMAND_EXIT                                         = "0";
         private const int SW_HIDE = 0;
 
@@ -466,17 +464,15 @@ namespace spider
                 Console.WriteLine(" aes key hex string              : {0}", aesKeyHexString);
                 Console.WriteLine(" aes iv hex string               : {0}", aesIvHexString);
                 Console.WriteLine("----------------------------- spider command -----------------------------");
-                Console.WriteLine(" {0,2}: add node (spider client)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
-                Console.WriteLine(" {0,2}: add node (spider pipe)", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
-                Console.WriteLine(" {0,2}: show node information", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
-                Console.WriteLine(" {0,2}: show routing table", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
-                Console.WriteLine(" {0,2}: edit routing table", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
-                Console.WriteLine(" {0,2}: add node (spider client tcp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
-                Console.WriteLine(" {0,2}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
-                Console.WriteLine(" {0,2}: add node (spider client shell)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
-                Console.WriteLine(" {0,2}: add node (spider client) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER);
-                Console.WriteLine(" {0,2}: add node (spider pipe) to destination spider", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER);
-                Console.WriteLine(" {0,2}: exit", SPIDER_COMMAND_EXIT);
+                Console.WriteLine(" {0}: add node (spider client)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);
+                Console.WriteLine(" {0}: add node (spider pipe)", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
+                Console.WriteLine(" {0}: show node information", SPIDER_COMMAND_SHOW_NODE_INFORMATION);
+                Console.WriteLine(" {0}: show routing table", SPIDER_COMMAND_SHOW_ROUTING_TABLE);
+                Console.WriteLine(" {0}: edit routing table", SPIDER_COMMAND_EDIT_ROUTING_TABLE);
+                Console.WriteLine(" {0}: add node (spider client tcp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
+                Console.WriteLine(" {0}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
+                Console.WriteLine(" {0}: add node (spider client shell)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+                Console.WriteLine(" {0}: exit", SPIDER_COMMAND_EXIT);
                 Console.WriteLine("--------------------------------------------------------------------------");
                 Console.WriteLine("");
                 Console.Write("command > ");
@@ -526,16 +522,6 @@ namespace spider
                         Console.WriteLine("[+] add node (spider client shell)");
                         Console.WriteLine("[!] This is not SOCKS5 connection.");
                         spiderCommand.AddNodeSpiderClientShell();
-                        break;
-
-                    case SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TO_DESTINATION_SPIDER:
-                        Console.WriteLine("[+] add node (spider client) to destination spider");
-                        spiderCommand.AddNodeSpiderClientToDestinationSpider();
-                        break;
-
-                    case SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE_TO_DESTINATION_SPIDER:
-                        Console.WriteLine("[+] add node (spider pipe) to destination spider");
-                        spiderCommand.AddNodeSpiderPipeToDestinationSpider();
                         break;
 
                     case SPIDER_COMMAND_EXIT:

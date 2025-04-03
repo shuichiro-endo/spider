@@ -549,10 +549,15 @@ namespace spider
 
     void Spidercommand::add_node_spider_client()
     {
+        std::string config = "";
+        char mode;  // self:s other:o
+        std::string source_spider_ip;
+        std::string source_spider_ip_scope_id;
+        std::string destination_spider_ip;
         std::string client_listen_ip;
         std::string client_listen_ip_scope_id;
         std::string client_listen_port;
-        std::string destination_spider_ip;
+        std::string client_destination_spider_ip;
         int32_t tv_sec = 0;
         int32_t tv_usec = 0;
         int32_t forwarder_tv_sec = 0;
@@ -565,172 +570,412 @@ namespace spider
             routing_manager->show_routing_table();
             std::printf("\n");
 
-            std::printf("client listen ip                               > ");
-            std::cin >> client_listen_ip;
+            std::printf("mode (self:s other:o)                          > ");
+            std::cin >> mode;
             if(std::cin.fail())
             {
                 std::printf("[-] input error\n");
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
-            }
-
-            if(client_listen_ip != spider_ip->get_spider_ipv4()
-               && client_listen_ip != spider_ip->get_spider_ipv6_global()
-               && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
-               && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
-            {
-                std::printf("[-] please input spider ipv4 or ipv6\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
-            {
-                client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-            }
-
-            std::printf("client listen port                             > ");
-            std::cin >> client_listen_port;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("destination spider ip                          > ");
-            std::cin >> destination_spider_ip;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
-            std::cin >> tv_sec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                tv_sec = 3;
-            }else if(tv_sec < 0 || tv_sec > 60)
-            {
-                tv_sec = 3;
-            }
-
-            std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
-            std::cin >> tv_usec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                tv_usec = 0;
-            }else if(tv_usec < 0 || tv_usec > 1000000)
-            {
-                tv_usec = 0;
-            }
-
-            if(tv_sec == 0 && tv_usec == 0){
-                tv_sec = 3;
-                tv_usec = 0;
-            }
-
-            std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
-            std::cin >> forwarder_tv_sec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_sec = 30;
-            }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
-            {
-                forwarder_tv_sec = 30;
-            }
-
-            std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
-            std::cin >> forwarder_tv_usec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_usec = 0;
-            }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
-            {
-                forwarder_tv_usec = 0;
-            }
-
-            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
-            {
-                forwarder_tv_sec = 30;
-                forwarder_tv_usec = 0;
-            }
-
-            std::printf("\n");
-            std::printf("client listen ip          : %s\n", client_listen_ip.c_str());
-            if(!client_listen_ip_scope_id.empty())
-            {
-                std::printf("client listen ip scope id : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
-            }
-            std::printf("client listen port        : %s\n", client_listen_port.c_str());
-            std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
-            std::printf("recv/send tv_sec          : %7d sec\n", tv_sec);
-            std::printf("recv/send tv_usec         : %7d microsec\n", tv_usec);
-            std::printf("forwarder_tv_sec          : %7d sec\n", forwarder_tv_sec);
-            std::printf("forwarder_tv_usec         : %7d microsec\n", forwarder_tv_usec);
-            std::printf("\n");
-
-            std::printf("ok? (yes:y no:n quit:q)                        > ");
-            std::cin >> check;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(check == 'y')
+            }else if(mode == 's')   // self
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                break;
-            }else if(check == 'n')
+
+                std::printf("client listen ip                               > ");
+                std::cin >> client_listen_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(client_listen_ip != spider_ip->get_spider_ipv4()
+                   && client_listen_ip != spider_ip->get_spider_ipv6_global()
+                   && client_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && client_listen_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(client_listen_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    client_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("client listen port                             > ");
+                std::cin >> client_listen_port;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client destination spider ip                   > ");
+                std::cin >> client_destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                std::cin >> tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_sec = 3;
+                }else if(tv_sec < 0 || tv_sec > 60)
+                {
+                    tv_sec = 3;
+                }
+
+                std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_usec = 0;
+                }else if(tv_usec < 0 || tv_usec > 1000000)
+                {
+                    tv_usec = 0;
+                }
+
+                if(tv_sec == 0 && tv_usec == 0){
+                    tv_sec = 3;
+                    tv_usec = 0;
+                }
+
+                std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                std::cin >> forwarder_tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_sec = 30;
+                }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+                {
+                    forwarder_tv_sec = 30;
+                }
+
+                std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> forwarder_tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_usec = 0;
+                }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+                {
+                    forwarder_tv_usec = 0;
+                }
+
+                if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+                {
+                    forwarder_tv_sec = 30;
+                    forwarder_tv_usec = 0;
+                }
+
+                std::printf("\n");
+                std::printf("client listen ip             : %s\n", client_listen_ip.c_str());
+                if(!client_listen_ip_scope_id.empty())
+                {
+                    std::printf("client listen ip scope id    : %s (%d)\n", client_listen_ip_scope_id.c_str(), if_nametoindex(client_listen_ip_scope_id.c_str()));
+                }
+                std::printf("client listen port           : %s\n", client_listen_port.c_str());
+                std::printf("client destination spider ip : %s\n", client_destination_spider_ip.c_str());
+                std::printf("recv/send tv_sec             : %7d sec\n", tv_sec);
+                std::printf("recv/send tv_usec            : %7d microsec\n", tv_usec);
+                std::printf("forwarder_tv_sec             : %7d sec\n", forwarder_tv_sec);
+                std::printf("forwarder_tv_usec            : %7d microsec\n", forwarder_tv_usec);
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    std::thread thread(&Spidercommand::listen_client,
+                                       this,
+                                       client_listen_ip,
+                                       client_listen_ip_scope_id,
+                                       client_listen_port,
+                                       client_destination_spider_ip,
+                                       tv_sec,
+                                       tv_usec,
+                                       forwarder_tv_sec,
+                                       forwarder_tv_usec);
+                    thread.detach();
+
+                    std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+            }else if(mode == 'o')   // other
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(check == 'q'){
+
+                std::printf("source spider ip                               > ");
+                std::cin >> source_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip != spider_ip->get_spider_ipv4()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] please input spider ipv4 or ipv6\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+                std::printf("destination spider ip                          > ");
+                std::cin >> destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client listen ip                               > ");
+                std::cin >> client_listen_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client listen port                             > ");
+                std::cin >> client_listen_port;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("client destination spider ip                   > ");
+                std::cin >> client_destination_spider_ip;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                std::cin >> tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_sec = 3;
+                }else if(tv_sec < 0 || tv_sec > 60)
+                {
+                    tv_sec = 3;
+                }
+
+                std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    tv_usec = 0;
+                }else if(tv_usec < 0 || tv_usec > 1000000)
+                {
+                    tv_usec = 0;
+                }
+
+                if(tv_sec == 0 && tv_usec == 0){
+                    tv_sec = 3;
+                    tv_usec = 0;
+                }
+
+                std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                std::cin >> forwarder_tv_sec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_sec = 30;
+                }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
+                {
+                    forwarder_tv_sec = 30;
+                }
+
+                std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                std::cin >> forwarder_tv_usec;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    forwarder_tv_usec = 0;
+                }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
+                {
+                    forwarder_tv_usec = 0;
+                }
+
+                if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
+                {
+                    forwarder_tv_sec = 30;
+                    forwarder_tv_usec = 0;
+                }
+
+                std::printf("\n");
+                std::printf("source spider ip             : %s\n", source_spider_ip.c_str());
+                if(!source_spider_ip_scope_id.empty())
+                {
+                    std::printf("source spider ip scope id    : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                }
+                std::printf("destination spider ip        : %s\n", destination_spider_ip.c_str());
+                std::printf("client listen ip             : %s\n", client_listen_ip.c_str());
+                std::printf("client listen port           : %s\n", client_listen_port.c_str());
+                std::printf("client destination spider ip : %s\n", client_destination_spider_ip.c_str());
+                std::printf("recv/send tv_sec             : %7d sec\n", tv_sec);
+                std::printf("recv/send tv_usec            : %7d microsec\n", tv_usec);
+                std::printf("forwarder_tv_sec             : %7d sec\n", forwarder_tv_sec);
+                std::printf("forwarder_tv_usec            : %7d microsec\n", forwarder_tv_usec);
+                std::printf("\n");
+
+                std::printf("ok? (yes:y no:n quit:q)                        > ");
+                std::cin >> check;
+                if(std::cin.fail())
+                {
+                    std::printf("[-] input error\n");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'y')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    config = "";
+                    config += "[client]\n";
+
+                    config += "client_listen_ip:";
+                    config += client_listen_ip;
+                    config += "\n";
+
+                    config += "client_listen_port:";
+                    config += client_listen_port;
+                    config += "\n";
+
+                    config += "destination_spider_ip:";
+                    config += client_destination_spider_ip;
+                    config += "\n";
+
+                    config += "tv_sec:";
+                    config += std::to_string(tv_sec);
+                    config += "\n";
+
+                    config += "tv_usec:";
+                    config += std::to_string(tv_usec);
+                    config += "\n";
+
+                    config += "forwarder_tv_sec:";
+                    config += std::to_string(forwarder_tv_sec);
+                    config += "\n";
+
+                    config += "forwarder_tv_usec:";
+                    config += std::to_string(forwarder_tv_usec);
+                    config += "\n";
+
+                    std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                       this,
+                                       config,
+                                       source_spider_ip,
+                                       source_spider_ip_scope_id,
+                                       destination_spider_ip);
+                    thread.detach();
+
+                    break;
+                }else if(check == 'n')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }else if(check == 'q')
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }else
+                {
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    return;
+                }
+            }else
+            {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 return;
-            }else{
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
             }
-
         }
-
-        std::thread thread(&Spidercommand::listen_client,
-                           this,
-                           client_listen_ip,
-                           client_listen_ip_scope_id,
-                           client_listen_port,
-                           destination_spider_ip,
-                           tv_sec,
-                           tv_usec,
-                           forwarder_tv_sec,
-                           forwarder_tv_usec);
-        thread.detach();
-
-        std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
 
         return;
     }
@@ -1320,7 +1565,12 @@ namespace spider
 
     void Spidercommand::add_node_spider_pipe()
     {
-        char mode;  // client:c server:s
+        std::string config = "";
+        char mode;  // self:s other:o
+        char pipe_mode;  // client:c server:s
+        std::string source_spider_ip;
+        std::string source_spider_ip_scope_id;
+        std::string destination_spider_ip;
         std::string pipe_ip;
         std::string pipe_ip_scope_id;
         std::string pipe_destination_ip;
@@ -1334,7 +1584,7 @@ namespace spider
             routing_manager->show_routing_table();
             std::printf("\n");
 
-            std::printf("mode (client:c server:s)                       > ");
+            std::printf("mode (self:s other:o)                          > ");
             std::cin >> mode;
             if(std::cin.fail())
             {
@@ -1342,201 +1592,503 @@ namespace spider
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 continue;
-            }else if(mode == 'c')
+            }else if(mode == 's')   // self
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("pipe ip                                        > ");
-                std::cin >> pipe_ip;
+                std::printf("pipe mode (client:c server:s)                  > ");
+                std::cin >> pipe_mode;
                 if(std::cin.fail())
                 {
                     std::printf("[-] input error\n");
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
-                }
-
-                if(pipe_ip != spider_ip->get_spider_ipv4()
-                   && pipe_ip != spider_ip->get_spider_ipv6_global()
-                   && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
-                   && pipe_ip != spider_ip->get_spider_ipv6_link_local())
-                {
-                    std::printf("[-] please input spider ipv4 or ipv6\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
-                {
-                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-                }
-
-                std::printf("pipe destination ip                            > ");
-                std::cin >> pipe_destination_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("pipe destination port                          > ");
-                std::cin >> pipe_destination_port;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("\n");
-                std::printf("mode                      : %c\n", mode);
-                std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
-                if(!pipe_ip_scope_id.empty())
-                {
-                    std::printf("pipe ip scope id          : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
-                }
-                std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
-                std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
-                std::printf("\n");
-
-                std::printf("ok? (yes:y no:n quit:q)                        > ");
-                std::cin >> check;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'y')
+                }else if(pipe_mode == 'c')
                 {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::thread thread(&Spidercommand::connect_pipe,
-                                       this,
-                                       mode,
-                                       pipe_ip,
-                                       pipe_ip_scope_id,
-                                       pipe_destination_ip,
-                                       pipe_destination_port);
-                    thread.detach();
+                    std::printf("pipe ip                                        > ");
+                    std::cin >> pipe_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
 
-                    std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
+                    if(pipe_ip != spider_ip->get_spider_ipv4()
+                       && pipe_ip != spider_ip->get_spider_ipv6_global()
+                       && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+                       && pipe_ip != spider_ip->get_spider_ipv6_link_local())
+                    {
+                        std::printf("[-] please input spider ipv4 or ipv6\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
+                    {
+                        pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                    }
+
+                    std::printf("pipe destination ip                            > ");
+                    std::cin >> pipe_destination_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("pipe destination port                          > ");
+                    std::cin >> pipe_destination_port;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("\n");
+                    std::printf("pipe mode                 : %c\n", pipe_mode);
+                    std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
+                    if(!pipe_ip_scope_id.empty())
+                    {
+                        std::printf("pipe ip scope id          : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    }
+                    std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
+                    std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
+                    std::printf("\n");
+
+                    std::printf("ok? (yes:y no:n quit:q)                        > ");
+                    std::cin >> check;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'y')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                        std::thread thread(&Spidercommand::connect_pipe,
+                                           this,
+                                           pipe_mode,
+                                           pipe_ip,
+                                           pipe_ip_scope_id,
+                                           pipe_destination_ip,
+                                           pipe_destination_port);
+                        thread.detach();
+
+                        std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }else
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }
 
                     break;
-                }else if(check == 'n')
+                }else if(pipe_mode == 's')
                 {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'q'){
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }else{
+
+                    std::printf("pipe listen ip                                 > ");
+                    std::cin >> pipe_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    if(pipe_ip != spider_ip->get_spider_ipv4()
+                       && pipe_ip != spider_ip->get_spider_ipv6_global()
+                       && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+                       && pipe_ip != spider_ip->get_spider_ipv6_link_local())
+                    {
+                        std::printf("[-] please input spider ipv4 or ipv6\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
+                    {
+                        pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                    }
+
+                    std::printf("pipe listen port                               > ");
+                    std::cin >> pipe_listen_port;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("\n");
+                    std::printf("pipe mode                 : %c\n", pipe_mode);
+                    std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
+                    if(!pipe_ip_scope_id.empty())
+                    {
+                        std::printf("pipe listen ip scope id   : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
+                    }
+                    std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
+                    std::printf("\n");
+
+                    std::printf("ok? (yes:y no:n quit:q)                        > ");
+                    std::cin >> check;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'y')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                        std::thread thread(&Spidercommand::listen_pipe,
+                                           this,
+                                           pipe_mode,
+                                           pipe_ip,
+                                           pipe_ip_scope_id,
+                                           pipe_listen_port);
+                        thread.detach();
+
+                        std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }else
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }
+                }else
+                {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     return;
                 }
-
-                break;
-            }else if(mode == 's')
+            }else if(mode == 'o')   // other
             {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::printf("pipe listen ip                                 > ");
-                std::cin >> pipe_ip;
+                std::printf("pipe mode (client:c server:s)                  > ");
+                std::cin >> pipe_mode;
                 if(std::cin.fail())
                 {
                     std::printf("[-] input error\n");
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     continue;
-                }
-
-                if(pipe_ip != spider_ip->get_spider_ipv4()
-                   && pipe_ip != spider_ip->get_spider_ipv6_global()
-                   && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
-                   && pipe_ip != spider_ip->get_spider_ipv6_link_local())
-                {
-                    std::printf("[-] please input spider ipv4 or ipv6\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
-                {
-                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-                }
-
-                std::printf("pipe listen port                               > ");
-                std::cin >> pipe_listen_port;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("\n");
-                std::printf("mode                      : %c\n", mode);
-                std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
-                if(!pipe_ip_scope_id.empty())
-                {
-                    std::printf("pipe listen ip scope id   : %s (%d)\n", pipe_ip_scope_id.c_str(), if_nametoindex(pipe_ip_scope_id.c_str()));
-                }
-                std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
-                std::printf("\n");
-
-                std::printf("ok? (yes:y no:n quit:q)                        > ");
-                std::cin >> check;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'y')
+                }else if(pipe_mode == 'c')
                 {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::thread thread(&Spidercommand::listen_pipe,
-                                       this,
-                                       mode,
-                                       pipe_ip,
-                                       pipe_ip_scope_id,
-                                       pipe_listen_port);
-                    thread.detach();
+                    std::printf("source spider ip                               > ");
+                    std::cin >> source_spider_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
 
-                    std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
+                    if(source_spider_ip != spider_ip->get_spider_ipv4()
+                       && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                       && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                       && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                    {
+                        std::printf("[-] please input spider ipv4 or ipv6\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                    {
+                        source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                    }
+
+                    std::printf("destination spider ip                          > ");
+                    std::cin >> destination_spider_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("pipe ip                                        > ");
+                    std::cin >> pipe_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("pipe destination ip                            > ");
+                    std::cin >> pipe_destination_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("pipe destination port                          > ");
+                    std::cin >> pipe_destination_port;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("\n");
+                    std::printf("pipe mode                 : %c\n", pipe_mode);
+                    std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
+                    if(!source_spider_ip_scope_id.empty())
+                    {
+                        std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                    }
+                    std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                    std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
+                    std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
+                    std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
+                    std::printf("\n");
+
+                    std::printf("ok? (yes:y no:n quit:q)                        > ");
+                    std::cin >> check;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'y')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                        config = "";
+                        config += "[pipe_client]\n";
+
+                        config += "pipe_ip:";
+                        config += pipe_ip;
+                        config += "\n";
+
+                        config += "pipe_destination_ip:";
+                        config += pipe_destination_ip;
+                        config += "\n";
+
+                        config += "pipe_destination_port:";
+                        config += pipe_destination_port;
+                        config += "\n";
+
+                        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                           this,
+                                           config,
+                                           source_spider_ip,
+                                           source_spider_ip_scope_id,
+                                           destination_spider_ip);
+                        thread.detach();
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }else
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }
 
                     break;
-                }else if(check == 'n')
+                }else if(pipe_mode == 's')
                 {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'q'){
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }else{
+
+                    std::printf("source spider ip                               > ");
+                    std::cin >> source_spider_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    if(source_spider_ip != spider_ip->get_spider_ipv4()
+                       && source_spider_ip != spider_ip->get_spider_ipv6_global()
+                       && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
+                       && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
+                    {
+                        std::printf("[-] please input spider ipv4 or ipv6\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
+                    {
+                        source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                    }
+
+                    std::printf("destination spider ip                          > ");
+                    std::cin >> destination_spider_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("pipe listen ip                                 > ");
+                    std::cin >> pipe_ip;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("pipe listen port                               > ");
+                    std::cin >> pipe_listen_port;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+
+                    std::printf("\n");
+                    std::printf("pipe mode                 : %c\n", pipe_mode);
+                    std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
+                    if(!source_spider_ip_scope_id.empty())
+                    {
+                        std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
+                    }
+                    std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                    std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
+                    std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
+                    std::printf("\n");
+
+                    std::printf("ok? (yes:y no:n quit:q)                        > ");
+                    std::cin >> check;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'y')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                        config = "";
+                        config += "[pipe_server]\n";
+
+                        config += "pipe_listen_ip:";
+                        config += pipe_ip;
+                        config += "\n";
+
+                        config += "pipe_listen_port:";
+                        config += pipe_listen_port;
+                        config += "\n";
+
+                        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                           this,
+                                           config,
+                                           source_spider_ip,
+                                           source_spider_ip_scope_id,
+                                           destination_spider_ip);
+                        thread.detach();
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }else
+                    {
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        return;
+                    }
+                }else
+                {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     return;
                 }
-
-                break;
-            }else{
+            }else
+            {
                 std::cin.clear();
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 return;
@@ -3569,537 +4121,6 @@ namespace spider
             client_manager->erase_client(client->get_connection_id(),
                                          client->get_client_id());
         }
-
-        return;
-    }
-
-    void Spidercommand::add_node_spider_client_to_destination_spider()
-    {
-        std::string config = "";
-        std::string source_spider_ip;
-        std::string source_spider_ip_scope_id;
-        std::string destination_spider_ip;
-        std::string client_listen_ip;
-        std::string client_listen_port;
-        std::string client_destination_spider_ip;
-        int32_t tv_sec = 0;
-        int32_t tv_usec = 0;
-        int32_t forwarder_tv_sec = 0;
-        int32_t forwarder_tv_usec = 0;
-        char check = 'n';
-
-
-        while(1)
-        {
-            routing_manager->show_routing_table();
-            std::printf("\n");
-
-            std::printf("source spider ip                               > ");
-            std::cin >> source_spider_ip;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            if(source_spider_ip != spider_ip->get_spider_ipv4()
-               && source_spider_ip != spider_ip->get_spider_ipv6_global()
-               && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
-               && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
-            {
-                std::printf("[-] please input spider ipv4 or ipv6\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
-            {
-                source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-            }
-
-            std::printf("destination spider ip                          > ");
-            std::cin >> destination_spider_ip;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("client listen ip                               > ");
-            std::cin >> client_listen_ip;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("client listen port                             > ");
-            std::cin >> client_listen_port;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("client destination spider ip                   > ");
-            std::cin >> client_destination_spider_ip;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-
-            std::printf("recv/send tv_sec  (timeout 0-60 sec)           > ");
-            std::cin >> tv_sec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                tv_sec = 3;
-            }else if(tv_sec < 0 || tv_sec > 60)
-            {
-                tv_sec = 3;
-            }
-
-            std::printf("recv/send tv_usec (timeout 0-1000000 microsec) > ");
-            std::cin >> tv_usec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                tv_usec = 0;
-            }else if(tv_usec < 0 || tv_usec > 1000000)
-            {
-                tv_usec = 0;
-            }
-
-            if(tv_sec == 0 && tv_usec == 0){
-                tv_sec = 3;
-                tv_usec = 0;
-            }
-
-            std::printf("forwarder tv_sec  (timeout 0-3600 sec)         > ");
-            std::cin >> forwarder_tv_sec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_sec = 30;
-            }else if(forwarder_tv_sec < 0 || forwarder_tv_sec > 3600)
-            {
-                forwarder_tv_sec = 30;
-            }
-
-            std::printf("forwarder tv_usec (timeout 0-1000000 microsec) > ");
-            std::cin >> forwarder_tv_usec;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                forwarder_tv_usec = 0;
-            }else if(forwarder_tv_usec < 0 || forwarder_tv_usec > 1000000)
-            {
-                forwarder_tv_usec = 0;
-            }
-
-            if(forwarder_tv_sec == 0 && forwarder_tv_usec == 0)
-            {
-                forwarder_tv_sec = 30;
-                forwarder_tv_usec = 0;
-            }
-
-            std::printf("\n");
-            std::printf("source spider ip             : %s\n", source_spider_ip.c_str());
-            if(!source_spider_ip_scope_id.empty())
-            {
-                std::printf("source spider ip scope id    : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
-            }
-            std::printf("destination spider ip        : %s\n", destination_spider_ip.c_str());
-            std::printf("client listen ip             : %s\n", client_listen_ip.c_str());
-            std::printf("client listen port           : %s\n", client_listen_port.c_str());
-            std::printf("client destination spider ip : %s\n", client_destination_spider_ip.c_str());
-            std::printf("recv/send tv_sec             : %7d sec\n", tv_sec);
-            std::printf("recv/send tv_usec            : %7d microsec\n", tv_usec);
-            std::printf("forwarder_tv_sec             : %7d sec\n", forwarder_tv_sec);
-            std::printf("forwarder_tv_usec            : %7d microsec\n", forwarder_tv_usec);
-            std::printf("\n");
-
-            std::printf("ok? (yes:y no:n quit:q)                        > ");
-            std::cin >> check;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(check == 'y')
-            {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-                config = "";
-                config += "[client]\n";
-
-                config += "client_listen_ip:";
-                config += client_listen_ip;
-                config += "\n";
-
-                config += "client_listen_port:";
-                config += client_listen_port;
-                config += "\n";
-
-                config += "destination_spider_ip:";
-                config += client_destination_spider_ip;
-                config += "\n";
-
-                config += "tv_sec:";
-                config += std::to_string(tv_sec);
-                config += "\n";
-
-                config += "tv_usec:";
-                config += std::to_string(tv_usec);
-                config += "\n";
-
-                config += "forwarder_tv_sec:";
-                config += std::to_string(forwarder_tv_sec);
-                config += "\n";
-
-                config += "forwarder_tv_usec:";
-                config += std::to_string(forwarder_tv_usec);
-                config += "\n";
-
-                break;
-            }else if(check == 'n')
-            {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(check == 'q'){
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
-            }else{
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
-            }
-
-        }
-
-        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
-                           this,
-                           config,
-                           source_spider_ip,
-                           source_spider_ip_scope_id,
-                           destination_spider_ip);
-        thread.detach();
-
-        //        std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
-
-        return;
-    }
-
-    void Spidercommand::add_node_spider_pipe_to_destination_spider()
-    {
-        std::string config = "";
-        char mode;  // client:c server:s
-        std::string source_spider_ip;
-        std::string source_spider_ip_scope_id;
-        std::string destination_spider_ip;
-        std::string pipe_ip;
-        std::string pipe_destination_ip;
-        std::string pipe_destination_port;
-        std::string pipe_listen_port;
-        char check = 'n';
-
-
-        while(1)
-        {
-            routing_manager->show_routing_table();
-            std::printf("\n");
-
-            std::printf("mode (client:c server:s)                       > ");
-            std::cin >> mode;
-            if(std::cin.fail())
-            {
-                std::printf("[-] input error\n");
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }else if(mode == 'c')
-            {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-                std::printf("source spider ip                               > ");
-                std::cin >> source_spider_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                if(source_spider_ip != spider_ip->get_spider_ipv4()
-                   && source_spider_ip != spider_ip->get_spider_ipv6_global()
-                   && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
-                   && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
-                {
-                    std::printf("[-] please input spider ipv4 or ipv6\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
-                {
-                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-                }
-
-                std::printf("destination spider ip                          > ");
-                std::cin >> destination_spider_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("pipe ip                                        > ");
-                std::cin >> pipe_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("pipe destination ip                            > ");
-                std::cin >> pipe_destination_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("pipe destination port                          > ");
-                std::cin >> pipe_destination_port;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("\n");
-                std::printf("mode                      : %c\n", mode);
-                std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
-                if(!source_spider_ip_scope_id.empty())
-                {
-                    std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
-                }
-                std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
-                std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
-                std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
-                std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
-                std::printf("\n");
-
-                std::printf("ok? (yes:y no:n quit:q)                        > ");
-                std::cin >> check;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'y')
-                {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-                    config = "";
-                    config += "[pipe_client]\n";
-
-                    config += "pipe_ip:";
-                    config += pipe_ip;
-                    config += "\n";
-
-                    config += "pipe_destination_ip:";
-                    config += pipe_destination_ip;
-                    config += "\n";
-
-                    config += "pipe_destination_port:";
-                    config += pipe_destination_port;
-                    config += "\n";
-
-                    break;
-                }else if(check == 'n')
-                {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'q'){
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }else{
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }
-
-                break;
-            }else if(mode == 's')
-            {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-                std::printf("source spider ip                               > ");
-                std::cin >> source_spider_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                if(source_spider_ip != spider_ip->get_spider_ipv4()
-                   && source_spider_ip != spider_ip->get_spider_ipv6_global()
-                   && source_spider_ip != spider_ip->get_spider_ipv6_unique_local()
-                   && source_spider_ip != spider_ip->get_spider_ipv6_link_local())
-                {
-                    std::printf("[-] please input spider ipv4 or ipv6\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                if(source_spider_ip == spider_ip->get_spider_ipv6_link_local())
-                {
-                    source_spider_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
-                }
-
-                std::printf("destination spider ip                          > ");
-                std::cin >> destination_spider_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("pipe listen ip                                 > ");
-                std::cin >> pipe_ip;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("pipe listen port                               > ");
-                std::cin >> pipe_listen_port;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }
-
-                std::printf("\n");
-                std::printf("mode                      : %c\n", mode);
-                std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
-                if(!source_spider_ip_scope_id.empty())
-                {
-                    std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
-                }
-                std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
-                std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
-                std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
-                std::printf("\n");
-
-                std::printf("ok? (yes:y no:n quit:q)                        > ");
-                std::cin >> check;
-                if(std::cin.fail())
-                {
-                    std::printf("[-] input error\n");
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'y')
-                {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-                    config = "";
-                    config += "[pipe_server]\n";
-
-                    config += "pipe_listen_ip:";
-                    config += pipe_ip;
-                    config += "\n";
-
-                    config += "pipe_listen_port:";
-                    config += pipe_listen_port;
-                    config += "\n";
-
-                    break;
-                }else if(check == 'n')
-                {
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    continue;
-                }else if(check == 'q'){
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }else{
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                    return;
-                }
-
-                break;
-            }else{
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return;
-            }
-        }
-
-        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
-                           this,
-                           config,
-                           source_spider_ip,
-                           source_spider_ip_scope_id,
-                           destination_spider_ip);
-        thread.detach();
-
-//        std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
 
         return;
     }

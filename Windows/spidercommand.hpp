@@ -160,10 +160,6 @@ namespace spider
 
         void add_node_spider_client_shell();
 
-        void add_node_spider_client_to_destination_spider();
-
-        void add_node_spider_pipe_to_destination_spider();
-
         int32_t read_config(std::vector<char> config);
 
         int32_t read_config_file(std::string config_file);

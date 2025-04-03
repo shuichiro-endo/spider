@@ -143,17 +143,15 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
  aes key hex string              : 
  aes iv hex string               : 
 ----------------------------- spider command -----------------------------
-  1: add node (spider client)
-  2: add node (spider pipe)
-  3: show node information
-  4: show routing table
-  5: edit routing table
-  6: add node (spider client tcp)
-  7: add node (spider client udp)
-  8: add node (spider client shell)
-  9: add node (spider client) to destination spider
- 10: add node (spider pipe) to destination spider
-  0: exit
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 5: edit routing table
+ 6: add node (spider client tcp)
+ 7: add node (spider client udp)
+ 8: add node (spider client shell)
+ 0: exit
 --------------------------------------------------------------------------
 
 command >
@@ -165,64 +163,191 @@ command >
 > This is SOCKS5 connection.
 >
 > [tcp client] <-TCP-> [socks5 client] <-SOCKS5(TCP)-> [spider client] <-SOCKS5(TCP)-> [spider server] <-TCP-> [destination server]
+1. client, self
 - ipv4
 ```
 command > 1
 [+] add node (spider client)
-client listen ip             > 192.168.0.25
-client listen port           > 9050
-destination spider ip        > 192.168.0.26
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 08:54:52 2025|
+|a   |192.168.0.26                                  |     1| 288260828|Thu Apr  3 08:56:12 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 08:54:52 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1| 288260828|Thu Apr  3 08:56:12 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1| 288260828|Thu Apr  3 08:56:12 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 08:54:52 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > s
+client listen ip                               > 192.168.0.25
+client listen port                             > 9050
+client destination spider ip                   > 192.168.0.26
 recv/send tv_sec  (timeout 0-60 sec)           > 3
 recv/send tv_usec (timeout 0-1000000 microsec) > 0
 forwarder tv_sec  (timeout 0-3600 sec)         > 30
 forwarder tv_usec (timeout 0-1000000 microsec) > 0
 
-client listen ip          : 192.168.0.25
-client listen port        : 9050
-destination spider ip     : 192.168.0.26
-recv/send tv_sec          :       3 sec
-recv/send tv_usec         :       0 microsec
-forwarder_tv_sec          :      30 sec
-forwarder_tv_usec         :       0 microsec
+client listen ip             : 192.168.0.25
+client listen port           : 9050
+client destination spider ip : 192.168.0.26
+recv/send tv_sec             :       3 sec
+recv/send tv_usec            :       0 microsec
+forwarder_tv_sec             :      30 sec
+forwarder_tv_usec            :       0 microsec
 
-ok? (yes:y no:n quit:q) > y
+ok? (yes:y no:n quit:q)                        > y
 
 ```
 - ipv6
 ```
 command > 1
 [+] add node (spider client)
-client listen ip             > fe80::a00:27ff:febe:3a77
-client listen port           > 9000
-destination spider ip        > 192.168.0.26
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 08:54:52 2025|
+|a   |192.168.0.26                                  |     1| 288260828|Thu Apr  3 08:58:32 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 08:54:52 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1| 288260828|Thu Apr  3 08:58:32 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1| 288260828|Thu Apr  3 08:58:32 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 08:54:52 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > s
+client listen ip                               > fe80::a00:27ff:febe:3a77
+client listen port                             > 9050
+client destination spider ip                   > fe80::a00:27ff:fe25:c316
 recv/send tv_sec  (timeout 0-60 sec)           > 3
 recv/send tv_usec (timeout 0-1000000 microsec) > 0
 forwarder tv_sec  (timeout 0-3600 sec)         > 30
 forwarder tv_usec (timeout 0-1000000 microsec) > 0
 
-client listen ip          : fe80::a00:27ff:febe:3a77
-client listen ip scope id : enp0s3 (2)
-client listen port        : 9000
-destination spider ip     : 192.168.0.26
-recv/send tv_sec          :       3 sec
-recv/send tv_usec         :       0 microsec
-forwarder_tv_sec          :      30 sec
-forwarder_tv_usec         :       0 microsec
+client listen ip             : fe80::a00:27ff:febe:3a77
+client listen ip scope id    : enp0s3 (2)
+client listen port           : 9050
+client destination spider ip : fe80::a00:27ff:fe25:c316
+recv/send tv_sec             :       3 sec
+recv/send tv_usec            :       0 microsec
+forwarder_tv_sec             :      30 sec
+forwarder_tv_usec            :       0 microsec
 
-ok? (yes:y no:n quit:q) > y
+ok? (yes:y no:n quit:q)                        > y
 
 ```
+2. client, other (other spider)
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+- ipv4
+```
+command > 1
+[+] add node (spider client)
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:37:13 2025|
+|a   |192.168.0.26                                  |     1|1199263702|Thu Apr  3 09:38:06 2025|
+|a   |192.168.0.27                                  |     2|1199263702|Thu Apr  3 09:38:06 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:37:13 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1199263702|Thu Apr  3 09:38:06 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1199263702|Thu Apr  3 09:38:06 2025|
+|a   |fe80::a00:27ff:fe63:4c1f                      |     2|1199263702|Thu Apr  3 09:38:06 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:37:13 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > o
+source spider ip                               > 192.168.0.25
+destination spider ip                          > 192.168.0.26
+client listen ip                               > 192.168.0.26
+client listen port                             > 9050
+client destination spider ip                   > 192.168.0.27
+recv/send tv_sec  (timeout 0-60 sec)           > 3
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 30
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+source spider ip             : 192.168.0.25
+destination spider ip        : 192.168.0.26
+client listen ip             : 192.168.0.26
+client listen port           : 9050
+client destination spider ip : 192.168.0.27
+recv/send tv_sec             :       3 sec
+recv/send tv_usec            :       0 microsec
+forwarder_tv_sec             :      30 sec
+forwarder_tv_usec            :       0 microsec
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+- ipv6
+```
+command > 1
+[+] add node (spider client)
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:37:13 2025|
+|a   |192.168.0.26                                  |     1|1199263702|Thu Apr  3 09:43:20 2025|
+|a   |192.168.0.27                                  |     2|1199263702|Thu Apr  3 09:43:20 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:37:13 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1199263702|Thu Apr  3 09:43:20 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1199263702|Thu Apr  3 09:43:20 2025|
+|a   |fe80::a00:27ff:fe63:4c1f                      |     2|1199263702|Thu Apr  3 09:43:20 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:37:13 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > o
+source spider ip                               > fe80::a00:27ff:febe:3a77
+destination spider ip                          > fe80::a00:27ff:fe25:c316
+client listen ip                               > fe80::a00:27ff:fe25:c316
+client listen port                             > 9050
+client destination spider ip                   > fe80::a00:27ff:fe63:4c1f
+recv/send tv_sec  (timeout 0-60 sec)           > 3
+recv/send tv_usec (timeout 0-1000000 microsec) > 0
+forwarder tv_sec  (timeout 0-3600 sec)         > 30
+forwarder tv_usec (timeout 0-1000000 microsec) > 0
+
+source spider ip             : fe80::a00:27ff:febe:3a77
+source spider ip scope id    : enp0s3 (2)
+destination spider ip        : fe80::a00:27ff:fe25:c316
+client listen ip             : fe80::a00:27ff:fe25:c316
+client listen port           : 9050
+client destination spider ip : fe80::a00:27ff:fe63:4c1f
+recv/send tv_sec             :       3 sec
+recv/send tv_usec            :       0 microsec
+forwarder_tv_sec             :      30 sec
+forwarder_tv_usec            :       0 microsec
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+#### mode (self:s other:o)
+Set the type of mode.
+
+If you want to add client node to the spider itself, set 's'.
+
+If you want to add client node to other spider, set 'o'.
+
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+
+#### source spider ip (other)
+Set the ip address of the spider itself.
+
+#### destination spider ip (other)
+Set the ip address of the destination spider that you want to add the client node.
+
 #### client listen ip
 Set the ip address of the interface that the client node will listen on.
 
 #### client listen port
 Set the port number that the client node will listen on.
 
-#### destination spider ip
+#### client destination spider ip
 Set the ip address of the destination spider.
 
 > [!IMPORTANT]
-> The startup location of the spider server node is determined by the 'destination spider ip' when adding the spider client node.
+> The startup location of the spider server node is determined by the 'client destination spider ip' when adding the spider client node.
 
 #### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
 Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
@@ -239,82 +364,268 @@ Set the timeout for packet forwarding between the SOCKS5 client and the destinat
 > The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
 ### 2: add node (spider pipe)
-1. pipe (server)
+1. pipe (client), self
+- ipv4
+```
+command > 2
+[+] add node (spider pipe)
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:11:14 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:11:14 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:11:14 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > s
+pipe mode (client:c server:s)                  > c
+pipe ip                                        > 192.168.0.25
+pipe destination ip                            > 192.168.0.26
+pipe destination port                          > 1026
+
+pipe mode                 : c
+pipe ip                   : 192.168.0.25
+pipe destination ip       : 192.168.0.26
+pipe destination port     : 1026
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+- ipv6
+```
+command > 2
+[+] add node (spider pipe)
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:12:27 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:12:27 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:12:27 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > s
+pipe mode (client:c server:s)                  > c
+pipe ip                                        > fe80::a00:27ff:febe:3a77
+pipe destination ip                            > fe80::a00:27ff:fe25:c316
+pipe destination port                          > 1026
+
+pipe mode                 : c
+pipe ip                   : fe80::a00:27ff:febe:3a77
+pipe ip scope id          : enp0s3 (2)
+pipe destination ip       : fe80::a00:27ff:fe25:c316
+pipe destination port     : 1026
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+2. pipe (server), self
 > [!NOTE]
 > The pipe server can be connected by only one pipe client at a time.
 - ipv4
 ```
 command > 2
 [+] add node (spider pipe)
-mode (client:c server:s)    > s
-pipe listen ip              > 192.168.0.25
-pipe listen port            > 1025
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:18:56 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:18:56 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:18:56 2025|
+------------------------------------------------------------------------------------------------
 
-mode                    : s
-pipe listen ip          : 192.168.0.25
-pipe listen port        : 1025
+mode (self:s other:o)                          > s
+pipe mode (client:c server:s)                  > s
+pipe listen ip                                 > 192.168.0.25
+pipe listen port                               > 1025
 
-ok? (yes:y no:n quit:q) > y
+pipe mode                 : s
+pipe listen ip            : 192.168.0.25
+pipe listen port          : 1025
+
+ok? (yes:y no:n quit:q)                        > y
 
 ```
 - ipv6
 ```
 command > 2
 [+] add node (spider pipe)
-mode (client:c server:s)    > s
-pipe listen ip              > fe80::a00:27ff:fe25:c316
-pipe listen port            > 1026
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:19:39 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:19:39 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:19:39 2025|
+------------------------------------------------------------------------------------------------
 
-mode                    : s
-pipe listen ip          : fe80::a00:27ff:fe25:c316
-pipe listen ip scope id : enp0s3 (2)
-pipe listen port        : 1026
+mode (self:s other:o)                          > s
+pipe mode (client:c server:s)                  > s
+pipe listen ip                                 > fe80::a00:27ff:febe:3a77
+pipe listen port                               > 1025
 
-ok? (yes:y no:n quit:q) > y
+pipe mode                 : s
+pipe listen ip            : fe80::a00:27ff:febe:3a77
+pipe listen ip scope id   : enp0s3 (2)
+pipe listen port          : 1025
+
+ok? (yes:y no:n quit:q)                        > y
 
 ```
-2. pipe (client)
+3. pipe (client), other (other spider)
+- ipv4
+```
+command > 2   
+[+] add node (spider pipe)
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:23:01 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:23:01 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:23:01 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > o
+pipe mode (client:c server:s)                  > c
+source spider ip                               > 192.168.0.25
+destination spider ip                          > 192.168.0.26
+pipe ip                                        > 192.168.0.26
+pipe destination ip                            > 192.168.0.27
+pipe destination port                          > 1027
+
+pipe mode                 : c
+source spider ip          : 192.168.0.25
+destination spider ip     : 192.168.0.26
+pipe ip                   : 192.168.0.26
+pipe destination ip       : 192.168.0.27
+pipe destination port     : 1027
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+- ipv6
+```
+command > 2
+[+] add node (spider pipe)
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:24:56 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:24:56 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:24:56 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+------------------------------------------------------------------------------------------------
+
+mode (self:s other:o)                          > o
+pipe mode (client:c server:s)                  > c
+source spider ip                               > fe80::a00:27ff:febe:3a77
+destination spider ip                          > fe80::a00:27ff:fe25:c316
+pipe ip                                        > fe80::a00:27ff:fe25:c316
+pipe destination ip                            > fe80::a00:27ff:fe63:4c1f
+pipe destination port                          > 1027
+
+pipe mode                 : c
+source spider ip          : fe80::a00:27ff:febe:3a77
+source spider ip scope id : enp0s3 (2)
+destination spider ip     : fe80::a00:27ff:fe25:c316
+pipe ip                   : fe80::a00:27ff:fe25:c316
+pipe destination ip       : fe80::a00:27ff:fe63:4c1f
+pipe destination port     : 1027
+
+ok? (yes:y no:n quit:q)                        > y
+
+```
+4. pipe (server), other (other spider)
+> [!NOTE]
+> The pipe server can be connected by only one pipe client at a time.
 - ipv4
 ```
 command > 2
 [+] add node (spider pipe)
-mode (client:c server:s)    > c
-pipe ip                     > 192.168.0.25
-pipe destination ip         > 192.168.0.26
-pipe destination port       > 1026
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:28:45 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:28:45 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:28:45 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+------------------------------------------------------------------------------------------------
 
-mode                    : c
-pipe ip                 : 192.168.0.25
-pipe destination ip     : 192.168.0.26
-pipe destination port   : 1026
+mode (self:s other:o)                          > o
+pipe mode (client:c server:s)                  > s
+source spider ip                               > 192.168.0.25
+destination spider ip                          > 192.168.0.26
+pipe listen ip                                 > 192.168.0.26
+pipe listen port                               > 1026
 
-ok? (yes:y no:n quit:q) > y
+pipe mode                 : s
+source spider ip          : 192.168.0.25
+destination spider ip     : 192.168.0.26
+pipe listen ip            : 192.168.0.26
+pipe listen port          : 1026
+
+ok? (yes:y no:n quit:q)                        > y
 
 ```
 - ipv6
 ```
 command > 2
 [+] add node (spider pipe)
-mode (client:c server:s)    > c
-pipe ip                     > fe80::a00:27ff:febe:3a77
-pipe destination ip         > fe80::a00:27ff:fe25:c316
-pipe destination port       > 1026
+---------------------------------------- routing  table ----------------------------------------
+|mode|ip address                                    |metric|pipe id   |time                    |
+------------------------------------------------------------------------------------------------
+|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:30:54 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:30:54 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:30:54 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+------------------------------------------------------------------------------------------------
 
-mode                    : c
-pipe ip                 : fe80::a00:27ff:febe:3a77
-pipe ip scope id        : enp0s3 (2)
-pipe destination ip     : fe80::a00:27ff:fe25:c316
-pipe destination port   : 1026
+mode (self:s other:o)                          > o
+pipe mode (client:c server:s)                  > s
+source spider ip                               > fe80::a00:27ff:febe:3a77
+destination spider ip                          > fe80::a00:27ff:fe25:c316
+pipe listen ip                                 > fe80::a00:27ff:fe25:c316
+pipe listen port                               > 1026
 
-ok? (yes:y no:n quit:q) > y
+pipe mode                 : s
+source spider ip          : fe80::a00:27ff:febe:3a77
+source spider ip scope id : enp0s3 (2)
+destination spider ip     : fe80::a00:27ff:fe25:c316
+pipe listen ip            : fe80::a00:27ff:fe25:c316
+pipe listen port          : 1026
+
+ok? (yes:y no:n quit:q)                        > y
 
 ```
+#### mode (self:s other:o)
+Set the type of mode.
+
+If you want to add pipe node to the spider itself, set 's'.
+
+If you want to add pipe node to other spider, set 'o'.
+
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+
 #### mode (client:c server:s)
 Set the type of the pipe node that you want to create.
 
 If you want to create the pipe client node, set 'c'.
 
 If you want to create the pipe server node, set 's'.
+
+#### source spider ip (other)
+Set the ip address of the spider itself.
+
+#### destination spider ip (other)
+Set the ip address of the destination spider that you want to add the pipe node.
 
 #### pipe listen ip (pipe server)
 Set the ip address of the interface that the pipe server node will listen on.
@@ -1143,211 +1454,6 @@ Set the forwarder timeout value longer. (300s - 3600s)
 
 > [!IMPORTANT]
 > The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
-
-### 9: add node (spider client) to destination spider
-> [!IMPORTANT]
-> It is necessary to create a route in advance using pipes.
-- ipv4
-```
-command > 9
-[+] add node (spider client) to destination spider
-source spider ip                               > 192.168.0.25
-destination spider ip                          > 192.168.0.26
-client listen ip                               > 192.168.0.26
-client listen port                             > 9050
-client destination spider ip                   > 192.168.0.31
-recv/send tv_sec  (timeout 0-60 sec)           > 3
-recv/send tv_usec (timeout 0-1000000 microsec) > 0
-forwarder tv_sec  (timeout 0-3600 sec)         > 30
-forwarder tv_usec (timeout 0-1000000 microsec) > 0
-
-source spider ip             : 192.168.0.25
-destination spider ip        : 192.168.0.26
-client listen ip             : 192.168.0.26
-client listen port           : 9050
-client destination spider ip : 192.168.0.31
-recv/send tv_sec             :       3 sec
-recv/send tv_usec            :       0 microsec
-forwarder_tv_sec             :      30 sec
-forwarder_tv_usec            :       0 microsec
-
-ok? (yes:y no:n quit:q)                        > y
-
-```
-- ipv6
-```
-command > 9
-[+] add node (spider client) to destination spider
-source spider ip                               > fe80::a00:27ff:febe:3a77
-destination spider ip                          > fe80::a00:27ff:fe25:c316
-client listen ip                               > fe80::a00:27ff:fe25:c316
-client listen port                             > 9050
-client destination spider ip                   > fe80::ca60:dc71:546d:8235
-recv/send tv_sec  (timeout 0-60 sec)           > 3
-recv/send tv_usec (timeout 0-1000000 microsec) > 0
-forwarder tv_sec  (timeout 0-3600 sec)         > 30
-forwarder tv_usec (timeout 0-1000000 microsec) > 0
-
-source spider ip             : fe80::a00:27ff:febe:3a77
-source spider ip scope id    : enp0s3 (2)
-destination spider ip        : fe80::a00:27ff:fe25:c316
-client listen ip             : fe80::a00:27ff:fe25:c316
-client listen port           : 9050
-client destination spider ip : fe80::ca60:dc71:546d:8235
-recv/send tv_sec             :       3 sec
-recv/send tv_usec            :       0 microsec
-forwarder_tv_sec             :      30 sec
-forwarder_tv_usec            :       0 microsec
-
-ok? (yes:y no:n quit:q)                        > y
-
-```
-#### source spider ip
-Set the ip address of the spider itself.
-
-#### destination spider ip
-Set the ip address of the destination spider that you want to add the client node.
-
-#### client listen ip
-Set the ip address of the interface that the client node will listen on.
-
-#### client listen port
-Set the port number that the client node will listen on.
-
-#### client destination spider ip
-Set the ip address of the destination spider.
-
-> [!IMPORTANT]
-> The startup location of the spider server node is determined by the 'client destination spider ip' when adding the spider client node.
-
-#### recv/send tv_sec  (timeout 0-60 sec), recv/send tv_usec (timeout 0-1000000 microsec)
-Set the timeout for SOCKS5 selection request/response, SOCKS5 username/password authentication request/response, and SOCKS5 request/response.
-
-#### forwarder tv_sec  (timeout 0-3600 sec), forwarder tv_usec (timeout 0-1000000 microsec)
-Set the timeout for packet forwarding between the SOCKS5 client and the destination server.
-
-> [!NOTE]
-> If you access web sites, set the timeout value shorter. (5s - 30s)
->
-> If you access ssh server, set the forwarder timeout value longer. (300s - 3600s)
-
-> [!IMPORTANT]
-> The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
-
-### 10: add node (spider pipe) to destination spider
-> [!IMPORTANT]
-> It is necessary to create a route in advance using pipes.
-1. pipe (server)
-- ipv4
-```
-command > 10
-[+] add node (spider pipe) to destination spider
-mode (client:c server:s)                       > s
-source spider ip                               > 192.168.0.25
-destination spider ip                          > 192.168.0.26
-pipe listen ip                                 > 192.168.0.26
-pipe listen port                               > 10026
-
-mode                      : s
-source spider ip          : 192.168.0.25
-destination spider ip     : 192.168.0.26
-pipe listen ip            : 192.168.0.26
-pipe listen port          : 10026
-
-ok? (yes:y no:n quit:q)                        > y
-
-```
-- ipv6
-```
-command > 10
-[+] add node (spider pipe) to destination spider
-mode (client:c server:s)                       > s
-source spider ip                               > fe80::a00:27ff:febe:3a77
-destination spider ip                          > fe80::a00:27ff:fe25:c316
-pipe listen ip                                 > fe80::a00:27ff:fe25:c316
-pipe listen port                               > 10026
-
-mode                      : s
-source spider ip          : fe80::a00:27ff:febe:3a77
-source spider ip scope id : enp0s3 (2)
-destination spider ip     : fe80::a00:27ff:fe25:c316
-pipe listen ip            : fe80::a00:27ff:fe25:c316
-pipe listen port          : 10026
-
-ok? (yes:y no:n quit:q)                        > y
-
-```
-2. pipe (client)
-- ipv4
-```
-command > 10
-[+] add node (spider pipe) to destination spider
-mode (client:c server:s)                       > c
-source spider ip                               > 192.168.0.25
-destination spider ip                          > 192.168.0.26
-pipe ip                                        > 192.168.0.26
-pipe destination ip                            > 192.168.0.31
-pipe destination port                          > 1031
-
-mode                      : c
-source spider ip          : 192.168.0.25
-destination spider ip     : 192.168.0.26
-pipe ip                   : 192.168.0.26
-pipe destination ip       : 192.168.0.31
-pipe destination port     : 1031
-
-ok? (yes:y no:n quit:q)                        > y
-
-```
-- ipv6
-```
-command > 10
-[+] add node (spider pipe) to destination spider
-mode (client:c server:s)                       > c
-source spider ip                               > fe80::a00:27ff:febe:3a77
-destination spider ip                          > fe80::a00:27ff:fe25:c316
-pipe ip                                        > fe80::a00:27ff:fe25:c316
-pipe destination ip                            > fe80::ca60:dc71:546d:8235
-pipe destination port                          > 1031
-
-mode                      : c
-source spider ip          : fe80::a00:27ff:febe:3a77
-source spider ip scope id : enp0s3 (2)
-destination spider ip     : fe80::a00:27ff:fe25:c316
-pipe ip                   : fe80::a00:27ff:fe25:c316
-pipe destination ip       : fe80::ca60:dc71:546d:8235
-pipe destination port     : 1031
-
-ok? (yes:y no:n quit:q)                        > y
-
-```
-#### mode (client:c server:s)
-Set the type of the pipe node that you want to create.
-
-If you want to create the pipe client node, set 'c'.
-
-If you want to create the pipe server node, set 's'.
-
-#### source spider ip (pipe client, pipe server)
-Set the ip address of the spider itself.
-
-#### destination spider ip (pipe client, pipe server)
-Set the ip address of the destination spider that you want to add the pipe node.
-
-#### pipe listen ip (pipe server)
-Set the ip address of the interface that the pipe server node will listen on.
-
-#### pipe listen port (pipe server)
-Set the port number that the pipe server node will listen on.
-
-#### pipe ip (pipe client)
-Set the ip address of the interface that the pipe client node.
-
-#### pipe destination ip (pipe client)
-Set the ip address of the destination pipe server node.
-
-#### pipe destination port (pipe client)
-Set the port number of the destination pipe server node.
 
 ## Example
 ![](./imgs/img01.jpg)

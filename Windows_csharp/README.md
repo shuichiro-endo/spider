@@ -143,17 +143,15 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
  aes key hex string              :
  aes iv hex string               :
 ----------------------------- spider command -----------------------------
-  1: add node (spider client)
-  2: add node (spider pipe)
-  3: show node information
-  4: show routing table
-  5: edit routing table
-  6: add node (spider client tcp)
-  7: add node (spider client udp)
-  8: add node (spider client shell)
-  9: add node (spider client) to destination spider
- 10: add node (spider pipe) to destination spider
-  0: exit
+ 1: add node (spider client)
+ 2: add node (spider pipe)
+ 3: show node information
+ 4: show routing table
+ 5: edit routing table
+ 6: add node (spider client tcp)
+ 7: add node (spider client udp)
+ 8: add node (spider client shell)
+ 0: exit
 --------------------------------------------------------------------------
 
 command >
