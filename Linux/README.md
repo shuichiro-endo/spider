@@ -1978,7 +1978,6 @@ ok? (yes:y no:n quit:q)                        > y
 [+] connecting to ip:192.168.0.25 port:1025
 [+] connected to ip:192.168.0.25 port:1025
 
-
 ```
 
 3. add spider client node (3)

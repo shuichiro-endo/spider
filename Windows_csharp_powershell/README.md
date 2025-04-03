@@ -22,7 +22,7 @@ The usage is the same as the Linux version.
 
 ### help
 ```
-> > .\spider.ps1 -h
+> .\spider.ps1 -h
 
                  -.                                 _//
            .=  :*=--::                       _/     _//
