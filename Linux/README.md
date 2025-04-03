@@ -338,6 +338,7 @@ ok? (yes:y no:n quit:q)                        > y
 4. pipe (server), other (other spider)
 > [!IMPORTANT]
 > It is necessary to create a route in advance using pipes.
+
 > [!NOTE]
 > The pipe server can be connected by only one pipe client at a time.
 - ipv4
