@@ -3151,10 +3151,15 @@ namespace spider
 
         public void AddNodeSpiderClientUdp()
         {
+            string config = "";
+            char mode;  // self:s other:o
+            string sourceSpiderIp = "";
+            string sourceSpiderIpScopeId = "";
+            string destinationSpiderIp = "";
             string clientListenIp = "";
             string clientListenIpScopeId = "";
             string clientListenPort = "";
-            string destinationSpiderIp = "";
+            string clientDestinationSpiderIp = "";
             string targetIp = "";      // ipv4, domainname, ipv6
             string targetPort = "";
             int tvSec = 0;
@@ -3172,186 +3177,428 @@ namespace spider
                 routingManager.ShowRoutingTable();
                 Console.WriteLine("");
 
-                Console.Write("client listen ip                               > ");
+                Console.Write("mode (self:s other:o)                          > ");
                 input = Console.ReadLine();
                 input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                tmp = Encoding.UTF8.GetBytes(input.Trim());
-                clientListenIp = Encoding.UTF8.GetString(tmp);
-
-                if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
-                   (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
-                   (String.Compare(clientListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
-                   (String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                mode = input[0];
+                if(mode == 's')   // self
                 {
-                    Console.WriteLine("[-] please input spider ipv4 or ipv6");
-                    continue;
-                }
+                    Console.Write("client listen ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    clientListenIp = Encoding.UTF8.GetString(tmp);
 
-                if(String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
-                {
-                    clientListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
-                }
+                    if((String.Compare(clientListenIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(clientListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(clientListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
 
-                Console.Write("client listen port                             > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                tmp = Encoding.UTF8.GetBytes(input.Trim());
-                clientListenPort = Encoding.UTF8.GetString(tmp);
+                    if(String.Compare(clientListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        clientListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
 
-                Console.Write("destination spider ip                          > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                tmp = Encoding.UTF8.GetBytes(input.Trim());
-                destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+                    Console.Write("client listen port                             > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    clientListenPort = Encoding.UTF8.GetString(tmp);
 
-                Console.Write("target ip (ipv4<16, domainname<256, ipv6<46)   > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                tmp = Encoding.UTF8.GetBytes(input.Trim());
-                targetIp = Encoding.UTF8.GetString(tmp);
+                    Console.Write("client destination spider ip                   > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    clientDestinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
-                if(targetIp.Length >= 256)
-                {
-                    Console.WriteLine("[-] input error");
-                    continue;
-                }
+                    Console.Write("target ip (ipv4<16, domainname<256, ipv6<46)   > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    targetIp = Encoding.UTF8.GetString(tmp);
 
-                Console.Write("target port                                    > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                tmp = Encoding.UTF8.GetBytes(input.Trim());
-                targetPort = Encoding.UTF8.GetString(tmp);
+                    if(targetIp.Length >= 256)
+                    {
+                        Console.WriteLine("[-] input error");
+                        continue;
+                    }
 
-                Console.Write("recv/send tv_sec  (timeout 0-60 sec)           > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                try
-                {
-                    tvSec = int.Parse(input);
-                }catch(Exception ex)
-                {
-                    Console.WriteLine("[-] input error: {0}",
-                                      ex.Message);
-                    tvSec = 3;
-                }
+                    Console.Write("target port                                    > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    targetPort = Encoding.UTF8.GetString(tmp);
 
-                if(tvSec < 0 || tvSec > 60)
-                {
-                    tvSec = 3;
-                }
+                    Console.Write("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        tvSec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        tvSec = 3;
+                    }
 
-                Console.Write("recv/send tv_usec (timeout 0-1000000 microsec) > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                try
-                {
-                    tvUsec = int.Parse(input);
-                }catch(Exception ex)
-                {
-                    Console.WriteLine("[-] input error: {0}",
-                                      ex.Message);
-                    tvUsec = 3;
-                }
+                    if(tvSec < 0 || tvSec > 60)
+                    {
+                        tvSec = 3;
+                    }
 
-                if(tvUsec < 0 || tvUsec > 1000000)
-                {
-                    tvUsec = 0;
-                }
+                    Console.Write("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        tvUsec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        tvUsec = 3;
+                    }
 
-                if(tvSec == 0 && tvUsec == 0){
-                    tvSec = 3;
-                    tvUsec = 0;
-                }
+                    if(tvUsec < 0 || tvUsec > 1000000)
+                    {
+                        tvUsec = 0;
+                    }
 
-                Console.Write("forwarder tv_sec  (timeout 0-3600 sec)         > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                try
-                {
-                    forwarderTvSec = int.Parse(input);
-                }catch(Exception ex)
-                {
-                    Console.WriteLine("[-] input error: {0}",
-                                      ex.Message);
-                    forwarderTvSec = 30;
-                }
+                    if(tvSec == 0 && tvUsec == 0){
+                        tvSec = 3;
+                        tvUsec = 0;
+                    }
 
-                if(forwarderTvSec < 0 || forwarderTvSec > 3600)
-                {
-                    forwarderTvSec = 30;
-                }
+                    Console.Write("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        forwarderTvSec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        forwarderTvSec = 30;
+                    }
 
-                Console.Write("forwarder tv_usec (timeout 0-1000000 microsec) > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                try
-                {
-                    forwarderTvUsec = int.Parse(input);
-                }catch(Exception ex)
-                {
-                    Console.WriteLine("[-] input error: {0}",
-                                      ex.Message);
-                    forwarderTvUsec = 0;
-                }
+                    if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                    {
+                        forwarderTvSec = 30;
+                    }
 
-                if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
-                {
-                    forwarderTvUsec = 0;
-                }
+                    Console.Write("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        forwarderTvUsec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        forwarderTvUsec = 0;
+                    }
 
-                if(forwarderTvSec == 0 && forwarderTvUsec == 0)
-                {
-                    forwarderTvSec = 30;
-                    forwarderTvUsec = 0;
-                }
+                    if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                    {
+                        forwarderTvUsec = 0;
+                    }
 
-                Console.WriteLine("");
-                Console.WriteLine("client listen ip          : {0}", clientListenIp);
-                if(!string.IsNullOrEmpty(clientListenIpScopeId))
-                {
-                    Console.WriteLine("client listen ip scope id : {0}", clientListenIpScopeId);
-                }
-                Console.WriteLine("client listen port        : {0}", clientListenPort);
-                Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
-                Console.WriteLine("target ip                 : {0}", targetIp);
-                Console.WriteLine("target port               : {0}", targetPort);
-                Console.WriteLine("recv/send tv_sec          : {0,7} sec", tvSec);
-                Console.WriteLine("recv/send tv_usec         : {0,7} microsec", tvUsec);
-                Console.WriteLine("forwarder_tv_sec          : {0,7} sec", forwarderTvSec);
-                Console.WriteLine("forwarder_tv_usec         : {0,7} microsec", forwarderTvUsec);
-                Console.WriteLine("FORWARDER_UDP_TIMEOUT     : {0,7} sec", FORWARDER_UDP_TIMEOUT);
-                Console.WriteLine("");
+                    if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                    {
+                        forwarderTvSec = 30;
+                        forwarderTvUsec = 0;
+                    }
 
-                Console.Write("ok? (yes:y no:n quit:q)                        > ");
-                input = Console.ReadLine();
-                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
-                check = input[0];
-                if(check == 'y')
+                    Console.WriteLine("");
+                    Console.WriteLine("client listen ip             : {0}", clientListenIp);
+                    if(!string.IsNullOrEmpty(clientListenIpScopeId))
+                    {
+                        Console.WriteLine("client listen ip scope id    : {0}", clientListenIpScopeId);
+                    }
+                    Console.WriteLine("client listen port           : {0}", clientListenPort);
+                    Console.WriteLine("client destination spider ip : {0}", clientDestinationSpiderIp);
+                    Console.WriteLine("target ip                    : {0}", targetIp);
+                    Console.WriteLine("target port                  : {0}", targetPort);
+                    Console.WriteLine("recv/send tv_sec             : {0,7} sec", tvSec);
+                    Console.WriteLine("recv/send tv_usec            : {0,7} microsec", tvUsec);
+                    Console.WriteLine("forwarder_tv_sec             : {0,7} sec", forwarderTvSec);
+                    Console.WriteLine("forwarder_tv_usec            : {0,7} microsec", forwarderTvUsec);
+                    Console.WriteLine("FORWARDER_UDP_TIMEOUT        : {0,7} sec", FORWARDER_UDP_TIMEOUT);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        parameters = new object[] {clientListenIp,
+                                                   clientListenIpScopeId,
+                                                   clientListenPort,
+                                                   clientDestinationSpiderIp,
+                                                   targetIp,
+                                                   targetPort,
+                                                   tvSec,
+                                                   tvUsec,
+                                                   forwarderTvSec,
+                                                   forwarderTvUsec};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ClientUdpWorker));
+                        thread.Start(parameters);
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        return;
+                    }else
+                    {
+                        return;
+                    }
+                }else if(mode == 'o')   // other
                 {
-                    break;
-                }else if(check == 'n')
+                    Console.Write("source spider ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
+
+                    if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+                    Console.Write("destination spider ip                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("client listen ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    clientListenIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("client listen port                             > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    clientListenPort = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("client destination spider ip                   > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    clientDestinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("target ip (ipv4<16, domainname<256, ipv6<46)   > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    targetIp = Encoding.UTF8.GetString(tmp);
+
+                    if(targetIp.Length >= 256)
+                    {
+                        Console.WriteLine("[-] input error");
+                        continue;
+                    }
+
+                    Console.Write("target port                                    > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    targetPort = Encoding.UTF8.GetString(tmp);
+
+                    Console.Write("recv/send tv_sec  (timeout 0-60 sec)           > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        tvSec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        tvSec = 3;
+                    }
+
+                    if(tvSec < 0 || tvSec > 60)
+                    {
+                        tvSec = 3;
+                    }
+
+                    Console.Write("recv/send tv_usec (timeout 0-1000000 microsec) > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        tvUsec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        tvUsec = 3;
+                    }
+
+                    if(tvUsec < 0 || tvUsec > 1000000)
+                    {
+                        tvUsec = 0;
+                    }
+
+                    if(tvSec == 0 && tvUsec == 0){
+                        tvSec = 3;
+                        tvUsec = 0;
+                    }
+
+                    Console.Write("forwarder tv_sec  (timeout 0-3600 sec)         > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        forwarderTvSec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        forwarderTvSec = 30;
+                    }
+
+                    if(forwarderTvSec < 0 || forwarderTvSec > 3600)
+                    {
+                        forwarderTvSec = 30;
+                    }
+
+                    Console.Write("forwarder tv_usec (timeout 0-1000000 microsec) > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    try
+                    {
+                        forwarderTvUsec = int.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        forwarderTvUsec = 0;
+                    }
+
+                    if(forwarderTvUsec < 0 || forwarderTvUsec > 1000000)
+                    {
+                        forwarderTvUsec = 0;
+                    }
+
+                    if(forwarderTvSec == 0 && forwarderTvUsec == 0)
+                    {
+                        forwarderTvSec = 30;
+                        forwarderTvUsec = 0;
+                    }
+
+                    Console.WriteLine("");
+                    Console.WriteLine("source spider ip             : {0}", sourceSpiderIp);
+                    if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                    {
+                        Console.WriteLine("source spider ip scope id    : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                    }
+                    Console.WriteLine("destination spider ip        : {0}", destinationSpiderIp);
+                    Console.WriteLine("client listen ip             : {0}", clientListenIp);
+                    Console.WriteLine("client listen port           : {0}", clientListenPort);
+                    Console.WriteLine("client destination spider ip : {0}", clientDestinationSpiderIp);
+                    Console.WriteLine("target ip                    : {0}", targetIp);
+                    Console.WriteLine("target port                  : {0}", targetPort);
+                    Console.WriteLine("recv/send tv_sec             : {0,7} sec", tvSec);
+                    Console.WriteLine("recv/send tv_usec            : {0,7} microsec", tvUsec);
+                    Console.WriteLine("forwarder_tv_sec             : {0,7} sec", forwarderTvSec);
+                    Console.WriteLine("forwarder_tv_usec            : {0,7} microsec", forwarderTvUsec);
+                    Console.WriteLine("FORWARDER_UDP_TIMEOUT        : {0,7} sec", FORWARDER_UDP_TIMEOUT);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        config = "";
+                        config += "[client_udp]\n";
+
+                        config += "client_listen_ip:";
+                        config += clientListenIp;
+                        config += "\n";
+
+                        config += "client_listen_port:";
+                        config += clientListenPort;
+                        config += "\n";
+
+                        config += "client_destination_spider_ip:";
+                        config += clientDestinationSpiderIp;
+                        config += "\n";
+
+                        config += "target_ip:";
+                        config += targetIp;
+                        config += "\n";
+
+                        config += "target_port:";
+                        config += targetPort;
+                        config += "\n";
+
+                        config += "tv_sec:";
+                        config += tvSec.ToString();
+                        config += "\n";
+
+                        config += "tv_usec:";
+                        config += tvUsec.ToString();
+                        config += "\n";
+
+                        config += "forwarder_tv_sec:";
+                        config += forwarderTvSec.ToString();
+                        config += "\n";
+
+                        config += "forwarder_tv_usec:";
+                        config += forwarderTvUsec.ToString();
+                        config += "\n";
+
+                        parameters = new object[] {config,
+                                                   sourceSpiderIp,
+                                                   sourceSpiderIpScopeId,
+                                                   destinationSpiderIp};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+                        thread.Start(parameters);
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q')
+                    {
+                        return;
+                    }else
+                    {
+                        return;
+                    }
+                }else
                 {
-                    continue;
-                }else if(check == 'q'){
-                    return;
-                }else{
                     return;
                 }
             }
-
-            parameters = new object[] {clientListenIp,
-                                       clientListenIpScopeId,
-                                       clientListenPort,
-                                       destinationSpiderIp,
-                                       targetIp,
-                                       targetPort,
-                                       tvSec,
-                                       tvUsec,
-                                       forwarderTvSec,
-                                       forwarderTvUsec};
-
-            Thread thread = new Thread(new ParameterizedThreadStart(ClientUdpWorker));
-            thread.Start(parameters);
 
             return;
         }
