@@ -17,6 +17,11 @@ git clone https://github.com/shuichiro-endo/spider.git
 cd .\spider\Windows_csharp_powershell\
 .\spider.ps1
 ```
+> [!NOTE]
+> It is also possible to download and run it directly.
+```
+Invoke-Expression ((New-Object Net.WebClient).DownloadString("https://raw.githubusercontent.com/shuichiro-endo/spider/refs/heads/main/Windows_csharp_powershell/spider.ps1"))
+```
 
 The usage is the same as the Linux version.
 
