@@ -647,6 +647,9 @@ Set the timeout for packet forwarding between the SOCKS5 client and the destinat
 > [!IMPORTANT]
 > The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
 
+> [!CAUTION]
+> If a large number of connections are made in a short period of time from a SOCKS5 client application, the spider will crash. In that case, please adjust the number of connections by using the application option.
+
 ### 3: show node information
 1. self
 ```
