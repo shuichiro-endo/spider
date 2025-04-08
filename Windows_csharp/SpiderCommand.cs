@@ -307,6 +307,7 @@ namespace spider
                         string clientIp = "";
                         string clientIpScopeId = "";
                         string clientPort = "";
+                        int percentIndex = -1;
 
                         if(clientRemoteEndPoint != null)
                         {
@@ -315,6 +316,11 @@ namespace spider
                             scopeId = clientClientIpAddress.ScopeId;
 
                             clientIp = clientClientIpAddress.ToString();
+                            percentIndex = clientIp.IndexOf('%');
+                            if(percentIndex != -1)
+                            {
+                                clientIp = clientIp.Substring(0, percentIndex);
+                            }
                             clientIpScopeId = scopeId.ToString();
                             clientPort = port.ToString();
 
@@ -1232,6 +1238,7 @@ namespace spider
                         string pipeDestinationIp = "";
                         string pipeDestinationIpScopeId = "";
                         string pipeDestinationPort = "";
+                        int percentIndex = -1;
 
                         if(pipeRemoteEndPoint != null)
                         {
@@ -1240,6 +1247,11 @@ namespace spider
                             scopeId = pipeClientIpAddress.ScopeId;
 
                             pipeDestinationIp = pipeClientIpAddress.ToString();
+                            percentIndex = pipeDestinationIp.IndexOf('%');
+                            if(percentIndex != -1)
+                            {
+                                pipeDestinationIp = pipeDestinationIp.Substring(0, percentIndex);
+                            }
                             pipeDestinationIpScopeId = scopeId.ToString();
                             pipeDestinationPort = port.ToString();
 
@@ -2386,6 +2398,7 @@ namespace spider
                         string clientIp = "";
                         string clientIpScopeId = "";
                         string clientPort = "";
+                        int percentIndex = -1;
 
                         if(clientRemoteEndPoint != null)
                         {
@@ -2394,6 +2407,11 @@ namespace spider
                             scopeId = clientClientIpAddress.ScopeId;
 
                             clientIp = clientClientIpAddress.ToString();
+                            percentIndex = clientIp.IndexOf('%');
+                            if(percentIndex != -1)
+                            {
+                                clientIp = clientIp.Substring(0, percentIndex);
+                            }
                             clientIpScopeId = scopeId.ToString();
                             clientPort = port.ToString();
 
@@ -3707,6 +3725,7 @@ namespace spider
                         string clientIp = "";
                         string clientIpScopeId = "";
                         string clientPort = "";
+                        int percentIndex = -1;
 
                         if(clientRemoteEndPoint != null)
                         {
@@ -3715,6 +3734,11 @@ namespace spider
                             scopeId = clientClientIpAddress.ScopeId;
 
                             clientIp = clientClientIpAddress.ToString();
+                            percentIndex = clientIp.IndexOf('%');
+                            if(percentIndex != -1)
+                            {
+                                clientIp = clientIp.Substring(0, percentIndex);
+                            }
                             clientIpScopeId = scopeId.ToString();
                             clientPort = port.ToString();
 
