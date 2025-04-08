@@ -37,7 +37,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -: Windows c# powershell Ver: 1.23  Author: Shuichiro Endo
+        =-    -: Windows c# powershell Ver: 1.24  Author: Shuichiro Endo
 
 
 usage   : .\spider.ps1
@@ -117,7 +117,7 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -: Windows c# powershell Ver: 1.23  Author: Shuichiro Endo
+        =-    -: Windows c# powershell Ver: 1.24  Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
