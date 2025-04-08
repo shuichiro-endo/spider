@@ -148,6 +148,7 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
  6: add node (spider client tcp)
  7: add node (spider client udp)
  8: add node (spider client shell)
+ 9: close client listener (tcp)
  0: exit
 --------------------------------------------------------------------------
 

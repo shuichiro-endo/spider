@@ -533,6 +533,7 @@ int main(int argc,
         std::printf(" %d: add node (spider client tcp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
         std::printf(" %d: add node (spider client udp)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
         std::printf(" %d: add node (spider client shell)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+        std::printf(" %d: close client listener (tcp)\n", SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP);
         std::printf(" %d: exit\n", SPIDER_COMMAND_EXIT);
         std::printf("--------------------------------------------------------------------------\n");
         std::printf("\n");
@@ -593,6 +594,11 @@ int main(int argc,
                 std::printf("[+] add node (spider client shell)\n");
                 std::printf("[!] This is not SOCKS5 connection.\n");
                 spider_command->add_node_spider_client_shell();
+                break;
+
+            case SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP:
+                std::printf("[+] close client listener (tcp)\n");
+                spider_command->close_client_listener_tcp();
                 break;
 
             case SPIDER_COMMAND_EXIT:

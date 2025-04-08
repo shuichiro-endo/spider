@@ -7043,6 +7043,166 @@ namespace spider
 
             return 0;
         }
+
+        public void CloseClientListenerTcp()
+        {
+            char mode;  // self:s other:o
+//            string sourceSpiderIp = "";
+//            string sourceSpiderIpScopeId = "";
+//            string destinationSpiderIp = "";
+            string input = "";
+            byte[] tmp;
+            uint connectionId = 0;
+            uint clientId = 0;
+            Client client = null;
+            TcpListener tcpListener = null;
+            char check = 'n';
+            object[] parameters;
+
+
+            while(true)
+            {
+                Console.Write("mode (self:s other:o)                          > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                mode = input[0];
+                if(mode == 's')   // self
+                {
+
+                    clientManager.ShowClientListenerTcp();
+
+                    Console.Write("connection id                                  > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+
+                    try
+                    {
+                        connectionId = uint.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        continue;
+                    }
+
+                    Console.WriteLine("");
+                    Console.WriteLine("connection id             : {0}", connectionId);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        clientId = 0;
+                        client = clientManager.GetClient(connectionId,
+                                                         clientId);
+                        if(client != null)
+                        {
+                            tcpListener = client.TcpListener;
+                            if(tcpListener == null)
+                            {
+                                Console.WriteLine("[-] close client listener error");
+                                return;
+                            }
+
+                            tcpListener.Stop();
+
+                            Console.WriteLine("[+] close client listener connection_id: {0,10}",
+                                              client.ConnectionId);
+                        }else
+                        {
+                            Console.WriteLine("[-] close client listener error");
+                            return;
+                        }
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+                }else if(mode == 'o')   // other
+                {
+
+                    Console.WriteLine("[-] not implemented");
+
+/*
+                    routingManager.ShowRoutingTable();
+                    Console.WriteLine("");
+
+                    Console.Write("source spider ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
+
+                    if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+                    Console.Write("destination spider ip                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.WriteLine("");
+                    Console.WriteLine("mode                      : {0}", mode);
+                    Console.WriteLine("source spider ip          : {0}", sourceSpiderIp);
+                    if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                    {
+                        Console.WriteLine("source spider ip scope id : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                    }
+                    Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        parameters = new object[] {sourceSpiderIp,
+                                                   sourceSpiderIpScopeId,
+                                                   destinationSpiderIp};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ShowRoutingTableWorker));
+                        thread.Start(parameters);
+
+                        Thread.Sleep(20000);    // 20s
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+*/
+                }else{
+                    return;
+                }
+            }
+
+            return;
+        }
     }
 }
 

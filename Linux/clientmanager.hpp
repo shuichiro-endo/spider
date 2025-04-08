@@ -42,6 +42,8 @@ namespace spider
         void show_clients_map();
 
         std::string show_clients_map_string();
+
+        void show_client_listener_tcp();
     };
 }
 

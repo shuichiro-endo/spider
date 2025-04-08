@@ -151,6 +151,7 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
  6: add node (spider client tcp)
  7: add node (spider client udp)
  8: add node (spider client shell)
+ 9: close client listener (tcp)
  0: exit
 --------------------------------------------------------------------------
 
@@ -1860,6 +1861,53 @@ Set the forwarder timeout value longer. (300s - 3600s)
 
 > [!IMPORTANT]
 > The forwarder timeout countdown is reset every time data transfer. In other words, the connection is maintained as long as data transfer continues.
+
+### 9: close client listener (tcp)
+1. self
+```
+command > 9
+[+] close client listener (tcp)
+mode (self:s other:o)                          > s
+-------------------------------------------------------------------------------------------------------------------------------------------------------- client --------------------------------------------------------------------------------------------------------------------------------------------------------
+|type  |connection id|client id |server id |client ip                                     |client ip scope id|client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|tcp   |    404378738|         0|         0|fd00:abcd:1234:5678::1                        |             (   )|             10000|           |fd00:abcd:1234:5678::2                        |fd00:abcd:1234:5678::2                        |       8080|            5|      3|      0|              30|                0|
+|shell |    794147550|         0|         0|fe80::a00:27ff:febe:3a77                      |enp0s3       (  2)|             20000|           |fe80::a00:27ff:fe25:c316                      |                                              |           |            7|      3|      0|             300|                0|
+|socks5|   1399291952|         0|         0|192.168.0.25                                  |             (   )|              9050|           |192.168.0.26                                  |                                              |           |            3|      3|      0|              30|                0|
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+connection id                                  > 1399291952
+
+connection id             : 1399291952
+
+ok? (yes:y no:n quit:q)                        > y
+[+] close client listener connection_id: 1399291952
+
+```
+2. other (other spider)
+Not implemented.
+
+#### mode (self:s other:o)
+Set the type of mode.
+
+If you want to close client listener of the spider itself, set 's'.
+
+If you want to close client listener of other spider, set 'o'.
+
+> [!IMPORTANT]
+> It is necessary to create a route in advance using pipes.
+
+#### source spider ip (other)
+Set the ip address of the spider itself.
+
+#### destination spider ip (other)
+Set the ip address of the destination spider that you want to close client listener.
+
+#### connection id
+Set the connection id that you want to close client listener.
+
+> [!NOTE]
+> It may take some time for client to be able to listen on the same port again. (CLOSE_WAIT timeout)
 
 ## Example
 ![](./imgs/img01.jpg)

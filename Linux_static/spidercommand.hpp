@@ -167,6 +167,8 @@ namespace spider
 
         int32_t read_config_file(std::string config_file);
 
+        void close_client_listener_tcp();
+
     };
 }
 

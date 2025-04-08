@@ -11451,6 +11451,48 @@ namespace spider
 
             return result;
         }
+
+        public void ShowClientListenerTcp()
+        {
+            Console.WriteLine("-------------------------------------------------------------------------------------------------------------------------------------------------------- client --------------------------------------------------------------------------------------------------------------------------------------------------------");
+            Console.WriteLine("|type  |connection id|client id |server id |client ip                                     |client ip scope id|client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|");
+            Console.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+
+            lock(clientsMapLock)
+            {
+                foreach(var kvp in clientsMap)
+                {
+                    if(kvp.Value.ConnectionId != 0 &&
+                       kvp.Value.ClientId != 0)
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine("|{0,-6}|   {1,10}|{2,10}|{3,10}|{4,-46}|{5,-10}        |             {6,5}|      {7,5}|{8,-46}|{9,-46}|      {10,5}|        {11,5}|{12,7}|{13,7}|         {14,7}|          {15,7}|",
+                                      kvp.Value.Type,
+                                      kvp.Value.ConnectionId,
+                                      kvp.Value.ClientId,
+                                      kvp.Value.ServerId,
+                                      kvp.Value.ClientIp,
+                                      kvp.Value.ClientIpScopeId,
+                                      kvp.Value.ClientListenPort,
+                                      kvp.Value.ClientPort,
+                                      kvp.Value.DestinationSpiderIp,
+                                      kvp.Value.TargetIp,
+                                      kvp.Value.TargetPort,
+                                      kvp.Value.Sock,
+                                      kvp.Value.TvSec,
+                                      kvp.Value.TvUsec,
+                                      kvp.Value.ForwarderTvSec,
+                                      kvp.Value.ForwarderTvUsec);
+                }
+            }
+
+            Console.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+            Console.WriteLine("");
+
+            return;
+        }
     }
 
     public class PipeManager
@@ -19455,6 +19497,166 @@ namespace spider
 
             return 0;
         }
+
+        public void CloseClientListenerTcp()
+        {
+            char mode;  // self:s other:o
+//            string sourceSpiderIp = "";
+//            string sourceSpiderIpScopeId = "";
+//            string destinationSpiderIp = "";
+            string input = "";
+//            byte[] tmp;
+            uint connectionId = 0;
+            uint clientId = 0;
+            Client client = null;
+            TcpListener tcpListener = null;
+            char check = 'n';
+//            object[] parameters;
+
+
+            while(true)
+            {
+                Console.Write("mode (self:s other:o)                          > ");
+                input = Console.ReadLine();
+                input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                mode = input[0];
+                if(mode == 's')   // self
+                {
+
+                    clientManager.ShowClientListenerTcp();
+
+                    Console.Write("connection id                                  > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+
+                    try
+                    {
+                        connectionId = uint.Parse(input);
+                    }catch(Exception ex)
+                    {
+                        Console.WriteLine("[-] input error: {0}",
+                                          ex.Message);
+                        continue;
+                    }
+
+                    Console.WriteLine("");
+                    Console.WriteLine("connection id             : {0}", connectionId);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        clientId = 0;
+                        client = clientManager.GetClient(connectionId,
+                                                         clientId);
+                        if(client != null)
+                        {
+                            tcpListener = client.TcpListener;
+                            if(tcpListener == null)
+                            {
+                                Console.WriteLine("[-] close client listener error");
+                                return;
+                            }
+
+                            tcpListener.Stop();
+
+                            Console.WriteLine("[+] close client listener connection_id: {0,10}",
+                                              client.ConnectionId);
+                        }else
+                        {
+                            Console.WriteLine("[-] close client listener error");
+                            return;
+                        }
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+                }else if(mode == 'o')   // other
+                {
+
+                    Console.WriteLine("[-] not implemented");
+
+/*
+                    routingManager.ShowRoutingTable();
+                    Console.WriteLine("");
+
+                    Console.Write("source spider ip                               > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    sourceSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    if((String.Compare(sourceSpiderIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+                        Console.WriteLine("[-] please input spider ipv4 or ipv6");
+                        continue;
+                    }
+
+                    if(String.Compare(sourceSpiderIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        sourceSpiderIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+                    Console.Write("destination spider ip                          > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    tmp = Encoding.UTF8.GetBytes(input.Trim());
+                    destinationSpiderIp = Encoding.UTF8.GetString(tmp);
+
+                    Console.WriteLine("");
+                    Console.WriteLine("mode                      : {0}", mode);
+                    Console.WriteLine("source spider ip          : {0}", sourceSpiderIp);
+                    if(!string.IsNullOrEmpty(sourceSpiderIpScopeId))
+                    {
+                        Console.WriteLine("source spider ip scope id : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
+                    }
+                    Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                    Console.WriteLine("");
+
+                    Console.Write("ok? (yes:y no:n quit:q)                        > ");
+                    input = Console.ReadLine();
+                    input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                    check = input[0];
+                    if(check == 'y')
+                    {
+                        parameters = new object[] {sourceSpiderIp,
+                                                   sourceSpiderIpScopeId,
+                                                   destinationSpiderIp};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ShowRoutingTableWorker));
+                        thread.Start(parameters);
+
+                        Thread.Sleep(20000);    // 20s
+
+                        break;
+                    }else if(check == 'n')
+                    {
+                        continue;
+                    }else if(check == 'q'){
+                        return;
+                    }else{
+                        return;
+                    }
+*/
+                }else{
+                    return;
+                }
+            }
+
+            return;
+        }
     }
 
     public class Spider
@@ -19473,6 +19675,7 @@ namespace spider
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP                   = "6";
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP                   = "7";
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL                 = "8";
+        private const string SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP                    = "9";
         private const string SPIDER_COMMAND_EXIT                                         = "0";
         private const int SW_HIDE = 0;
 
@@ -19918,6 +20121,7 @@ namespace spider
                 Console.WriteLine(" {0}: add node (spider client tcp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
                 Console.WriteLine(" {0}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
                 Console.WriteLine(" {0}: add node (spider client shell)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+                Console.WriteLine(" {0}: close client listener (tcp)", SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP);
                 Console.WriteLine(" {0}: exit", SPIDER_COMMAND_EXIT);
                 Console.WriteLine("--------------------------------------------------------------------------");
                 Console.WriteLine("");
@@ -19968,6 +20172,11 @@ namespace spider
                         Console.WriteLine("[+] add node (spider client shell)");
                         Console.WriteLine("[!] This is not SOCKS5 connection.");
                         spiderCommand.AddNodeSpiderClientShell();
+                        break;
+
+                    case SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP:
+                        Console.WriteLine("[+] close client listener (tcp)");
+                        spiderCommand.CloseClientListenerTcp();
                         break;
 
                     case SPIDER_COMMAND_EXIT:

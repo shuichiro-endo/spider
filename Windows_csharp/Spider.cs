@@ -29,6 +29,7 @@ namespace spider
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP                   = "6";
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP                   = "7";
         private const string SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL                 = "8";
+        private const string SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP                    = "9";
         private const string SPIDER_COMMAND_EXIT                                         = "0";
         private const int SW_HIDE = 0;
 
@@ -472,6 +473,7 @@ namespace spider
                 Console.WriteLine(" {0}: add node (spider client tcp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP);
                 Console.WriteLine(" {0}: add node (spider client udp)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP);
                 Console.WriteLine(" {0}: add node (spider client shell)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL);
+                Console.WriteLine(" {0}: close client listener (tcp)", SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP);
                 Console.WriteLine(" {0}: exit", SPIDER_COMMAND_EXIT);
                 Console.WriteLine("--------------------------------------------------------------------------");
                 Console.WriteLine("");
@@ -522,6 +524,11 @@ namespace spider
                         Console.WriteLine("[+] add node (spider client shell)");
                         Console.WriteLine("[!] This is not SOCKS5 connection.");
                         spiderCommand.AddNodeSpiderClientShell();
+                        break;
+
+                    case SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP:
+                        Console.WriteLine("[+] close client listener (tcp)");
+                        spiderCommand.CloseClientListenerTcp();
                         break;
 
                     case SPIDER_COMMAND_EXIT:

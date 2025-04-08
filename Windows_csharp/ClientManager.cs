@@ -170,6 +170,48 @@ namespace spider
 
             return result;
         }
+
+        public void ShowClientListenerTcp()
+        {
+            Console.WriteLine("-------------------------------------------------------------------------------------------------------------------------------------------------------- client --------------------------------------------------------------------------------------------------------------------------------------------------------");
+            Console.WriteLine("|type  |connection id|client id |server id |client ip                                     |client ip scope id|client listen port|client port|destination spider ip                         |target ip                                     |target port|client socket|tv_sec |tv_usec|forwarder_tv_sec|forwarder_tv_usec|");
+            Console.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+
+            lock(clientsMapLock)
+            {
+                foreach(var kvp in clientsMap)
+                {
+                    if(kvp.Value.ConnectionId != 0 &&
+                       kvp.Value.ClientId != 0)
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine("|{0,-6}|   {1,10}|{2,10}|{3,10}|{4,-46}|{5,-10}        |             {6,5}|      {7,5}|{8,-46}|{9,-46}|      {10,5}|        {11,5}|{12,7}|{13,7}|         {14,7}|          {15,7}|",
+                                      kvp.Value.Type,
+                                      kvp.Value.ConnectionId,
+                                      kvp.Value.ClientId,
+                                      kvp.Value.ServerId,
+                                      kvp.Value.ClientIp,
+                                      kvp.Value.ClientIpScopeId,
+                                      kvp.Value.ClientListenPort,
+                                      kvp.Value.ClientPort,
+                                      kvp.Value.DestinationSpiderIp,
+                                      kvp.Value.TargetIp,
+                                      kvp.Value.TargetPort,
+                                      kvp.Value.Sock,
+                                      kvp.Value.TvSec,
+                                      kvp.Value.TvUsec,
+                                      kvp.Value.ForwarderTvSec,
+                                      kvp.Value.ForwarderTvUsec);
+                }
+            }
+
+            Console.WriteLine("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+            Console.WriteLine("");
+
+            return;
+        }
     }
 }
 

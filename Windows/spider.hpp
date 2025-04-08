@@ -52,6 +52,7 @@
 #define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_TCP                   6
 #define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_UDP                   7
 #define SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT_SHELL                 8
+#define SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP                    9
 #define SPIDER_COMMAND_EXIT                                         0
 
 
