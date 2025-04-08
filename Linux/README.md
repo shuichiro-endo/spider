@@ -1885,6 +1885,7 @@ ok? (yes:y no:n quit:q)                        > y
 
 ```
 2. other (other spider)
+
 Not implemented.
 
 #### mode (self:s other:o)
