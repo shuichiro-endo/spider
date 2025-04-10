@@ -119,9 +119,9 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
 [This program (tools/generate_aes_key_hex_string.py)](https://github.com/shuichiro-endo/spider/blob/main/tools/generate_aes_key_hex_string.py) can be used for key generation.
 
 #### [-s (prevent spider server startup)]
-prevent the spider server from starting up.
+Prevent the spider server from starting up.
 
-The spider with this option set prevents the spider server from being automatically generated.
+The spider with this option set prevents the spider server from being generated.
 
 ### run
 ```
