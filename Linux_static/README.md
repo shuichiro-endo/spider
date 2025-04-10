@@ -13,13 +13,13 @@ socks5 proxy tunnel tool
 #### c-ares
 1. download c-ares
 ```
-wget https://github.com/c-ares/c-ares/releases/download/v1.34.4/c-ares-1.34.4.tar.gz
-tar xvzf c-ares-1.34.4.tar.gz
+wget https://github.com/c-ares/c-ares/releases/download/v1.34.5/c-ares-1.34.5.tar.gz
+tar xvzf c-ares-1.34.5.tar.gz
 ```
 2. modify ares_getaddrinfo.c and ares_getnameinfo.c ([static linking (glibc getservbyport_r getservbyname_r) #945](https://github.com/c-ares/c-ares/issues/945))
-- c-ares-1.34.4/src/lib/ares_getaddrinfo.c (lookup_service function)
+- c-ares-1.34.5/src/lib/ares_getaddrinfo.c (lookup_service function)
 ```
-nano -l c-ares-1.34.4/src/lib/ares_getaddrinfo.c
+nano -l c-ares-1.34.5/src/lib/ares_getaddrinfo.c
 ```
 ```
 static unsigned short lookup_service(const char *service, int flags)
@@ -30,9 +30,9 @@ static unsigned short lookup_service(const char *service, int flags)
   return 0;
 }
 ```
-- c-ares-1.34.4/src/lib/ares_getnameinfo.c (lookup_service function)
+- c-ares-1.34.5/src/lib/ares_getnameinfo.c (lookup_service function)
 ```
-nano -l c-ares-1.34.4/src/lib/ares_getnameinfo.c
+nano -l c-ares-1.34.5/src/lib/ares_getnameinfo.c
 ```
 ```
 static char *lookup_service(unsigned short port, unsigned int flags, char *buf,
@@ -43,7 +43,7 @@ static char *lookup_service(unsigned short port, unsigned int flags, char *buf,
 ```
 3. build c-ares
 ```
-cd c-ares-1.34.4
+cd c-ares-1.34.5
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local/cares -DCARES_STATIC=On -DCARES_STATIC_PIC=On ..
@@ -56,13 +56,13 @@ make
 git clone https://github.com/shuichiro-endo/spider.git
 ```
 2. copy c-ares directories to spider directory
-- c-ares-1.34.4/include
+- c-ares-1.34.5/include
 ```
-cp -rp c-ares-1.34.4/include spider/Linux_static/
+cp -rp c-ares-1.34.5/include spider/Linux_static/
 ```
-- c-ares-1.34.4/build/lib
+- c-ares-1.34.5/build/lib
 ```
-cp -rp c-ares-1.34.4/build/lib spider/Linux_static/
+cp -rp c-ares-1.34.5/build/lib spider/Linux_static/
 ```
 3. check Linux_static directory
 ```
@@ -96,8 +96,8 @@ spider/Linux_static
 ├── lib
 │   ├── libcares.a
 │   ├── libcares.so -> libcares.so.2
-│   ├── libcares.so.2 -> libcares.so.2.19.3
-│   └── libcares.so.2.19.3
+│   ├── libcares.so.2 -> libcares.so.2.19.4
+│   └── libcares.so.2.19.4
 ├── message.cpp
 ├── message.hpp
 ├── messagemanager.cpp
