@@ -48,7 +48,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:       Windows csharp Ver: 1.24   Author: Shuichiro Endo
+        =-    -:       Windows csharp Ver: 1.25   Author: Shuichiro Endo
 
 
 usage   : spider.exe
@@ -135,7 +135,7 @@ The spider with this option set prevents the spider server from being automatica
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:       Windows csharp Ver: 1.24   Author: Shuichiro Endo
+        =-    -:       Windows csharp Ver: 1.25   Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
