@@ -50,6 +50,7 @@ usage   : ./spider
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
+        : [-s (prevent spider server startup)]
 example : ./spider
         : ./spider -4 192.168.0.10
         : ./spider -6 2001::xxxx:xxxx:xxxx:xxxx
@@ -61,6 +62,7 @@ example : ./spider
         : ./spider -4 192.168.0.10 -r s
         : ./spider -4 192.168.0.10 -e x -k deadbeef
         : ./spider -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
+        : ./spider -s
 
 ```
 #### [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
@@ -115,6 +117,11 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
 
 [This program (tools/generate_aes_key_hex_string.py)](https://github.com/shuichiro-endo/spider/blob/main/tools/generate_aes_key_hex_string.py) can be used for key generation.
 
+#### [-s (prevent spider server startup)]
+prevent the spider server from starting up.
+
+The spider with this option set prevents the spider server from being automatically generated.
+
 ### run
 ```
 > ./spider
@@ -142,6 +149,7 @@ Encrypt SOCKS5 packets between spider client and spider server using aes-256-cbc
  aes encryption                  : off
  aes key hex string              : 
  aes iv hex string               : 
+ prevent spider server startup   : off
 ----------------------------- spider command -----------------------------
  1: add node (spider pipe)
  2: add node (spider client)

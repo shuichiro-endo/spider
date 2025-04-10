@@ -133,9 +133,10 @@ namespace spider
             }
         }
 
-        private void MessageManagerTransferSocks5Message()
+        private void MessageManagerTransferSocks5Message(object obj)
         {
             int ret = 0;
+            bool preventSpiderServerStartupFlag = false;
             Socks5Message socks5Message = null;
             Server server;
             uint connectionId = 0;
@@ -143,10 +144,16 @@ namespace spider
             uint serverId = 0;
             object[] parameters;
 
+            if(obj is bool flag)
+            {
+                preventSpiderServerStartupFlag = flag;
+            }
+
             while(true)
             {
                 socks5Message = messageManager.TransferSocks5Message();
-                if(socks5Message != null)
+                if(socks5Message != null &&
+                   preventSpiderServerStartupFlag == false) // generate server
                 {
                     connectionId = socks5Message.ConnectionId;
                     clientId = socks5Message.ClientId;
@@ -192,13 +199,20 @@ namespace spider
             }
         }
 
-        public void MessageManagerWorker()
+        public void MessageManagerWorker(object obj)
         {
+            bool preventSpiderServerStartupFlag = false;
+
+            if(obj is bool flag)
+            {
+                preventSpiderServerStartupFlag = flag;
+            }
+
             Thread messageManagerTransferRoutingMessageThread = new Thread(new ThreadStart(MessageManagerTransferRoutingMessage));
             messageManagerTransferRoutingMessageThread.Start();
 
-            Thread messageManagerTransferSocks5MessageThread = new Thread(new ThreadStart(MessageManagerTransferSocks5Message));
-            messageManagerTransferSocks5MessageThread.Start();
+            Thread messageManagerTransferSocks5MessageThread = new Thread(new ParameterizedThreadStart(MessageManagerTransferSocks5Message));
+            messageManagerTransferSocks5MessageThread.Start(preventSpiderServerStartupFlag);
 
             return;
         }

@@ -65,6 +65,7 @@ namespace spider
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
+        std::printf("        : [-s (prevent spider server startup)]\n");
         std::printf("example : %s\n", filename);
         std::printf("        : %s -4 192.168.0.10\n", filename);
         std::printf("        : %s -6 2001::xxxx:xxxx:xxxx:xxxx\n", filename);
@@ -76,6 +77,7 @@ namespace spider
         std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e x -k deadbeef\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
+        std::printf("        : %s -s\n", filename);
         std::printf("\n");
     }
 }
@@ -84,7 +86,7 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:4:6:u:l:f:di:p:r:e:k:v:";
+    const char *optstring = "h:4:6:u:l:f:di:p:r:e:k:v:s";
     opterr = 0;
     std::string spider_ipv4;
     std::string spider_ipv6_global;
@@ -117,6 +119,7 @@ int main(int argc,
     std::string xor_key_hex_string;
     std::string aes_key_hex_string;
     std::string aes_iv_hex_string;
+    bool prevent_spider_server_startup_flag = false;
 
 
     while((opt = getopt(argc, argv, optstring)) != -1)
@@ -174,6 +177,10 @@ int main(int argc,
 
             case 'v':
                 iv = optarg;
+                break;
+
+            case 's':
+                prevent_spider_server_startup_flag = true;
                 break;
 
             default:
@@ -371,7 +378,8 @@ int main(int argc,
     }
 
     std::thread message_manager_thread(&spider::Spidercommand::message_manager_worker,
-                                       spider_command);
+                                       spider_command,
+                                       prevent_spider_server_startup_flag);
     message_manager_thread.detach();
 
     if(!config_file.empty())
@@ -494,6 +502,7 @@ int main(int argc,
             std::printf(" aes encryption                  : %s\n", (aes_flag ? "on" : "off"));
             std::printf(" aes key hex string              : %s\n", aes_key_hex_string.c_str());
             std::printf(" aes iv hex string               : %s\n", aes_iv_hex_string.c_str());
+            std::printf(" prevent spider server startup   : %s\n", (prevent_spider_server_startup_flag ? "on" : "off"));
             std::printf("----------------------------- spider command -----------------------------\n");
             std::printf(" %d: add node (spider pipe)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
             std::printf(" %d: add node (spider client)\n", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);

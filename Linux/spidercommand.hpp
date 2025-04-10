@@ -44,7 +44,7 @@ namespace spider
         void routing_manager_delete_routing_table();
 
         void message_manager_transfer_routing_message();
-        void message_manager_transfer_socks5_message();
+        void message_manager_transfer_socks5_message(bool prevent_spider_server_startup_flag);
 
         void client_worker(std::shared_ptr<Client> client);
         int listen_client(std::string client_listen_ip,
@@ -136,7 +136,7 @@ namespace spider
 
         void routing_manager_worker();
 
-        void message_manager_worker();
+        void message_manager_worker(bool prevent_spider_server_startup_flag);
 
         void add_node_spider_client();
 

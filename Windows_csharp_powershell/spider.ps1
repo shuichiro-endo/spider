@@ -12588,9 +12588,10 @@ namespace spider
             }
         }
 
-        private void MessageManagerTransferSocks5Message()
+        private void MessageManagerTransferSocks5Message(object obj)
         {
             int ret = 0;
+            bool preventSpiderServerStartupFlag = (bool)obj;
             Socks5Message socks5Message = null;
             Server server;
             uint connectionId = 0;
@@ -12601,7 +12602,8 @@ namespace spider
             while(true)
             {
                 socks5Message = messageManager.TransferSocks5Message();
-                if(socks5Message != null)
+                if(socks5Message != null &&
+                   preventSpiderServerStartupFlag == false) // generate server
                 {
                     connectionId = socks5Message.ConnectionId;
                     clientId = socks5Message.ClientId;
@@ -12647,13 +12649,15 @@ namespace spider
             }
         }
 
-        public void MessageManagerWorker()
+        public void MessageManagerWorker(object obj)
         {
+            bool preventSpiderServerStartupFlag = (bool)obj;
+
             Thread messageManagerTransferRoutingMessageThread = new Thread(new ThreadStart(MessageManagerTransferRoutingMessage));
             messageManagerTransferRoutingMessageThread.Start();
 
-            Thread messageManagerTransferSocks5MessageThread = new Thread(new ThreadStart(MessageManagerTransferSocks5Message));
-            messageManagerTransferSocks5MessageThread.Start();
+            Thread messageManagerTransferSocks5MessageThread = new Thread(new ParameterizedThreadStart(MessageManagerTransferSocks5Message));
+            messageManagerTransferSocks5MessageThread.Start(preventSpiderServerStartupFlag);
 
             return;
         }
@@ -19705,6 +19709,7 @@ namespace spider
             Console.WriteLine("        : [-r routing_mode(auto:a self:s)]");
             Console.WriteLine("        : [-e x(xor encryption)] [-k key(hexstring)]");
             Console.WriteLine("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]");
+            Console.WriteLine("        : [-s (prevent spider server startup)]");
             Console.WriteLine("example : {0}", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10", fileName);
             Console.WriteLine("        : {0} -6 2001::xxxx:xxxx:xxxx:xxxx", fileName);
@@ -19716,6 +19721,7 @@ namespace spider
             Console.WriteLine("        : {0} -4 192.168.0.10 -r s", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -e x -k deadbeef", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a", fileName);
+            Console.WriteLine("        : {0} -s", fileName);
             Console.WriteLine("");
 
             Thread.Sleep(30000);    // 30s
@@ -19751,6 +19757,7 @@ namespace spider
             string xorKeyHexString = "";
             string aesKeyHexString = "";
             string aesIvHexString = "";
+            bool preventSpiderServerStartupFlag = false;
             object[] parameters;
 
 
@@ -19854,6 +19861,10 @@ namespace spider
                             iv = args[i + 1];
                             i++;
                         }
+                        break;
+
+                    case "-s":
+                        preventSpiderServerStartupFlag = true;
                         break;
 
                     default:
@@ -20000,8 +20011,8 @@ namespace spider
                 routingManagerThread.Start();
             }
 
-            Thread messageManagerThread = new Thread(new ThreadStart(spiderCommand.MessageManagerWorker));
-            messageManagerThread.Start();
+            Thread messageManagerThread = new Thread(new ParameterizedThreadStart(spiderCommand.MessageManagerWorker));
+            messageManagerThread.Start(preventSpiderServerStartupFlag);
 
             if(!string.IsNullOrEmpty(configFile))
             {
@@ -20112,6 +20123,7 @@ namespace spider
                 Console.WriteLine(" aes encryption                  : {0}", (aesFlag ? "on" : "off"));
                 Console.WriteLine(" aes key hex string              : {0}", aesKeyHexString);
                 Console.WriteLine(" aes iv hex string               : {0}", aesIvHexString);
+                Console.WriteLine(" prevent spider server startup   : {0}", (preventSpiderServerStartupFlag ? "on" : "off"));
                 Console.WriteLine("----------------------------- spider command -----------------------------");
                 Console.WriteLine(" {0}: add node (spider pipe)", SPIDER_COMMAND_ADD_NODE_SPIDER_PIPE);
                 Console.WriteLine(" {0}: add node (spider client)", SPIDER_COMMAND_ADD_NODE_SPIDER_CLIENT);

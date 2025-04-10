@@ -120,7 +120,7 @@ namespace spider
         return;
     }
 
-    void Spidercommand::message_manager_transfer_socks5_message()
+    void Spidercommand::message_manager_transfer_socks5_message(bool prevent_spider_server_startup_flag)
     {
         int ret = 0;
         std::shared_ptr<Socks5message> socks5_message = nullptr;
@@ -132,7 +132,8 @@ namespace spider
         while(1)
         {
             socks5_message = message_manager->transfer_socks5_message();
-            if(socks5_message != nullptr)  // generate server
+            if(socks5_message != nullptr
+               && prevent_spider_server_startup_flag == false)  // generate server
             {
                 connection_id = socks5_message->get_connection_id();
                 client_id = socks5_message->get_client_id();
@@ -181,14 +182,15 @@ namespace spider
         return;
     }
 
-    void Spidercommand::message_manager_worker()
+    void Spidercommand::message_manager_worker(bool prevent_spider_server_startup_flag)
     {
         std::thread message_manager_transfer_routing_message_thread(&Spidercommand::message_manager_transfer_routing_message,
                                                                     this);
         message_manager_transfer_routing_message_thread.detach();
 
         std::thread message_manager_transfer_socks5_message_thread(&Spidercommand::message_manager_transfer_socks5_message,
-                                                                   this);
+                                                                   this,
+                                                                   prevent_spider_server_startup_flag);
         message_manager_transfer_socks5_message_thread.detach();
 
         return;
