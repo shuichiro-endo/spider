@@ -123,6 +123,11 @@ Prevent the spider server from starting up.
 
 The spider with this option set prevents the spider server from being generated.
 
+> [!CAUTION]
+> If this option is not set, there is a risk of being attacked through other spiders.
+>
+> Please set this option for the spider that do not start up the spider server.
+
 ### run
 ```
 > spider.exe
