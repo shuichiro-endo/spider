@@ -794,7 +794,10 @@ namespace spider
         std::string input;
         std::vector <std::string> tokens;
         std::string result;
-        int32_t result_size = 0;
+        std::size_t result_size = 0;
+        std::size_t send_length = 0;
+        std::size_t result_remaining_size = 0;
+        const char *result_cstr = NULL;
         bool exit_flag = false;
 
         std::string upload_file_name = "";
@@ -1108,37 +1111,45 @@ namespace spider
                             result = execute_command(input);
                         }
 
-                        std::memset(buffer,
-                                    0,
-                                    buffer_max_length);
-
+                        result += prompt;
+                        result_cstr = result.c_str();
                         result_size = result.size();
-                        if(result_size > SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size)
+                        result_remaining_size = result_size;
+                        send_length = 0;
+                        len = 0;
+
+                        while(result_remaining_size > 0)
                         {
-                            result_size = SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size;
-                        }
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
 
-                        std::memcpy(buffer,
-                                    result.c_str(),
-                                    result_size);
+                            if(result_remaining_size > SHELL_RESULT_DATA_SIZE)
+                            {
+                                len = SHELL_RESULT_DATA_SIZE;
+                            }else
+                            {
+                                len = result_remaining_size;
+                            }
 
-                        std::memcpy(buffer+result_size,
-                                    prompt.c_str(),
-                                    prompt_size);
-
-                        result_size += prompt_size;
+                            std::memcpy(buffer,
+                                        result_cstr+send_length,
+                                        len);
 
 #ifdef _DEBUG
-                        std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                    send_message_id);
+                            std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                        send_message_id);
 #endif
-                        sen = send_message(buffer,
-                                           result_size,
-                                           forwarder_tv_sec,
-                                           forwarder_tv_usec);
-                        if(sen > 0)
-                        {
-                            send_message_id++;
+                            sen = send_message(buffer,
+                                               len,
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                            if(sen > 0)
+                            {
+                                send_length += sen;
+                                result_remaining_size -= sen;
+                                send_message_id++;
+                            }
                         }
                     }
                 }else
@@ -1442,37 +1453,45 @@ namespace spider
                                 result = execute_command(input);
                             }
 
-                            std::memset(buffer,
-                                        0,
-                                        buffer_max_length);
-
+                            result += prompt;
+                            result_cstr = result.c_str();
                             result_size = result.size();
-                            if(result_size > SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size)
+                            result_remaining_size = result_size;
+                            send_length = 0;
+                            len = 0;
+
+                            while(result_remaining_size > 0)
                             {
-                                result_size = SOCKS5_MESSAGE_DATA_SIZE - 0x10 - prompt_size;
-                            }
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
 
-                            std::memcpy(buffer,
-                                        result.c_str(),
-                                        result_size);
+                                if(result_remaining_size > SHELL_RESULT_DATA_SIZE)
+                                {
+                                    len = SHELL_RESULT_DATA_SIZE;
+                                }else
+                                {
+                                    len = result_remaining_size;
+                                }
 
-                            std::memcpy(buffer+result_size,
-                                        prompt.c_str(),
-                                        prompt_size);
-
-                            result_size += prompt_size;
+                                std::memcpy(buffer,
+                                            result_cstr+send_length,
+                                            len);
 
 #ifdef _DEBUG
-                            std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                        send_message_id);
+                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                            send_message_id);
 #endif
-                            sen = send_message(buffer,
-                                               result_size,
-                                               forwarder_tv_sec,
-                                               forwarder_tv_usec);
-                            if(sen > 0)
-                            {
-                                send_message_id++;
+                                sen = send_message(buffer,
+                                                   len,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen > 0)
+                                {
+                                    send_length += sen;
+                                    result_remaining_size -= sen;
+                                    send_message_id++;
+                                }
                             }
                         }
 

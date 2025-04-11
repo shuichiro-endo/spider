@@ -20,6 +20,7 @@ namespace spider
     {
         private const int SOCKS5_MESSAGE_DATA_SIZE = 60000;
         private const int SHELL_UPLOAD_DOWNLOAD_DATA_SIZE = 50000;
+        private const int SHELL_RESULT_DATA_SIZE = 50000;
         private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
@@ -636,10 +637,14 @@ namespace spider
                 process.StartInfo = processStartInfo;
                 process.Start();
 
-                result += process.StandardError.ReadToEnd();
-                result += process.StandardOutput.ReadToEnd();
+                using(StreamReader outputReader = new StreamReader(process.StandardOutput.BaseStream, Encoding.UTF8))
+                using(StreamReader errorReader = new StreamReader(process.StandardError.BaseStream, Encoding.UTF8))
+                {
+                    result += outputReader.ReadToEnd();
+                    result += errorReader.ReadToEnd();
 
-                process.WaitForExit();
+                    process.WaitForExit();
+                }
             }
 
             return result;
@@ -667,13 +672,14 @@ namespace spider
             byte[] data = new byte[NODE_BUFFER_SIZE];
             byte[] tmp;
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
             Dictionary<uint, (int, byte[])> msgsMap = new Dictionary<uint, (int, byte[])>();
             ValueTuple<int, byte[]> msg;
             recvMessageId = 0;
 
             string result = "";
             int resultSize = 0;
+            int sendLength = 0;
+            int resultRemainingSize = 0;
             string prompt = "\ncommand >";
             byte[] promptBytes = Encoding.UTF8.GetBytes(prompt);
             int promptSize = promptBytes.Length;
@@ -1107,39 +1113,46 @@ namespace spider
                                     result = ExecuteCommand(inputString);
                                 }
 
-                                Array.Clear(buffer,
-                                            0,
-                                            bufferMaxLength);
-
+                                result += prompt;
                                 tmp = Encoding.UTF8.GetBytes(result);
                                 resultSize = tmp.Length;
-                                if(resultSize > socks5MessageDataMaxSize - 0x10 - promptSize)
-                                {
-                                    resultSize = socks5MessageDataMaxSize - 0x10 - promptSize;
-                                }
+                                resultRemainingSize = resultSize;
+                                sendLength = 0;
+                                length = 0;
 
-                                for(int i = 0; i < resultSize; i++)
+                                while(resultRemainingSize > 0)
                                 {
-                                    buffer[i] = tmp[i];
-                                }
+                                    Array.Clear(buffer,
+                                                0,
+                                                bufferMaxLength);
 
-                                for(int i = 0; i < promptSize; i++)
-                                {
-                                    buffer[resultSize + i] = promptBytes[i];
-                                }
+                                    if(resultRemainingSize > SHELL_RESULT_DATA_SIZE)
+                                    {
+                                        length = SHELL_RESULT_DATA_SIZE;
+                                    }else
+                                    {
+                                        length = resultRemainingSize;
+                                    }
 
-                                length = resultSize + promptSize;
+                                    for(int i = 0; i < length; i++)
+                                    {
+                                        buffer[i] = tmp[sendLength + i];
+                                    }
+
 #if DEBUGPRINT
-                                Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
-                                                  sendMessageId);
+                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                      sendMessageId);
 #endif
-                                sen = SendMessage(buffer,
-                                                  length,
-                                                  forwarderTvSec,
-                                                  forwarderTvUsec);
-                                if(sen > 0)
-                                {
-                                    sendMessageId++;
+                                    sen = SendMessage(buffer,
+                                                      length,
+                                                      forwarderTvSec,
+                                                      forwarderTvUsec);
+                                    if(sen > 0)
+                                    {
+                                        sendLength += sen;
+                                        resultRemainingSize -= sen;
+                                        sendMessageId++;
+                                    }
                                 }
 
                                 continue;
@@ -1540,39 +1553,45 @@ namespace spider
                                         result += prompt;
                                     }
 
-                                    Array.Clear(buffer,
-                                                0,
-                                                bufferMaxLength);
-
                                     tmp = Encoding.UTF8.GetBytes(result);
                                     resultSize = tmp.Length;
-                                    if(resultSize > socks5MessageDataMaxSize - 0x10 - promptSize)
-                                    {
-                                        resultSize = socks5MessageDataMaxSize - 0x10 - promptSize;
-                                    }
+                                    resultRemainingSize = resultSize;
+                                    sendLength = 0;
+                                    length = 0;
 
-                                    for(int i = 0; i < resultSize; i++)
+                                    while(resultRemainingSize > 0)
                                     {
-                                        buffer[i] = tmp[i];
-                                    }
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
 
-                                    for(int i = 0; i < promptSize; i++)
-                                    {
-                                        buffer[resultSize + i] = promptBytes[i];
-                                    }
+                                        if(resultRemainingSize > SHELL_RESULT_DATA_SIZE)
+                                        {
+                                            length = SHELL_RESULT_DATA_SIZE;
+                                        }else
+                                        {
+                                            length = resultRemainingSize;
+                                        }
 
-                                    length = resultSize + promptSize;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[sendLength + i];
+                                        }
+
 #if DEBUGPRINT
-                                    Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
-                                                      sendMessageId);
+                                        Console.WriteLine("[+] [client <- server] SendMessage message_id:{0}",
+                                                          sendMessageId);
 #endif
-                                    sen = SendMessage(buffer,
-                                                      length,
-                                                      forwarderTvSec,
-                                                      forwarderTvUsec);
-                                    if(sen > 0)
-                                    {
-                                        sendMessageId++;
+                                        sen = SendMessage(buffer,
+                                                          length,
+                                                          forwarderTvSec,
+                                                          forwarderTvUsec);
+                                        if(sen > 0)
+                                        {
+                                            sendLength += sen;
+                                            resultRemainingSize -= sen;
+                                            sendMessageId++;
+                                        }
                                     }
 
                                     continue;
