@@ -40,7 +40,7 @@ make
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                 Linux Ver: 1.25  Author: Shuichiro Endo  
+        =-    -:                 Linux Ver: 1.26  Author: Shuichiro Endo  
 
 
 usage   : ./spider
@@ -139,7 +139,7 @@ The spider with this option set prevents the spider server from being generated.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                 Linux Ver: 1.25  Author: Shuichiro Endo  
+        =-    -:                 Linux Ver: 1.26  Author: Shuichiro Endo  
 
 
 --------------------------------- spider ---------------------------------
