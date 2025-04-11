@@ -1327,7 +1327,7 @@ namespace spider
 
                                 output_file.reset(new std::ofstream(upload_file_name.c_str(),
                                                                     std::ios::binary | std::ios::app));
-if(!output_file->is_open())
+                                if(!output_file->is_open())
                                 {
                                     std::memset(buffer,
                                                 0,
