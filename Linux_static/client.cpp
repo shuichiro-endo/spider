@@ -1306,6 +1306,7 @@ namespace spider
 
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
+        char *data = NULL;
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
         int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
         std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
@@ -1322,8 +1323,8 @@ namespace spider
         uint64_t download_file_size;
         uint64_t recv_download_file_data_size;
         uint64_t download_file_remaining_size;
-        char *download_file_data = NULL;
         bool download_file_flag = false;
+        std::unique_ptr<std::ofstream> output_file = nullptr;
         struct upload_download_data *upload_download_data;
 
 
@@ -1383,13 +1384,133 @@ namespace spider
                                 download_file_name = upload_download_data->file_name;
                                 download_file_name = download_file_path + download_file_name;
                                 download_file_size = ntohll(upload_download_data->file_size);
-                                download_file_data = (char *)calloc(download_file_size,
-                                                                    sizeof(char));
-                                std::memcpy(download_file_data,
-                                            upload_download_data->data,
-                                            ntohll(upload_download_data->data_size));
+
+                                output_file = std::unique_ptr<std::ofstream>(new std::ofstream(download_file_name.c_str(),
+                                                                                               std::ios::out | std::ios::trunc));
+                                if(!output_file->is_open())
+                                {
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    result = "[-] download file error: ";
+                                    result += download_file_name;
+                                    result += prompt;
+
+                                    std::memcpy(buffer,
+                                                result.c_str(),
+                                                result.size());
+
+                                    len = result.size();
+                                    send_length = 0;
+#ifdef _DEBUG
+                                    std::printf("[+] [client <- client] send\n");
+#endif
+                                    while(len > 0)
+                                    {
+                                        sen = send(sock,
+                                                   buffer+send_length,
+                                                   len,
+                                                   MSG_NOSIGNAL);
+                                        if(sen <= 0)
+                                        {
+                                            if(errno == EINTR)
+                                            {
+                                                continue;
+                                            }else if(errno == EAGAIN)
+                                            {
+                                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                                continue;
+                                            }else
+                                            {
+#ifdef _DEBUG
+                                                std::printf("[-] forwarder_shell_send_data send error: %d\n",
+                                                            errno);
+#endif
+                                                break;
+                                            }
+                                        }
+                                        send_length += sen;
+                                        len -= sen;
+                                    }
+
+                                    download_file_flag = false;
+                                    download_file_name = "";
+                                    download_file_path = "";
+                                    download_file_size = 0;
+                                    recv_download_file_data_size = 0;
+                                    download_file_remaining_size = 0;
+
+                                    continue;
+                                }
+
+                                output_file->close();
+
+                                output_file.reset(new std::ofstream(download_file_name.c_str(),
+                                                                    std::ios::binary | std::ios::app));
+                                if(!output_file->is_open())
+                                {
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    result = "[-] download file error: ";
+                                    result += download_file_name;
+                                    result += prompt;
+
+                                    std::memcpy(buffer,
+                                                result.c_str(),
+                                                result.size());
+
+                                    len = result.size();
+                                    send_length = 0;
+#ifdef _DEBUG
+                                    std::printf("[+] [client <- client] send\n");
+#endif
+                                    while(len > 0)
+                                    {
+                                        sen = send(sock,
+                                                   buffer+send_length,
+                                                   len,
+                                                   MSG_NOSIGNAL);
+                                        if(sen <= 0)
+                                        {
+                                            if(errno == EINTR)
+                                            {
+                                                continue;
+                                            }else if(errno == EAGAIN)
+                                            {
+                                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                                continue;
+                                            }else
+                                            {
+#ifdef _DEBUG
+                                                std::printf("[-] forwarder_shell_send_data send error: %d\n",
+                                                            errno);
+#endif
+                                                break;
+                                            }
+                                        }
+                                        send_length += sen;
+                                        len -= sen;
+                                    }
+
+                                    download_file_flag = false;
+                                    download_file_name = "";
+                                    download_file_path = "";
+                                    download_file_size = 0;
+                                    recv_download_file_data_size = 0;
+                                    download_file_remaining_size = 0;
+
+                                    continue;
+                                }
 
                                 recv_download_file_data_size = ntohll(upload_download_data->data_size);
+                                data = upload_download_data->data;
+
+                                output_file->write(data,
+                                                   recv_download_file_data_size);
+
                                 download_file_remaining_size = download_file_size - recv_download_file_data_size;
                                 if(download_file_remaining_size > 0)
                                 {
@@ -1397,25 +1518,20 @@ namespace spider
                                 }
                             }else
                             {
-                                std::memcpy(download_file_data + recv_download_file_data_size,
-                                            upload_download_data->data,
-                                            ntohll(upload_download_data->data_size));
+                                recv_download_file_data_size = ntohll(upload_download_data->data_size);
+                                data = upload_download_data->data;
 
-                                recv_download_file_data_size += ntohll(upload_download_data->data_size);
-                                download_file_remaining_size -= ntohll(upload_download_data->data_size);
+                                output_file->write(data,
+                                                   recv_download_file_data_size);
+
+                                download_file_remaining_size -= recv_download_file_data_size;
                                 if(download_file_remaining_size > 0)
                                 {
                                     continue;
                                 }
                             }
 
-                            std::ofstream output_file(download_file_name.c_str(),
-                                                      std::ios::binary);
-
-                            output_file.write(download_file_data,
-                                              download_file_size);
-
-                            output_file.close();
+                            output_file->close();
 
                             std::memset(buffer,
                                         0,
@@ -1468,8 +1584,6 @@ namespace spider
                             download_file_size = 0;
                             recv_download_file_data_size = 0;
                             download_file_remaining_size = 0;
-                            free(download_file_data);
-                            download_file_data = NULL;
 
                             if(sen <= 0)
                             {
@@ -1541,15 +1655,136 @@ namespace spider
                                     download_file_name = upload_download_data->file_name;
                                     download_file_name = download_file_path + download_file_name;
                                     download_file_size = ntohll(upload_download_data->file_size);
-                                    download_file_data = (char *)calloc(download_file_size,
-                                                                        sizeof(char));
-                                    std::memcpy(download_file_data,
-                                                upload_download_data->data,
-                                                ntohll(upload_download_data->data_size));
+
+                                    output_file = std::unique_ptr<std::ofstream>(new std::ofstream(download_file_name.c_str(),
+                                                                                                   std::ios::out | std::ios::trunc));
+                                    if(!output_file->is_open())
+                                    {
+                                        std::memset(buffer,
+                                                    0,
+                                                    buffer_max_length);
+
+                                        result = "[-] download file error: ";
+                                        result += download_file_name;
+                                        result += prompt;
+
+                                        std::memcpy(buffer,
+                                                    result.c_str(),
+                                                    result.size());
+
+                                        len = result.size();
+                                        send_length = 0;
+#ifdef _DEBUG
+                                        std::printf("[+] [client <- client] send\n");
+#endif
+                                        while(len > 0)
+                                        {
+                                            sen = send(sock,
+                                                       buffer+send_length,
+                                                       len,
+                                                       MSG_NOSIGNAL);
+                                            if(sen <= 0)
+                                            {
+                                                if(errno == EINTR)
+                                                {
+                                                    continue;
+                                                }else if(errno == EAGAIN)
+                                                {
+                                                    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                                    continue;
+                                                }else
+                                                {
+#ifdef _DEBUG
+                                                    std::printf("[-] forwarder_shell_send_data send error: %d\n",
+                                                                errno);
+#endif
+                                                    break;
+                                                }
+                                            }
+                                            send_length += sen;
+                                            len -= sen;
+                                        }
+
+                                        download_file_flag = false;
+                                        download_file_name = "";
+                                        download_file_path = "";
+                                        download_file_size = 0;
+                                        recv_download_file_data_size = 0;
+                                        download_file_remaining_size = 0;
+
+                                        free(buffer);
+                                        continue;
+                                    }
+
+                                    output_file->close();
+
+                                    output_file.reset(new std::ofstream(download_file_name.c_str(),
+                                                                        std::ios::binary | std::ios::app));
+                                    if(!output_file->is_open())
+                                    {
+                                        std::memset(buffer,
+                                                    0,
+                                                    buffer_max_length);
+
+                                        result = "[-] download file error: ";
+                                        result += download_file_name;
+                                        result += prompt;
+
+                                        std::memcpy(buffer,
+                                                    result.c_str(),
+                                                    result.size());
+
+                                        len = result.size();
+                                        send_length = 0;
+#ifdef _DEBUG
+                                        std::printf("[+] [client <- client] send\n");
+#endif
+                                        while(len > 0)
+                                        {
+                                            sen = send(sock,
+                                                       buffer+send_length,
+                                                       len,
+                                                       MSG_NOSIGNAL);
+                                            if(sen <= 0)
+                                            {
+                                                if(errno == EINTR)
+                                                {
+                                                    continue;
+                                                }else if(errno == EAGAIN)
+                                                {
+                                                    std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                                    continue;
+                                                }else
+                                                {
+#ifdef _DEBUG
+                                                    std::printf("[-] forwarder_shell_send_data send error: %d\n",
+                                                                errno);
+#endif
+                                                    break;
+                                                }
+                                            }
+                                            send_length += sen;
+                                            len -= sen;
+                                        }
+
+                                        download_file_flag = false;
+                                        download_file_name = "";
+                                        download_file_path = "";
+                                        download_file_size = 0;
+                                        recv_download_file_data_size = 0;
+                                        download_file_remaining_size = 0;
+
+                                        free(buffer);
+                                        continue;
+                                    }
 
                                     recv_download_file_data_size = ntohll(upload_download_data->data_size);
-                                    download_file_remaining_size = download_file_size - recv_download_file_data_size;
+                                    data = upload_download_data->data;
 
+                                    output_file->write(data,
+                                                       recv_download_file_data_size);
+
+                                    download_file_remaining_size = download_file_size - recv_download_file_data_size;
                                     if(download_file_remaining_size > 0)
                                     {
                                         free(buffer);
@@ -1557,13 +1792,13 @@ namespace spider
                                     }
                                 }else
                                 {
-                                    std::memcpy(download_file_data + recv_download_file_data_size,
-                                                upload_download_data->data,
-                                                ntohll(upload_download_data->data_size));
-
                                     recv_download_file_data_size += ntohll(upload_download_data->data_size);
-                                    download_file_remaining_size -= ntohll(upload_download_data->data_size);
+                                    data = upload_download_data->data;
 
+                                    output_file->write(data,
+                                                       recv_download_file_data_size);
+
+                                    download_file_remaining_size -= recv_download_file_data_size;
                                     if(download_file_remaining_size > 0)
                                     {
                                         free(buffer);
@@ -1571,14 +1806,7 @@ namespace spider
                                     }
                                 }
 
-                                std::ofstream output_file(download_file_name.c_str(),
-                                                          std::ios::binary);
-
-                                output_file.write(download_file_data,
-                                                  download_file_size);
-
-                                output_file.close();
-
+                                output_file->close();
 
                                 std::memset(buffer,
                                             0,
@@ -1631,8 +1859,7 @@ namespace spider
                                 download_file_size = 0;
                                 recv_download_file_data_size = 0;
                                 download_file_remaining_size = 0;
-                                free(download_file_data);
-                                download_file_data = NULL;
+                                free(buffer);
 
                                 if(sen <= 0)
                                 {
@@ -1694,11 +1921,6 @@ namespace spider
             msg = it->second;
             free(msg.second);
             it = msgs_map.erase(it);
-        }
-
-        if(download_file_data != NULL)
-        {
-            free(download_file_data);
         }
 
         free(buffer);

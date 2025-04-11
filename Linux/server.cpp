@@ -777,6 +777,7 @@ namespace spider
 
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
+        char *data = NULL;
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
         int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
         std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
@@ -800,9 +801,9 @@ namespace spider
         uint64_t upload_file_size;
         uint64_t recv_upload_file_data_size;
         uint64_t upload_file_remaining_size;
-        char *upload_file_data = NULL;
         struct upload_download_data *upload_download_data;
         bool upload_file_flag = false;
+        std::unique_ptr<std::ofstream> output_file = nullptr;
 
         std::string download_file_name = "";
         std::string download_file_path = "";
@@ -845,13 +846,93 @@ namespace spider
                             upload_file_name = upload_download_data->file_name;
                             upload_file_name = upload_file_path + upload_file_name;
                             upload_file_size = ntohll(upload_download_data->file_size);
-                            upload_file_data = (char *)calloc(upload_file_size,
-                                                              sizeof(char));
-                            std::memcpy(upload_file_data,
-                                        upload_download_data->data,
-                                        ntohll(upload_download_data->data_size));
+
+                            output_file = std::unique_ptr<std::ofstream>(new std::ofstream(upload_file_name.c_str(),
+                                                                                           std::ios::out | std::ios::trunc));
+                            if(!output_file->is_open())
+                            {
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                result = "[-] upload file error: ";
+                                result += upload_file_name;
+                                result += prompt;
+
+                                std::memcpy(buffer,
+                                            result.c_str(),
+                                            result.size());
+
+#ifdef _DEBUG
+                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                            send_message_id);
+#endif
+                                sen = send_message(buffer,
+                                                   result.size(),
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen > 0)
+                                {
+                                    send_message_id++;
+                                }
+
+                                upload_file_flag = false;
+                                upload_file_name = "";
+                                upload_file_path = "";
+                                upload_file_size = 0;
+                                recv_upload_file_data_size = 0;
+                                upload_file_remaining_size = 0;
+
+                                continue;
+                            }
+
+                            output_file->close();
+
+                            output_file.reset(new std::ofstream(upload_file_name.c_str(),
+                                                                std::ios::binary | std::ios::app));
+                            if(!output_file->is_open())
+                            {
+                                std::memset(buffer,
+                                            0,
+                                            buffer_max_length);
+
+                                result = "[-] upload file error: ";
+                                result += upload_file_name;
+                                result += prompt;
+
+                                std::memcpy(buffer,
+                                            result.c_str(),
+                                            result.size());
+
+#ifdef _DEBUG
+                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                            send_message_id);
+#endif
+                                sen = send_message(buffer,
+                                                   result.size(),
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                                if(sen > 0)
+                                {
+                                    send_message_id++;
+                                }
+
+                                upload_file_flag = false;
+                                upload_file_name = "";
+                                upload_file_path = "";
+                                upload_file_size = 0;
+                                recv_upload_file_data_size = 0;
+                                upload_file_remaining_size = 0;
+
+                                continue;
+                            }
 
                             recv_upload_file_data_size = ntohll(upload_download_data->data_size);
+                            data = upload_download_data->data;
+
+                            output_file->write(data,
+                                               recv_upload_file_data_size);
+
                             upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
                             if(upload_file_remaining_size > 0)
                             {
@@ -859,25 +940,20 @@ namespace spider
                             }
                         }else
                         {
-                            std::memcpy(upload_file_data + recv_upload_file_data_size,
-                                        upload_download_data->data,
-                                        ntohll(upload_download_data->data_size));
+                            recv_upload_file_data_size = ntohll(upload_download_data->data_size);
+                            data = upload_download_data->data;
 
-                            recv_upload_file_data_size += ntohll(upload_download_data->data_size);
-                            upload_file_remaining_size -= ntohll(upload_download_data->data_size);
+                            output_file->write(data,
+                                               recv_upload_file_data_size);
+
+                            upload_file_remaining_size -= recv_upload_file_data_size;
                             if(upload_file_remaining_size > 0)
                             {
                                 continue;
                             }
                         }
 
-                        std::ofstream output_file(upload_file_name.c_str(),
-                                                  std::ios::binary);
-
-                        output_file.write(upload_file_data,
-                                          upload_file_size);
-
-                        output_file.close();
+                        output_file->close();
 
                         std::memset(buffer,
                                     0,
@@ -910,8 +986,6 @@ namespace spider
                         upload_file_size = 0;
                         recv_upload_file_data_size = 0;
                         upload_file_remaining_size = 0;
-                        free(upload_file_data);
-                        upload_file_data = NULL;
 
                         continue;
                     }else
@@ -1178,13 +1252,95 @@ namespace spider
                                 upload_file_name = upload_download_data->file_name;
                                 upload_file_name = upload_file_path + upload_file_name;
                                 upload_file_size = ntohll(upload_download_data->file_size);
-                                upload_file_data = (char *)calloc(upload_file_size,
-                                                                  sizeof(char));
-                                std::memcpy(upload_file_data,
-                                            upload_download_data->data,
-                                            ntohll(upload_download_data->data_size));
+
+                                output_file = std::unique_ptr<std::ofstream>(new std::ofstream(upload_file_name.c_str(),
+                                                                                               std::ios::out | std::ios::trunc));
+                                if(!output_file->is_open())
+                                {
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    result = "[-] upload file error: ";
+                                    result += upload_file_name;
+                                    result += prompt;
+
+                                    std::memcpy(buffer,
+                                                result.c_str(),
+                                                result.size());
+
+#ifdef _DEBUG
+                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                send_message_id);
+#endif
+                                    sen = send_message(buffer,
+                                                       result.size(),
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                                    if(sen > 0)
+                                    {
+                                        send_message_id++;
+                                    }
+
+                                    upload_file_flag = false;
+                                    upload_file_name = "";
+                                    upload_file_path = "";
+                                    upload_file_size = 0;
+                                    recv_upload_file_data_size = 0;
+                                    upload_file_remaining_size = 0;
+
+                                    free(buffer);
+                                    continue;
+                                }
+
+                                output_file->close();
+
+                                output_file.reset(new std::ofstream(upload_file_name.c_str(),
+                                                                    std::ios::binary | std::ios::app));
+                                if(!output_file->is_open())
+                                {
+                                    std::memset(buffer,
+                                                0,
+                                                buffer_max_length);
+
+                                    result = "[-] upload file error: ";
+                                    result += upload_file_name;
+                                    result += prompt;
+
+                                    std::memcpy(buffer,
+                                                result.c_str(),
+                                                result.size());
+
+#ifdef _DEBUG
+                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                                send_message_id);
+#endif
+                                    sen = send_message(buffer,
+                                                       result.size(),
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                                    if(sen > 0)
+                                    {
+                                        send_message_id++;
+                                    }
+
+                                    upload_file_flag = false;
+                                    upload_file_name = "";
+                                    upload_file_path = "";
+                                    upload_file_size = 0;
+                                    recv_upload_file_data_size = 0;
+                                    upload_file_remaining_size = 0;
+
+                                    free(buffer);
+                                    continue;
+                                }
 
                                 recv_upload_file_data_size = ntohll(upload_download_data->data_size);
+                                data = upload_download_data->data;
+
+                                output_file->write(data,
+                                                   recv_upload_file_data_size);
+
                                 upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
                                 if(upload_file_remaining_size > 0)
                                 {
@@ -1193,12 +1349,13 @@ namespace spider
                                 }
                             }else
                             {
-                                std::memcpy(upload_file_data + recv_upload_file_data_size,
-                                            upload_download_data->data,
-                                            ntohll(upload_download_data->data_size));
+                                recv_upload_file_data_size = ntohll(upload_download_data->data_size);
+                                data = upload_download_data->data;
 
-                                recv_upload_file_data_size += ntohll(upload_download_data->data_size);
-                                upload_file_remaining_size -= ntohll(upload_download_data->data_size);
+                                output_file->write(data,
+                                                   recv_upload_file_data_size);
+
+                                upload_file_remaining_size -= recv_upload_file_data_size;
                                 if(upload_file_remaining_size > 0)
                                 {
                                     free(buffer);
@@ -1206,13 +1363,7 @@ namespace spider
                                 }
                             }
 
-                            std::ofstream output_file(upload_file_name.c_str(),
-                                                      std::ios::binary);
-
-                            output_file.write(upload_file_data,
-                                              upload_file_size);
-
-                            output_file.close();
+                            output_file->close();
 
                             std::memset(buffer,
                                         0,
@@ -1245,8 +1396,6 @@ namespace spider
                             upload_file_size = 0;
                             recv_upload_file_data_size = 0;
                             upload_file_remaining_size = 0;
-                            free(upload_file_data);
-                            upload_file_data = NULL;
 
                             free(buffer);
                             continue;
@@ -1512,11 +1661,6 @@ namespace spider
             msg = it->second;
             free(msg.second);
             it = msgs_map.erase(it);
-        }
-
-        if(upload_file_data != NULL)
-        {
-            free(upload_file_data);
         }
 
         free(buffer);
