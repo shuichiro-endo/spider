@@ -41,7 +41,7 @@ namespace spider
                                              int32_t tv_usec)
     {
         int32_t ret = 0;
-        int32_t t = tv_sec * 1000000 + tv_usec;
+        int64_t t = (int64_t)tv_sec * 1000000 + (int64_t)tv_usec;
         auto duration = std::chrono::microseconds{t};
 
         if(guard.try_acquire_for(duration))
@@ -83,7 +83,7 @@ namespace spider
                                                                    int32_t tv_usec)
     {
         std::shared_ptr<Socks5message> message = nullptr;
-        int32_t t = tv_sec * 1000000 + tv_usec;
+        int64_t t = (int64_t)tv_sec * 1000000 + (int64_t)tv_usec;
         auto duration = std::chrono::microseconds{t};
 
         if(token.try_acquire_for(duration))
