@@ -68,6 +68,11 @@ The -4, -6, -u, and -l option set the ip address of the network interface.
 > [!NOTE]
 > Some ip addresses may not work correctly. (e.g. 127.0.0.1, ::1, 0.0.0.0)
 
+> [!IMPORTANT]
+> If the spiders with the same IP address exist, proper routing will not be performed.
+> 
+> Please ensure that there are no spiders with the same IP address within the spiders.
+
 #### [-f config_file]
 Create nodes configured in the config file at startup.
 
@@ -82,6 +87,8 @@ Hide the console window.
 >
 > You need to use with pipe client node startup options (-i and -p option).
 > 
+> The "self" of routing mode cannot be used.
+>
 > You need to operate from other spider.
 
 #### [-i pipe_destination_ip] [-p pipe_destination_port]
