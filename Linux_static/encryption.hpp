@@ -37,14 +37,14 @@ namespace spider
         void set_flag(bool flag);
         bool get_flag();
 
-        void print_bytes(char *buffer, int buffer_length) const;
+        void print_bytes(char *buffer, int buffer_length);
 
         virtual int32_t encrypt(char *data,
                                 int32_t data_size,
-                                int32_t buffer_size) const = 0;
+                                int32_t buffer_size) = 0;
         virtual int32_t decrypt(char *data,
                                 int32_t data_size,
-                                int32_t buffer_size) const = 0;
+                                int32_t buffer_size) = 0;
     };
 }
 

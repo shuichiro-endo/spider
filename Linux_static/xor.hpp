@@ -35,10 +35,10 @@ namespace spider
 
         int32_t encrypt(char *data,
                         int32_t data_size,
-                        int32_t buffer_size) const override;
+                        int32_t buffer_size) override;
         int32_t decrypt(char *data,
                         int32_t data_size,
-                        int32_t buffer_size) const override;
+                        int32_t buffer_size) override;
     };
 }
 

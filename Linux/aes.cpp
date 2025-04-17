@@ -153,14 +153,14 @@ namespace spider
                       key);
     }
 
-    unsigned char Aes::get_sbox_value(uint8_t num) const
+    unsigned char Aes::get_sbox_value(uint8_t num)
     {
         return sbox[num];
     }
 
     void Aes::add_round_key(uint8_t round,
                             state_t *state,
-                            const unsigned char *round_key) const
+                            const unsigned char *round_key)
     {
         uint8_t i, j;
 
@@ -174,7 +174,7 @@ namespace spider
         }
     }
 
-    void Aes::sub_bytes(state_t *state) const
+    void Aes::sub_bytes(state_t *state)
     {
         uint8_t i, j;
 
@@ -188,7 +188,7 @@ namespace spider
         }
     }
 
-    void Aes::shift_rows(state_t* state) const
+    void Aes::shift_rows(state_t* state)
     {
         unsigned char tmp;
 
@@ -214,12 +214,12 @@ namespace spider
         (*state)[1][3] = tmp;
     }
 
-    unsigned char Aes::xtime(unsigned char x) const
+    unsigned char Aes::xtime(unsigned char x)
     {
         return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
     }
 
-    void Aes::mix_columns(state_t *state) const
+    void Aes::mix_columns(state_t *state)
     {
         uint8_t i;
         unsigned char t1, t2, t3;
@@ -249,7 +249,7 @@ namespace spider
     }
 
     unsigned char Aes::multiply(unsigned char x,
-                                unsigned char y) const
+                                unsigned char y)
     {
         return (((y & 1) * x) ^
                 ((y >> 1 & 1) * xtime(x)) ^
@@ -258,12 +258,12 @@ namespace spider
                 ((y >> 4 & 1) * xtime(xtime(xtime(xtime(x))))));
     }
 
-    unsigned char Aes::get_sbox_invert(uint8_t num) const
+    unsigned char Aes::get_sbox_invert(uint8_t num)
     {
         return rsbox[num];
     }
 
-    void Aes::inv_mix_columns(state_t *state) const
+    void Aes::inv_mix_columns(state_t *state)
     {
         uint8_t i;
         unsigned char a, b, c, d;
@@ -283,7 +283,7 @@ namespace spider
         }
     }
 
-    void Aes::inv_sub_bytes(state_t *state) const
+    void Aes::inv_sub_bytes(state_t *state)
     {
         uint8_t i, j;
 
@@ -297,7 +297,7 @@ namespace spider
         }
     }
 
-    void Aes::inv_shift_rows(state_t *state) const
+    void Aes::inv_shift_rows(state_t *state)
     {
         unsigned char tmp;
 
@@ -324,7 +324,7 @@ namespace spider
     }
 
     void Aes::cipher(state_t *state,
-                     const unsigned char *round_key) const
+                     const unsigned char *round_key)
     {
         uint8_t round = 0;
 
@@ -353,7 +353,7 @@ namespace spider
     }
 
     void Aes::inv_cipher(state_t *state,
-                         const unsigned char *round_key) const
+                         const unsigned char *round_key)
     {
         uint8_t round = 0;
 
@@ -380,7 +380,7 @@ namespace spider
     }
 
     void Aes::xor_with_iv(unsigned char *buf,
-                          const unsigned char *iv) const
+                          const unsigned char *iv)
     {
         uint8_t i;
 
@@ -392,7 +392,7 @@ namespace spider
     }
 
     int32_t Aes::add_padding(unsigned char *data,
-                             int32_t data_size) const
+                             int32_t data_size)
     {
         int32_t i;
         unsigned char pad[AES_BLOCK_LEN];
@@ -427,7 +427,7 @@ namespace spider
     }
 
     int32_t Aes::delete_padding(unsigned char *data,
-                                int32_t data_size) const
+                                int32_t data_size)
     {
         int32_t i;
         unsigned char pad = *(data + data_size - 1);
@@ -445,7 +445,7 @@ namespace spider
 
     int32_t Aes::encrypt(char *data,
                          int32_t data_size,
-                         int32_t buffer_size) const
+                         int32_t buffer_size)
     {
         int32_t i;
         unsigned char *iv_tmp = iv;
@@ -483,7 +483,7 @@ namespace spider
 
     int32_t Aes::decrypt(char *data,
                          int32_t data_size,
-                         int32_t buffer_size) const
+                         int32_t buffer_size)
     {
         int32_t i;
         unsigned char *p;

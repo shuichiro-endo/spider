@@ -54,7 +54,7 @@ namespace spider
 
     int32_t Xor::encrypt(char *data,
                          int32_t data_size,
-                         int32_t buffer_size) const
+                         int32_t buffer_size)
     {
         if(key_length == 0)
         {
@@ -75,7 +75,7 @@ namespace spider
 
     int32_t Xor::decrypt(char *data,
                          int32_t data_size,
-                         int32_t buffer_size) const
+                         int32_t buffer_size)
     {
         if(key_length == 0)
         {

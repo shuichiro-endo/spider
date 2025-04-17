@@ -90,45 +90,45 @@ namespace spider
         void aes_init(unsigned char *round_key,
                       const unsigned char *key);
 
-        unsigned char get_sbox_value(uint8_t num) const;
+        unsigned char get_sbox_value(uint8_t num);
 
         void add_round_key(uint8_t round,
                            state_t *state,
-                           const unsigned char *round_key) const;
+                           const unsigned char *round_key);
 
-        void sub_bytes(state_t *state) const;
+        void sub_bytes(state_t *state);
 
-        void shift_rows(state_t* state) const;
+        void shift_rows(state_t* state);
 
-        unsigned char xtime(unsigned char x) const;
+        unsigned char xtime(unsigned char x);
 
-        void mix_columns(state_t *state) const;
+        void mix_columns(state_t *state);
 
         unsigned char multiply(unsigned char x,
-                               unsigned char y) const;
+                               unsigned char y);
 
-        unsigned char get_sbox_invert(uint8_t num) const;
+        unsigned char get_sbox_invert(uint8_t num);
 
-        void inv_mix_columns(state_t *state) const;
+        void inv_mix_columns(state_t *state);
 
-        void inv_sub_bytes(state_t *state) const;
+        void inv_sub_bytes(state_t *state);
 
-        void inv_shift_rows(state_t *state) const;
+        void inv_shift_rows(state_t *state);
 
         void cipher(state_t *state,
-                    const unsigned char *round_key) const;
+                    const unsigned char *round_key);
 
         void inv_cipher(state_t *state,
-                        const unsigned char *round_key) const;
+                        const unsigned char *round_key);
 
         void xor_with_iv(unsigned char *buf,
-                         const unsigned char *iv) const;
+                         const unsigned char *iv);
 
         int32_t add_padding(unsigned char *data,
-                            int32_t data_size) const;
+                            int32_t data_size);
 
         int32_t delete_padding(unsigned char *data,
-                               int32_t data_size) const;
+                               int32_t data_size);
 
     public:
         Aes(BOOL flag,
@@ -144,10 +144,10 @@ namespace spider
 
         int32_t encrypt(char *data,
                         int32_t data_size,
-                        int32_t buffer_size) const override;
+                        int32_t buffer_size) override;
         int32_t decrypt(char *data,
                         int32_t data_size,
-                        int32_t buffer_size) const override;
+                        int32_t buffer_size) override;
     };
 }
 

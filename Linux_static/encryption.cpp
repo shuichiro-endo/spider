@@ -69,7 +69,7 @@ namespace spider
         }
     }
 
-    void Encryption::print_bytes(char *buffer, int buffer_length) const
+    void Encryption::print_bytes(char *buffer, int buffer_length)
     {
         for(int i=0; i<buffer_length; i++){
             if(i != 0 && i%16 == 0){
