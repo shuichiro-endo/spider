@@ -253,7 +253,7 @@ namespace spider
         return;
     }
 
-    int32_t Socks5message::copy_to_buffer(char *buffer) const
+    int32_t Socks5message::copy_to_buffer(char *buffer)
     {
         int32_t length = 0;
 

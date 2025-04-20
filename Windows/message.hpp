@@ -32,7 +32,7 @@ namespace spider
         void set_message_type(char message_type);
         char get_message_type();
 
-        virtual int32_t copy_to_buffer(char *buffer) const = 0;
+        virtual int32_t copy_to_buffer(char *buffer) = 0;
     };
 }
 

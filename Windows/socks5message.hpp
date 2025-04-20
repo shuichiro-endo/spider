@@ -164,7 +164,7 @@ namespace spider
 
         void print_bytes();
 
-        int32_t copy_to_buffer(char *buffer) const override;
+        int32_t copy_to_buffer(char *buffer) override;
     };
 }
 
