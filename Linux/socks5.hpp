@@ -17,6 +17,7 @@
 #define DATA_SIZE 2000
 
 
+#pragma pack(push, 1)
 /*
    The client connects to the server, and sends a version identifier/method selection message:
 
@@ -333,6 +334,7 @@ struct socks_udp_associate_response_ipv6
 	char dstPort[2];
 	char data[DATA_SIZE];
 };
+#pragma pack(pop)
 
 #endif /* SOCKS5_H_ */
 

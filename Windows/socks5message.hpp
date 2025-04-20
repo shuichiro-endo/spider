@@ -12,6 +12,7 @@
 
 namespace spider
 {
+#pragma pack(push, 1)
     struct socks5_message_data
     {
         char message_type;
@@ -74,6 +75,7 @@ namespace spider
         char reserved12;
         char reserved13;
     };
+#pragma pack(pop)
 
     class Socks5message : public Message
     {

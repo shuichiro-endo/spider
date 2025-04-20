@@ -12,6 +12,7 @@
 
 namespace spider
 {
+#pragma pack(push, 1)
     struct routing_message_data
     {
         char message_type;
@@ -32,6 +33,7 @@ namespace spider
         char ip[INET6_ADDR_STRING_LENGTH + 1];
         uint8_t metric;
     };
+#pragma pack(pop)
 
     class Routingmessage : public Message
     {

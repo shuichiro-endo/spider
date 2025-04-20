@@ -92,6 +92,7 @@
 #include <ares.h>
 
 
+#pragma pack(push, 1)
 struct upload_download_data_header
 {
     char command[16];
@@ -110,6 +111,7 @@ struct upload_download_data
     uint64_t data_size;
     char data[SHELL_UPLOAD_DOWNLOAD_DATA_SIZE];
 };
+#pragma pack(pop)
 
 #endif /* SPIDER_H_ */
 
