@@ -8359,6 +8359,25 @@ namespace spider
             set { encryption = value; }
         }
 
+        public int GetIPAddressVersion(string ipAddress)
+        {
+            try
+            {
+                IPAddress ip = IPAddress.Parse(ipAddress);
+
+                if(ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    return 4;
+                }else
+                {
+                    return 6;
+                }
+            }catch(Exception)
+            {
+                return 0;
+            }
+        }
+
         public int RecvMessage(byte[] buffer,
                                int bufferSize,
                                int tvSec,
@@ -10731,7 +10750,25 @@ namespace spider
                                   socksRequestDomainname.DstAddrLen);
 #endif
 
-                if(!domainname.Contains(":"))   // ipv4 address or domainname
+                ret = GetIPAddressVersion(domainname);
+                if(ret == 4)    // ipv4
+                {
+                    ipAddress = IPAddress.Parse(domainname);
+                    targetIp = domainname;
+                    port = NetworkToHostOrderUShort(BitConverter.ToUInt16(socksRequestDomainname.DstPort, 0));
+                    targetPort = port.ToString();
+                }else if(ret == 6)  // ipv6
+                {
+                    ipAddress = IPAddress.Parse(domainname);
+                    targetIp = domainname;
+                    if(targetIp.StartsWith(ipv6LinkLocalPrefix, StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrEmpty(spiderIp.SpiderIpv6LinkLocalScopeId))
+                    {
+                        targetIp = targetIp + "%" + spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+                    port = NetworkToHostOrderUShort(BitConverter.ToUInt16(socksRequestDomainname.DstPort, 0));
+                    targetPort = port.ToString();
+                }else   // domainname
                 {
                     try
                     {
@@ -10776,7 +10813,8 @@ namespace spider
                     }catch(Exception)
                     {
 #if DEBUGPRINT
-                        Console.WriteLine("[-] cannot resolv the domain name");
+                        Console.WriteLine("[-] cannot resolv the domain name: {0} error",
+                                          domainname);
 #endif
                         // socks SOCKS_RESPONSE send error [client <- server]
                         sen = SendSocksResponseIpv4(buffer,
@@ -10785,61 +10823,6 @@ namespace spider
                                                     0x5,
                                                     0x0,
                                                     0x1);
-
-                        return -1;
-                    }
-                }else   // ipv6 address
-                {
-                    try
-                    {
-                        IPHostEntry hostEntry = Dns.GetHostEntry(domainname);
-                        if(hostEntry.AddressList.Length > 0)
-                        {
-                            ipAddress = hostEntry.AddressList[0];
-                            if(ipAddress.AddressFamily == AddressFamily.InterNetwork)
-                            {
-                                targetIp = ipAddress.ToString();
-                                port = NetworkToHostOrderUShort(BitConverter.ToUInt16(socksRequestDomainname.DstPort, 0));
-                                targetPort = port.ToString();
-                            }else if(ipAddress.AddressFamily == AddressFamily.InterNetworkV6)
-                            {
-                                targetIp = ipAddress.ToString();
-                                if(targetIp.StartsWith(ipv6LinkLocalPrefix, StringComparison.OrdinalIgnoreCase) &&
-                                   !string.IsNullOrEmpty(spiderIp.SpiderIpv6LinkLocalScopeId))
-                                {
-                                    targetIp = targetIp + "%" + spiderIp.SpiderIpv6LinkLocalScopeId;
-                                }
-                                port = NetworkToHostOrderUShort(BitConverter.ToUInt16(socksRequestDomainname.DstPort, 0));
-                                targetPort = port.ToString();
-                            }
-                        }else
-                        {
-#if DEBUGPRINT
-                            Console.WriteLine("[-] cannot resolv the domain name: {0}",
-                                              domainname);
-#endif
-                            // socks SOCKS_RESPONSE send error [client <- server]
-                            sen = SendSocksResponseIpv6(buffer,
-                                                        bufferMaxLength,
-                                                        0x5,
-                                                        0x5,
-                                                        0x0,
-                                                        0x4);
-
-                            return -1;
-                        }
-                    }catch(Exception)
-                    {
-#if DEBUGPRINT
-                        Console.WriteLine("[-] cannot resolv the domain name");
-#endif
-                        // socks SOCKS_RESPONSE send error [client <- server]
-                        sen = SendSocksResponseIpv6(buffer,
-                                                    bufferMaxLength,
-                                                    0x5,
-                                                    0x5,
-                                                    0x0,
-                                                    0x4);
 
                         return -1;
                     }
