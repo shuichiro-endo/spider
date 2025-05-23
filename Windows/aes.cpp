@@ -34,9 +34,9 @@ namespace spider
         this->round_key = (unsigned char *)calloc(AES_KEY_EXP_SIZE,
                                                   sizeof(unsigned char));
 
-        if(flag == true
-           && this->aes_key_hex_string_size == AES_KEY_LEN * 2
-           && this->aes_iv_hex_string_size == AES_BLOCK_LEN * 2)
+        if(flag == true &&
+           (this->aes_key_hex_string_size == AES_KEY_LEN * 2) &&
+           (this->aes_iv_hex_string_size == AES_BLOCK_LEN * 2))
         {
             hex_string_to_array(this->aes_key_hex_string.c_str(),
                                 this->aes_key_hex_string_size,
@@ -407,7 +407,7 @@ namespace spider
         p = data_size % AES_BLOCK_LEN;
         if(p == 0)
         {
-            for(i = 0; i <= AES_BLOCK_LEN; i++)
+            for(i = 0; i < AES_BLOCK_LEN; i++)
             {
                 *(data + data_size + i) = pad[0];
             }
@@ -415,7 +415,7 @@ namespace spider
             data_size += AES_BLOCK_LEN;
         }else
         {
-            for(i = 0; i <= AES_BLOCK_LEN - p; i++)
+            for(i = 0; i < AES_BLOCK_LEN - p; i++)
             {
                 *(data+data_size + i) = pad[p];
             }

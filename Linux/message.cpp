@@ -28,5 +28,40 @@ namespace spider
     {
         return message_type;
     }
+
+    void Message::set_data_size(int32_t data_size)
+    {
+        this->data_size = data_size;
+    }
+
+    int32_t Message::get_data_size()
+    {
+        return data_size;
+    }
+
+    void Message::set_data(char *)
+    {
+        this->data = data;
+    }
+
+    char *Message::get_data()
+    {
+        return data;
+    }
+
+    void Message::print_bytes()
+    {
+        for(int32_t i=0; i<data_size; i++){
+            if(i != 0 && i%16 == 0){
+                std::printf("\n");
+            }else if(i%16 == 8){
+                std::printf(" ");
+            }
+            std::printf("%02x ", data[i] & 0xff);
+        }
+        std::printf("\n");
+
+        return;
+    }
 }
 

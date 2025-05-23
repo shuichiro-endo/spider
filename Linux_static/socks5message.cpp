@@ -22,10 +22,13 @@ namespace spider
                                  int32_t tv_usec,
                                  int32_t forwarder_tv_sec,
                                  int32_t forwarder_tv_usec,
-                                 uint16_t data_size,
+                                 int32_t data_size,
                                  char *data)
     {
         this->message_type = message_type;
+        this->receive_flag = 0;
+        this->receive_result = 0;
+        this->command_result = 0;
         this->message_id = message_id;
         this->connection_id = connection_id;
         this->client_id = client_id;
@@ -40,62 +43,115 @@ namespace spider
         this->forwarder_tv_usec = forwarder_tv_usec;
         this->data_size = data_size;
 
-        this->data = (char *)calloc(SOCKS5_MESSAGE_DATA_SIZE,
-                                    sizeof(char));
-        if(this->data_size <= SOCKS5_MESSAGE_DATA_SIZE){
+        if(this->data_size > 0)
+        {
+            this->data = (char *)calloc(SPIDER_MESSAGE_DATA_MAX_SIZE,
+                                        sizeof(char));
+        }
+
+        if(this->data_size > 0 &&
+           this->data_size <= SPIDER_MESSAGE_DATA_MAX_SIZE)
+        {
             std::memcpy(this->data,
                         data,
                         this->data_size);
-        }else{
+        }else if(this->data_size > SPIDER_MESSAGE_DATA_MAX_SIZE)
+        {
 #ifdef _DEBUG
             std::printf("[-] socks5 message data size error: %d\n",
                         this->data_size);
 #endif
-            this->data_size = SOCKS5_MESSAGE_DATA_SIZE;
+            this->data_size = SPIDER_MESSAGE_DATA_MAX_SIZE;
             std::memcpy(this->data,
                         data,
-                        SOCKS5_MESSAGE_DATA_SIZE);
+                        SPIDER_MESSAGE_DATA_MAX_SIZE);
         }
     }
 
-    Socks5message::Socks5message(struct socks5_message_data *socks5_message_data)
+    Socks5message::Socks5message(char message_type,
+                                 uint8_t receive_flag,
+                                 uint8_t receive_result,
+                                 uint8_t command_result,
+                                 uint32_t message_id,
+                                 uint32_t connection_id,
+                                 uint32_t client_id,
+                                 uint32_t server_id,
+                                 char source_node_type,
+                                 std::string source_ip,
+                                 char destination_node_type,
+                                 std::string destination_ip)
     {
-        this->message_type = socks5_message_data->message_type;
-        this->message_id = ntohl(socks5_message_data->message_id);
-        this->connection_id = ntohl(socks5_message_data->connection_id);
-        this->client_id = ntohl(socks5_message_data->client_id);
-        this->server_id = ntohl(socks5_message_data->server_id);
-        this->source_node_type = socks5_message_data->source_node_type;
-        this->source_ip = socks5_message_data->source_ip;
-        this->destination_node_type = socks5_message_data->destination_node_type;
-        this->destination_ip = socks5_message_data->destination_ip;
-        this->tv_sec = ntohl(socks5_message_data->tv_sec);
-        this->tv_usec = ntohl(socks5_message_data->tv_usec);
-        this->forwarder_tv_sec = ntohl(socks5_message_data->forwarder_tv_sec);
-        this->forwarder_tv_usec = ntohl(socks5_message_data->forwarder_tv_usec);
-        this->data_size = ntohs(socks5_message_data->data_size);
+        this->message_type = message_type;
+        this->receive_flag = receive_flag;
+        this->receive_result = receive_result;
+        this->command_result = command_result;
+        this->message_id = message_id;
+        this->connection_id = connection_id;
+        this->client_id = client_id;
+        this->server_id = server_id;
+        this->source_node_type = source_node_type;
+        this->source_ip = source_ip;
+        this->destination_node_type = destination_node_type;
+        this->destination_ip = destination_ip;
+        this->tv_sec = 0;
+        this->tv_usec = 0;
+        this->forwarder_tv_sec = 0;
+        this->forwarder_tv_usec = 0;
+        this->data_size = 0;
+        this->data = NULL;
+    }
 
-        this->data = (char *)calloc(SOCKS5_MESSAGE_DATA_SIZE,
-                                    sizeof(char));
-        if(this->data_size <= SOCKS5_MESSAGE_DATA_SIZE){
+    Socks5message::Socks5message(struct spider_message *spider_message)
+    {
+        this->message_type = spider_message->header.message_type;
+        this->receive_flag = spider_message->header.receive_flag;
+        this->receive_result = spider_message->header.receive_result;
+        this->command_result = spider_message->header.command_result;
+        this->message_id = ntohl(spider_message->header.message_id);
+        this->connection_id = ntohl(spider_message->header.connection_id);
+        this->client_id = ntohl(spider_message->header.client_id);
+        this->server_id = ntohl(spider_message->header.server_id);
+        this->source_node_type = spider_message->header.source_node_type;
+        this->source_ip = spider_message->header.source_ip;
+        this->destination_node_type = spider_message->header.destination_node_type;
+        this->destination_ip = spider_message->header.destination_ip;
+        this->tv_sec = ntohl(spider_message->header.tv_sec);
+        this->tv_usec = ntohl(spider_message->header.tv_usec);
+        this->forwarder_tv_sec = ntohl(spider_message->header.forwarder_tv_sec);
+        this->forwarder_tv_usec = ntohl(spider_message->header.forwarder_tv_usec);
+        this->data_size = ntohl(spider_message->header.data_size);
+
+        if(this->data_size > 0)
+        {
+            this->data = (char *)calloc(SPIDER_MESSAGE_DATA_MAX_SIZE,
+                                        sizeof(char));
+        }
+
+        if(this->data_size > 0 &&
+           this->data_size <= SPIDER_MESSAGE_DATA_MAX_SIZE)
+        {
             std::memcpy(this->data,
-                        socks5_message_data->data,
+                        spider_message->data,
                         this->data_size);
-        }else{
+        }else if(this->data_size > SPIDER_MESSAGE_DATA_MAX_SIZE)
+        {
 #ifdef _DEBUG
             std::printf("[-] socks5 message data size error: %d\n",
                         this->data_size);
 #endif
-            this->data_size = SOCKS5_MESSAGE_DATA_SIZE;
+            this->data_size = SPIDER_MESSAGE_DATA_MAX_SIZE;
             std::memcpy(this->data,
-                        socks5_message_data->data,
-                        SOCKS5_MESSAGE_DATA_SIZE);
+                        spider_message->data,
+                        SPIDER_MESSAGE_DATA_MAX_SIZE);
         }
     }
 
     Socks5message::~Socks5message()
     {
-        free(data);
+        if(data != NULL)
+        {
+            free(data);
+        }
     }
 
     void Socks5message::set_message_id(uint32_t message_id)
@@ -218,63 +274,71 @@ namespace spider
         return forwarder_tv_usec;
     }
 
-    void Socks5message::set_data_size(uint16_t data_size)
+    void Socks5message::set_receive_flag(uint8_t receive_flag)
     {
-        this->data_size = data_size;
+        this->receive_flag = receive_flag;
     }
 
-    uint16_t Socks5message::get_data_size()
+    uint8_t Socks5message::get_receive_flag()
     {
-        return data_size;
+        return receive_flag;
     }
 
-    void Socks5message::set_data(char *)
+    void Socks5message::set_receive_result(uint8_t receive_result)
     {
-        this->data = data;
+        this->receive_result = receive_result;
     }
 
-    char *Socks5message::get_data()
+    uint8_t Socks5message::get_receive_result()
     {
-        return data;
+        return receive_result;
     }
 
-    void Socks5message::print_bytes()
+    void Socks5message::set_command_result(uint8_t command_result)
     {
-        for(int i=0; i<data_size; i++){
-            if(i != 0 && i%16 == 0){
-                std::printf("\n");
-            }else if(i%16 == 8){
-                std::printf(" ");
-            }
-            std::printf("%02x ", data[i] & 0xff);
-        }
-        std::printf("\n");
+        this->command_result = command_result;
+    }
 
-        return;
+    uint8_t Socks5message::get_command_result()
+    {
+        return command_result;
     }
 
     int32_t Socks5message::copy_to_buffer(char *buffer)
     {
         int32_t length = 0;
 
-        struct socks5_message_data *socks5_message_data = (struct socks5_message_data *)buffer;
-        socks5_message_data->message_type = this->message_type;
-        socks5_message_data->message_id = htonl(this->message_id);
-        socks5_message_data->connection_id = htonl(this->connection_id);
-        socks5_message_data->client_id = htonl(this->client_id);
-        socks5_message_data->server_id = htonl(this->server_id);
-        socks5_message_data->source_node_type = this->source_node_type;
-        std::memcpy(socks5_message_data->source_ip, this->source_ip.c_str(), this->source_ip.size());
-        socks5_message_data->destination_node_type = this->destination_node_type;
-        std::memcpy(socks5_message_data->destination_ip, this->destination_ip.c_str(), this->destination_ip.size());
-        socks5_message_data->tv_sec = htonl(this->tv_sec);
-        socks5_message_data->tv_usec = htonl(this->tv_usec);
-        socks5_message_data->forwarder_tv_sec = htonl(this->forwarder_tv_sec);
-        socks5_message_data->forwarder_tv_usec = htonl(this->forwarder_tv_usec);
-        socks5_message_data->data_size = htons(this->data_size);
-        std::memcpy(socks5_message_data->data, this->data, this->data_size);
+        struct spider_message *spider_message = (struct spider_message *)buffer;
+        spider_message->header.message_type = this->message_type;
+        spider_message->header.receive_flag = this->receive_flag;
+        spider_message->header.receive_result = this->receive_result;
+        spider_message->header.command_result = this->command_result;
+        spider_message->header.message_id = htonl(this->message_id);
+        spider_message->header.connection_id = htonl(this->connection_id);
+        spider_message->header.client_id = htonl(this->client_id);
+        spider_message->header.server_id = htonl(this->server_id);
+        spider_message->header.source_node_type = this->source_node_type;
+        std::memcpy(spider_message->header.source_ip,
+                    this->source_ip.c_str(),
+                    this->source_ip.size());
+        spider_message->header.destination_node_type = this->destination_node_type;
+        std::memcpy(spider_message->header.destination_ip,
+                    this->destination_ip.c_str(),
+                    this->destination_ip.size());
+        spider_message->header.tv_sec = htonl(this->tv_sec);
+        spider_message->header.tv_usec = htonl(this->tv_usec);
+        spider_message->header.forwarder_tv_sec = htonl(this->forwarder_tv_sec);
+        spider_message->header.forwarder_tv_usec = htonl(this->forwarder_tv_usec);
+        spider_message->header.data_size = htonl(this->data_size);
 
-        length = sizeof(struct socks5_message_data_header)
+        if(this->data_size > 0)
+        {
+            std::memcpy(spider_message->data,
+                        this->data,
+                        this->data_size);
+        }
+
+        length = sizeof(struct spider_message_header)
                + this->data_size;
 
         return length;

@@ -17,7 +17,6 @@ namespace spider
 {
     public class Client : Node
     {
-        private const int SOCKS5_MESSAGE_DATA_SIZE = 60000;
         private const int SHELL_UPLOAD_DOWNLOAD_DATA_SIZE = 50000;
         private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
@@ -372,7 +371,7 @@ namespace spider
             int sen = 0;
             Socks5Message socks5Message;
 
-            if(dataSize > SOCKS5_MESSAGE_DATA_SIZE)
+            if(dataSize > SPIDER_MESSAGE_DATA_SIZE)
             {
 #if DEBUGPRINT
                 Console.WriteLine("[-] SendMessage data size error: {0}",
@@ -386,7 +385,7 @@ namespace spider
             {
                 ret = encryption.Encrypt(ref buffer,
                                          dataSize,
-                                         SOCKS5_MESSAGE_DATA_SIZE);
+                                         SPIDER_MESSAGE_DATA_MAX_SIZE);
                 if(ret <= 0)
                 {
 #if DEBUGPRINT
@@ -417,7 +416,7 @@ namespace spider
                                               this.tvUsec,
                                               this.forwarderTvSec,
                                               this.forwarderTvUsec,
-                                              (ushort)dataSize,
+                                              dataSize,
                                               buffer);
 
             ret = messageManager.PushTimeoutSocks5Message(socks5Message,
@@ -434,13 +433,106 @@ namespace spider
             return sen;
         }
 
+        private int RecvReceiveMessage(uint messageId,
+                                       int tvSec,
+                                       int tvUsec)
+        {
+            Socks5Message socks5Message;
+            DateTime start = DateTime.Now;
+            DateTime end;
+            TimeSpan d;
+            long timeout = (long)tvSec * 1000000 + (long)tvUsec;
+
+
+            while(true)
+            {
+                socks5Message = GetSocks5ReceiveMessageFromMap(messageId);
+                if(socks5Message != null)
+                {
+                    if(socks5Message.ReceiveFlag == 1 &&
+                       socks5Message.ReceiveResult == 0 &&     // ok
+                       socks5Message.CommandResult == 0)       // command ok
+                    {
+                        break;
+                    }else if(socks5Message.ReceiveFlag == 1 &&
+                             socks5Message.ReceiveResult == 1 &&     // ng
+                             socks5Message.CommandResult == 0)       // command ok
+                    {
+                        return 1;
+                    }else if(socks5Message.ReceiveFlag == 1 &&
+                             socks5Message.ReceiveResult == 0 &&     // ok
+                             socks5Message.CommandResult == 1)       // command ng
+                    {
+                        return 2;
+                    }else if(socks5Message.ReceiveFlag == 1 &&
+                             socks5Message.ReceiveResult == 1 &&     // ng
+                             socks5Message.CommandResult == 1)       // command ng
+                    {
+                        return 3;
+                    }else
+                    {
+                        return -1;
+                    }
+                }else
+                {
+                    end = DateTime.Now;
+                    d = end - start;
+                    if((long)(d.TotalMilliseconds * 1000) >= timeout)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[+] RecvReceiveMessage timeout");
+#endif
+                        return 5;
+                    }
+
+                    Thread.Sleep(5); // 5ms
+                }
+            }
+
+            return 0;
+        }
+
+        private int SendReceiveMessage(uint messageId,
+                                       byte receiveFlag,
+                                       byte receiveResult,
+                                       byte commandResult,
+                                       int tvSec,
+                                       int tvUsec)
+        {
+            int ret = 0;
+            Socks5Message socks5Message = new Socks5Message('s',
+                                                            receiveFlag,
+                                                            receiveResult,
+                                                            commandResult,
+                                                            messageId,
+                                                            this.connectionId,
+                                                            this.clientId,
+                                                            this.serverId,
+                                                            'c',
+                                                            this.clientIp,
+                                                            's',
+                                                            this.destinationSpiderIp);
+
+
+            ret = messageManager.PushTimeoutSocks5Message(socks5Message,
+                                                          tvSec,
+                                                          tvUsec);
+            if(ret < 0)
+            {
+                return -1;
+            }
+
+            return ret;
+        }
+
         private void ForwarderRecvData()
         {
+            int ret = 0;
             int rec = 0;
             int sen = 0;
             byte[] buffer = new byte[NODE_BUFFER_SIZE];
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            int socks5MessageDataMaxSize = SPIDER_MESSAGE_DATA_SIZE;
 
 
             while(true)
@@ -448,7 +540,7 @@ namespace spider
                 try
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client -> client] Read");
+                    Console.WriteLine("[+] [client -> client] ForwarderRecvData Read");
 #endif
                     Array.Clear(buffer,
                                 0,
@@ -460,7 +552,7 @@ namespace spider
                     if(rec > 0)
                     {
 #if DEBUGPRINT
-                        Console.WriteLine("[+] [client -> server] SendMessage message_id:{0}",
+                        Console.WriteLine("[+] [client -> server] ForwarderRecvData SendMessage({0})",
                                           sendMessageId);
 #endif
                         sen = SendMessage(buffer,
@@ -472,10 +564,35 @@ namespace spider
                             break;
                         }
 
+#if DEBUGPRINT
+                        Console.WriteLine("[+] [client <- server] ForwarderRecvData RecvReceiveMessage({0})",
+                                          sendMessageId);
+#endif
+                        ret = RecvReceiveMessage(sendMessageId,
+                                                 forwarderTvSec,
+                                                 forwarderTvUsec);
+                        if(ret == 0)    // ok
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client <- server] ForwarderRecvData RecvReceiveMessage({0}) ok",
+                                              sendMessageId);
+#endif
+                        }else if(ret == 1)    // ng
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[-] [client <- server] ForwarderRecvData RecvReceiveMessage({0}) ng",
+                                              sendMessageId);
+#endif
+                            break;
+                        }else
+                        {
+                            break;
+                        }
+
                         sendMessageId++;
                     }else{
 #if DEBUGPRINT
-                        Console.WriteLine("[-] [client -> client] Read error rec: {0}",
+                        Console.WriteLine("[-] [client -> client] ForwarderRecvData Read error rec: {0}",
                                           rec);
 #endif
                         break;
@@ -502,13 +619,12 @@ namespace spider
 
         private void ForwarderSendData()
         {
+            int ret = 0;
             int rec = 0;
-            int sen = 0;
+//          int sen = 0;
             int length = 0;
             byte[] buffer = new byte[NODE_BUFFER_SIZE];
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            Dictionary<uint, (int, byte[])> msgsMap = new Dictionary<uint, (int, byte[])>();
-            ValueTuple<int, byte[]> msg;
             recvMessageId = 0;
 
 
@@ -517,7 +633,7 @@ namespace spider
                 try
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client <- server] RecvMessage");
+                    Console.WriteLine("[+] [client <- server] ForwarderSendData RecvMessage");
 #endif
                     Array.Clear(buffer,
                                 0,
@@ -532,10 +648,25 @@ namespace spider
                     {
                         if(recvMessageId == nextRecvMessageId)
                         {
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client -> server] ForwarderSendData SendReceiveMessage({0}) ok",
+                                              recvMessageId);
+#endif
+                            ret = SendReceiveMessage(recvMessageId,
+                                                     1,   // received
+                                                     0,   // ok
+                                                     0,
+                                                     forwarderTvSec,
+                                                     forwarderTvUsec);
+                            if(ret < 0)
+                            {
+                                break;
+                            }
+
                             length = rec;
 #if DEBUGPRINT
-                            Console.WriteLine("[+] [client <- client] Write message_id:{0}",
-                                             nextRecvMessageId);
+                            Console.WriteLine("[+] [client <- client] ForwarderSendData Write({0})",
+                                              recvMessageId);
 #endif
                             stream.Write(buffer,
                                          0,
@@ -544,29 +675,17 @@ namespace spider
                             nextRecvMessageId++;
                         }else
                         {
-                            msg = (rec,
-                                   buffer);
-                            msgsMap.Add(recvMessageId,
-                                        msg);
-
-                            while(msgsMap.ContainsKey(nextRecvMessageId))
-                            {
-                                msg = msgsMap[nextRecvMessageId];
-                                msgsMap.Remove(nextRecvMessageId);
-
-                                length = msg.Item1;
-                                buffer = msg.Item2;
-
 #if DEBUGPRINT
-                                Console.WriteLine("[+] [client <- client] Write message_id:{0}",
-                                                 nextRecvMessageId);
+                            Console.WriteLine("[-] [client -> server] ForwarderSendData SendReceiveMessage({0}) ng",
+                                              recvMessageId);
 #endif
-                                stream.Write(buffer,
-                                             0,
-                                             length);
-                                sen = length;
-                                nextRecvMessageId++;
-                            }
+                            ret = SendReceiveMessage(recvMessageId,
+                                                     1,   // received
+                                                     1,   // ng
+                                                     0,
+                                                     forwarderTvSec,
+                                                     forwarderTvUsec);
+                            break;
                         }
                     }else
                     {
@@ -616,7 +735,7 @@ namespace spider
             int sen;
             byte[] buffer = new byte[NODE_BUFFER_SIZE];
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            int socks5MessageDataMaxSize = SPIDER_MESSAGE_DATA_SIZE;
             recvMessageId = 0;
             nextRecvMessageId = 0;
             sendMessageId = GenerateRandomId();
@@ -906,6 +1025,7 @@ namespace spider
 
         private void ForwarderShellRecvData()
         {
+            int ret = 0;
             int rec = 0;
             int sen = 0;
             int length = 0;
@@ -913,7 +1033,7 @@ namespace spider
             byte[] data = new byte[NODE_BUFFER_SIZE];
             byte[] tmp;
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
+            int socks5MessageDataMaxSize = SPIDER_MESSAGE_DATA_SIZE;
 
             string result = "";
             string prompt = "\ncommand >";
@@ -928,6 +1048,7 @@ namespace spider
             ulong readBytes = 0;
             ulong dataSize = 0;
             UploadDownloadData uploadDownloadData;
+            bool errorFlag = false;
 
 
             try
@@ -944,7 +1065,7 @@ namespace spider
                 }
 
 #if DEBUGPRINT
-                Console.WriteLine("[+] [client <- client] Write");
+                Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
 #endif
                 stream.Write(buffer,
                              0,
@@ -970,8 +1091,13 @@ namespace spider
             {
                 try
                 {
+                    if(errorFlag == true)
+                    {
+                        break;
+                    }
+
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client -> client] Read");
+                    Console.WriteLine("[+] [client -> client] ForwarderShellRecvData Read");
 #endif
                     Array.Clear(buffer,
                                 0,
@@ -1040,7 +1166,7 @@ namespace spider
                                     length = uploadDownloadData.CopyToBuffer(ref buffer);
 
 #if DEBUGPRINT
-                                    Console.WriteLine("[+] [client -> server] SendMessage message_id{0}",
+                                    Console.WriteLine("[+] [client -> server] ForwarderShellRecvData SendMessage({0})",
                                                       sendMessageId);
 #endif
 
@@ -1050,25 +1176,145 @@ namespace spider
                                                       forwarderTvUsec);
                                     if(sen <= 0)
                                     {
+                                        errorFlag = true;
+                                        break;
+                                    }
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[+] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0})",
+                                            sendMessageId);
+#endif
+                                    ret = RecvReceiveMessage(sendMessageId,
+                                                             forwarderTvSec,
+                                                             forwarderTvUsec);
+                                    if(ret == 0)    // ok
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) ok",
+                                                          sendMessageId);
+#endif
+                                    }else if(ret == 1 ||
+                                             ret == 3)    // ng
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) ng",
+                                                          sendMessageId);
+#endif
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        result = "[-] ForwarderShellRecvData upload error";
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
+#endif
+                                        stream.Write(buffer,
+                                                     0,
+                                                     length);
+                                        sen = length;
+
+                                        errorFlag = true;
+                                        break;
+                                    }else if(ret == 2)  // command ng
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) command ng",
+                                                          sendMessageId);
+#endif
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        result = "[-] ForwarderShellRecvData upload error";
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
+#endif
+                                        stream.Write(buffer,
+                                                     0,
+                                                     length);
+                                        sen = length;
+
+                                        uploadFileName = "";
+                                        uploadFilePath = "";
+                                        uploadFileSize = 0;
+                                        uploadFileRemainingSize = 0;
+                                        readBytes = 0;
+
+                                        break;
+                                    }else
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) ret: {1}",
+                                                          sendMessageId,
+                                                          ret);
+#endif
+
+                                        Array.Clear(buffer,
+                                                    0,
+                                                    bufferMaxLength);
+
+                                        result = "[-] ForwarderShellRecvData upload error";
+                                        result += prompt;
+
+                                        tmp = Encoding.UTF8.GetBytes(result);
+                                        length = tmp.Length;
+                                        for(int i = 0; i < length; i++)
+                                        {
+                                            buffer[i] = tmp[i];
+                                        }
+
+#if DEBUGPRINT
+                                        Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
+#endif
+                                        stream.Write(buffer,
+                                                     0,
+                                                     length);
+                                        sen = length;
+
+                                        errorFlag = true;
                                         break;
                                     }
 
                                     sendMessageId++;
                                     uploadFileRemainingSize -= readBytes;
 
-                                    Thread.Sleep(1);    // 1ms
+//                                    Thread.Sleep(1);    // 1ms
+                                }
+
+                                if(sen <= 0)
+                                {
+                                    errorFlag = true;
+                                    break;
                                 }
                             }catch(Exception ex)
                             {
 #if DEBUGPRINT
-                                Console.WriteLine("[-] upload file error: {0}",
+                                Console.WriteLine("[-] ForwarderShellRecvData upload file error: {0}",
                                                   ex.Message);
 #endif
                                 Array.Clear(buffer,
                                             0,
                                             bufferMaxLength);
 
-                                result = "[-] upload file error";
+                                result = "[-] ForwarderShellRecvData upload file error";
                                 result += prompt;
 
                                 tmp = Encoding.UTF8.GetBytes(result);
@@ -1079,14 +1325,15 @@ namespace spider
                                 }
 
 #if DEBUGPRINT
-                                Console.WriteLine("[+] [client <- client] Write");
+                                Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
 #endif
                                 stream.Write(buffer,
                                              0,
                                              length);
                                 sen = length;
 
-                                continue;
+                                errorFlag = true;
+                                break;
                             }finally
                             {
                                 if(fileStream != null)
@@ -1100,7 +1347,7 @@ namespace spider
                             length = rec;
 
 #if DEBUGPRINT
-                            Console.WriteLine("[+] [client -> server] SendMessage message_id:{0}",
+                            Console.WriteLine("[+] [client -> server] ForwarderShellRecvData SendMessage({0})",
                                                sendMessageId);
 #endif
                             sen = SendMessage(buffer,
@@ -1112,10 +1359,118 @@ namespace spider
                                 break;
                             }
 
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0})",
+                                              sendMessageId);
+#endif
+                            ret = RecvReceiveMessage(sendMessageId,
+                                                     forwarderTvSec,
+                                                     forwarderTvUsec);
+                            if(ret == 0)    // ok
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) ok",
+                                                   sendMessageId);
+#endif
+                            }else if(ret == 1 ||
+                                     ret == 3)  // ng
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[-] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) ng",
+                                                  sendMessageId);
+#endif
+
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                result = "[-] ForwarderShellRecvData error";
+                                result += prompt;
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                length = tmp.Length;
+                                for(int i = 0; i < length; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
+#endif
+                                stream.Write(buffer,
+                                             0,
+                                             length);
+                                sen = length;
+
+                                errorFlag = true;
+                                break;
+                            }else if(ret == 2)  // command ng
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[-] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) command ng",
+                                                  sendMessageId);
+#endif
+
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                result = "[-] ForwarderShellRecvData command error";
+                                result += prompt;
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                length = tmp.Length;
+                                for(int i = 0; i < length; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
+#endif
+                                stream.Write(buffer,
+                                             0,
+                                             length);
+                                sen = length;
+                            }else
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[-] [client <- server] ForwarderShellRecvData RecvReceiveMessage({0}) ret: {1}",
+                                                  sendMessageId,
+                                                  ret);
+#endif
+
+                                Array.Clear(buffer,
+                                            0,
+                                            bufferMaxLength);
+
+                                result = "[-] ForwarderShellRecvData error";
+                                result += prompt;
+
+                                tmp = Encoding.UTF8.GetBytes(result);
+                                length = tmp.Length;
+                                for(int i = 0; i < length; i++)
+                                {
+                                    buffer[i] = tmp[i];
+                                }
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client <- client] ForwarderShellRecvData Write");
+#endif
+                                stream.Write(buffer,
+                                             0,
+                                             length);
+                                sen = length;
+
+                                errorFlag = true;
+                                break;
+                            }
+
                             sendMessageId++;
                         }
                     }else
                     {
+                        errorFlag = true;
                         break;
                     }
                 }catch(IOException ex)
@@ -1140,6 +1495,7 @@ namespace spider
 
         private void ForwarderShellSendData()
         {
+            int ret = 0;
             int rec = 0;
             int sen = 0;
             int length = 0;
@@ -1147,8 +1503,6 @@ namespace spider
             byte[] data;
             byte[] tmp;
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            Dictionary<uint, (int, byte[])> msgsMap = new Dictionary<uint, (int, byte[])>();
-            ValueTuple<int, byte[]> msg;
             recvMessageId = 0;
 
             string result = "";
@@ -1166,14 +1520,20 @@ namespace spider
             bool downloadFileFlag = false;
             UploadDownloadDataHeader uploadDownloadDataHeader;
             UploadDownloadData uploadDownloadData;
+            bool errorFlag = false;
 
 
             while(true)
             {
+                if(errorFlag == true)
+                {
+                    break;
+                }
+
                 try
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client <- server] RecvMessage");
+                    Console.WriteLine("[+] [client <- server] ForwarderShellSendData RecvMessage");
 #endif
                     Array.Clear(buffer,
                                 0,
@@ -1188,7 +1548,6 @@ namespace spider
                     {
                         if(recvMessageId == nextRecvMessageId)
                         {
-                            nextRecvMessageId++;
                             downloadCommandFlag = false;
 
                             try
@@ -1241,6 +1600,24 @@ namespace spider
                                         downloadFileRemainingSize = downloadFileSize - recvDownloadFileDataSize;
                                         if(downloadFileRemainingSize > 0)
                                         {
+#if DEBUGPRINT
+                                            Console.WriteLine("[+] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) ok",
+                                                              recvMessageId);
+#endif
+                                            ret = SendReceiveMessage(recvMessageId,
+                                                                     1,   // received
+                                                                     0,   // ok
+                                                                     0,
+                                                                     forwarderTvSec,
+                                                                     forwarderTvUsec);
+                                            if(ret < 0)
+                                            {
+                                                fileStream.Close();
+                                                errorFlag = true;
+                                                break;
+                                            }
+
+                                            nextRecvMessageId++;
                                             continue;
                                         }
                                     }else
@@ -1257,20 +1634,56 @@ namespace spider
                                         downloadFileRemainingSize -= recvDownloadFileDataSize;
                                         if(downloadFileRemainingSize > 0)
                                         {
+#if DEBUGPRINT
+                                            Console.WriteLine("[+] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) ok",
+                                                              recvMessageId);
+#endif
+                                            ret = SendReceiveMessage(recvMessageId,
+                                                                     1,   // received
+                                                                     0,   // ok
+                                                                     0,
+                                                                     forwarderTvSec,
+                                                                     forwarderTvUsec);
+                                            if(ret < 0)
+                                            {
+                                                fileStream.Close();
+                                                errorFlag = true;
+                                                break;
+                                            }
+
+                                            nextRecvMessageId++;
                                             continue;
                                         }
                                     }
                                 }catch(Exception ex)
                                 {
 #if DEBUGPRINT
-                                    Console.WriteLine("[-] download file error: {0}",
+                                    Console.WriteLine("[-] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) command ng",
+                                                      recvMessageId);
+#endif
+                                    ret = SendReceiveMessage(recvMessageId,
+                                                             1,   // received
+                                                             0,   // ok
+                                                             1,   // command ng
+                                                             forwarderTvSec,
+                                                             forwarderTvUsec);
+                                    if(ret < 0)
+                                    {
+                                        errorFlag = true;
+                                        break;
+                                    }
+
+                                    nextRecvMessageId++;
+
+#if DEBUGPRINT
+                                    Console.WriteLine("[-] ForwarderShellSendData download file error: {0}",
                                                       ex.Message);
 #endif
                                     Array.Clear(buffer,
                                                 0,
                                                 bufferMaxLength);
 
-                                    result = "[-] download file error";
+                                    result = "[-] ForwarderShellSendData download file error";
                                     result += prompt;
 
                                     tmp = Encoding.UTF8.GetBytes(result);
@@ -1281,7 +1694,7 @@ namespace spider
                                     }
 
 #if DEBUGPRINT
-                                    Console.WriteLine("[+] [client <- client] Write");
+                                    Console.WriteLine("[+] [client <- client] ForwarderShellSendData Write");
 #endif
                                     stream.Write(buffer,
                                                  0,
@@ -1296,11 +1709,6 @@ namespace spider
                                     recvDownloadFileDataSize = 0;
                                     downloadFileRemainingSize = 0;
 
-                                    if(fileStream != null)
-                                    {
-                                        fileStream.Close();
-                                        fileStream = null;
-                                    }
                                     continue;
                                 }
 
@@ -1323,12 +1731,31 @@ namespace spider
                                 }
 
 #if DEBUGPRINT
-                                Console.WriteLine("[+] [client <- client] Write");
+                                Console.WriteLine("[+] [client <- client] ForwarderShellSendData Write");
 #endif
                                 stream.Write(buffer,
                                              0,
                                              length);
                                 sen = length;
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) ok",
+                                                   recvMessageId);
+#endif
+                                ret = SendReceiveMessage(recvMessageId,
+                                                         1,   // received
+                                                         0,   // ok
+                                                         0,
+                                                         forwarderTvSec,
+                                                         forwarderTvUsec);
+                                if(ret < 0)
+                                {
+                                    errorFlag = true;
+                                    break;
+                                }
+
+                                nextRecvMessageId++;
+
 
                                 downloadCommandFlag = false;
                                 downloadFileFlag = false;
@@ -1337,202 +1764,66 @@ namespace spider
                                 downloadFileSize = 0;
                                 recvDownloadFileDataSize = 0;
                                 downloadFileRemainingSize = 0;
-
-                                if(sen <= 0)
-                                {
-                                    break;
-                                }
                             }else
                             {
                                 length = rec;
 #if DEBUGPRINT
-                                Console.WriteLine("[+] [client <- client] Write message_id:{0}",
-                                                  nextRecvMessageId - 1);
+                                Console.WriteLine("[+] [client <- client] ForwarderShellSendData Write({0})",
+                                                  recvMessageId);
 #endif
                                 stream.Write(buffer,
                                              0,
                                              length);
                                 sen = length;
+
+#if DEBUGPRINT
+                                Console.WriteLine("[+] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) ok",
+                                                   recvMessageId);
+#endif
+                                ret = SendReceiveMessage(recvMessageId,
+                                                         1,   // received
+                                                         0,   // ok
+                                                         0,
+                                                         forwarderTvSec,
+                                                         forwarderTvUsec);
+                                if(ret < 0)
+                                {
+                                    errorFlag = true;
+                                    break;
+                                }
+
+                                nextRecvMessageId++;
                             }
                         }else
                         {
-                            msg = (rec,
-                                   buffer);
-                            msgsMap.Add(recvMessageId,
-                                        msg);
-
-                            while(msgsMap.ContainsKey(nextRecvMessageId))
-                            {
-                                msg = msgsMap[nextRecvMessageId];
-                                msgsMap.Remove(nextRecvMessageId);
-
-                                rec = msg.Item1;
-                                buffer = msg.Item2;
-
-                                nextRecvMessageId++;
-                                downloadCommandFlag = false;
-
-                                try
-                                {
-                                    uploadDownloadDataHeader = new UploadDownloadDataHeader(buffer);
-                                    commandTmp = uploadDownloadDataHeader.Command.Where(b => b != 0x00).ToArray();
-                                    command = Encoding.UTF8.GetString(commandTmp);
-                                    if(String.Compare(command, downloadCommand) == 0)
-                                    {
-                                        downloadCommandFlag = true;
-                                    }else
-                                    {
-                                        downloadCommandFlag = false;
-                                    }
-                                }catch(Exception ex)
-                                {
-                                    downloadCommandFlag = false;
-                                }
-
-                                if(downloadCommandFlag == true)
-                                {
-                                    try
-                                    {
-                                        if(downloadFileFlag == false)
-                                        {
-                                            downloadFileFlag = true;
-                                            fileStream = null;
-                                            uploadDownloadData = new UploadDownloadData(buffer);
-
-                                            tmp = uploadDownloadData.FilePath.Where(b => b != 0x00).ToArray();
-                                            downloadFilePath = Encoding.UTF8.GetString(tmp);
-                                            downloadFilePath += "\\";
-
-                                            tmp = uploadDownloadData.FileName.Where(b => b != 0x00).ToArray();
-                                            downloadFileName = Encoding.UTF8.GetString(tmp);
-                                            downloadFileName = downloadFilePath + downloadFileName;
-                                            downloadFileSize = uploadDownloadData.FileSize;
-
-                                            fileStream = new FileStream(downloadFileName,
-                                                                        FileMode.Create,
-                                                                        FileAccess.Write);
-
-                                            recvDownloadFileDataSize = uploadDownloadData.DataSize;
-                                            data = uploadDownloadData.Data;
-
-                                            fileStream.Write(data,
-                                                             0,
-                                                             (int)recvDownloadFileDataSize);
-
-                                            downloadFileRemainingSize = downloadFileSize - recvDownloadFileDataSize;
-                                            if(downloadFileRemainingSize > 0)
-                                            {
-                                                continue;
-                                            }
-                                        }else
-                                        {
-                                            uploadDownloadData = new UploadDownloadData(buffer);
-
-                                            recvDownloadFileDataSize = uploadDownloadData.DataSize;
-                                            data = uploadDownloadData.Data;
-
-                                            fileStream.Write(data,
-                                                             0,
-                                                             (int)recvDownloadFileDataSize);
-
-                                            downloadFileRemainingSize -= recvDownloadFileDataSize;
-                                            if(downloadFileRemainingSize > 0)
-                                            {
-                                                continue;
-                                            }
-                                        }
-                                    }catch(Exception ex)
-                                    {
 #if DEBUGPRINT
-                                        Console.WriteLine("[-] download file error: {0}",
-                                                          ex.Message);
+                            Console.WriteLine("[-] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) ng",
+                                              recvMessageId);
 #endif
-                                        Array.Clear(buffer,
-                                                    0,
-                                                    bufferMaxLength);
-
-                                        result = "[-] download file error";
-                                        result += prompt;
-
-                                        tmp = Encoding.UTF8.GetBytes(result);
-                                        length = tmp.Length;
-                                        for(int i = 0; i < length; i++)
-                                        {
-                                            buffer[i] = tmp[i];
-                                        }
-
-#if DEBUGPRINT
-                                        Console.WriteLine("[+] [client <- client] Write");
-#endif
-                                        stream.Write(buffer,
+                            ret = SendReceiveMessage(recvMessageId,
+                                                     1,   // received
+                                                     1,   // ng
                                                      0,
-                                                     length);
-                                        sen = length;
+                                                     forwarderTvSec,
+                                                     forwarderTvUsec);
 
-                                        continue;
-                                    }finally
-                                    {
-                                        if(fileStream != null)
-                                        {
-                                            fileStream.Close();
-                                            fileStream = null;
-                                        }
-                                    }
-
-                                    Array.Clear(buffer,
-                                                0,
-                                                bufferMaxLength);
-
-                                    result = "[+] download file: ";
-                                    result += downloadFileName;
-                                    result += prompt;
-
-                                    tmp = Encoding.UTF8.GetBytes(result);
-                                    length = tmp.Length;
-                                    for(int i = 0; i < length; i++)
-                                    {
-                                        buffer[i] = tmp[i];
-                                    }
-
-#if DEBUGPRINT
-                                    Console.WriteLine("[+] [client <- client] Write");
-#endif
-                                    stream.Write(buffer,
-                                                 0,
-                                                 length);
-                                    sen = length;
-
-                                    downloadCommandFlag = false;
-                                    downloadFileFlag = false;
-                                    downloadFileName = "";
-                                    downloadFilePath = "";
-                                    downloadFileSize = 0;
-                                    recvDownloadFileDataSize = 0;
-                                    downloadFileRemainingSize = 0;
-
-                                    if(sen <= 0)
-                                    {
-                                        break;
-                                    }
-                                }else
-                                {
-                                    length = rec;
-#if DEBUGPRINT
-                                    Console.WriteLine("[+] [client <- client] Write message_id:{0}",
-                                                      nextRecvMessageId - 1);
-#endif
-                                    stream.Write(buffer,
-                                                 0,
-                                                 length);
-                                    sen = length;
-                                }
-
-                            }
-
-                            buffer = new byte[NODE_BUFFER_SIZE];
+                            errorFlag = true;
+                            break;
                         }
                     }else
                     {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [client -> server] ForwarderShellSendData SendReceiveMessage({0}) ng",
+                                          nextRecvMessageId);
+#endif
+                        ret = SendReceiveMessage(nextRecvMessageId,
+                                                 1,   // received
+                                                 1,   // ng
+                                                 0,
+                                                 forwarderTvSec,
+                                                 forwarderTvUsec);
+
+                        errorFlag = true;
                         break;
                     }
                 }catch(IOException ex)
@@ -1550,6 +1841,12 @@ namespace spider
 #endif
                     break;
                 }
+            }
+
+            if(fileStream != null)
+            {
+                fileStream.Close();
+                fileStream = null;
             }
 
             return;
@@ -1896,14 +2193,15 @@ namespace spider
             }
 
 #if DEBUGPRINT
-            Console.WriteLine("[+] [client -> server] SendMessage message_id:{0}",
+            Console.WriteLine("[+] [client -> server] ForwarderAddNode SendMessage ({0})",
                               sendMessageId);
 #endif
             sen = SendMessage(buffer,
                               configSize,
                               forwarderTvSec,
                               forwarderTvUsec);
-            if(sen > 0){
+            if(sen > 0)
+            {
                 sendMessageId++;
 
                 Array.Clear(buffer,
@@ -1922,22 +2220,21 @@ namespace spider
                         data = buffer.Where(b => b != 0x00).ToArray();
                         result = Encoding.UTF8.GetString(data);
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client <- server] RecvMessage message_id:{0}",
-                                      recvMessageId);
-                    Console.WriteLine("[+] RecvMessage: {0}",
+                    Console.WriteLine("[+] [client <- server] ForwarderAddNode RecvMessage({0}): {1}",
+                                      recvMessageId,
                                       result);
 #endif
                     }else
                     {
 #if DEBUGPRINT
-                        Console.WriteLine("[-] [client <- server] RecvMessage error message_id:{0}",
+                        Console.WriteLine("[-] [client <- server] ForwarderAddNode RecvMessage({0}) error",
                                           recvMessageId);
 #endif
                     }
                 }else
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[-] [client <- server] RecvMessage error");
+                    Console.WriteLine("[-] [client <- server] ForwarderAddNode RecvMessage error");
 #endif
                 }
             }
@@ -2259,13 +2556,12 @@ namespace spider
                               forwarderTvSec,
                               forwarderTvUsec,
                               false);
-
             if(rec > 0)
             {
                 if(recvMessageId == nextRecvMessageId)
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client <- server] RecvMessage message_id:{0}",
+                    Console.WriteLine("[+] [client <- server] ForwarderShowNode RecvMessage({0})",
                                       recvMessageId);
 #endif
 
@@ -2277,17 +2573,15 @@ namespace spider
                 }else
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[-] [client <- server] RecvMessage error message_id:{0}",
+                    Console.WriteLine("[-] [client <- server] ForwarderShowNode RecvMessage({0}) error",
                                       recvMessageId);
 #endif
-                    Console.WriteLine("[-] RecvMessage error");
                 }
             }else
             {
 #if DEBUGPRINT
-                Console.WriteLine("[-] [client <- server] RecvMessage error");
+                Console.WriteLine("[-] [client <- server] ForwarderShowNode RecvMessage error");
 #endif
-                Console.WriteLine("[-] RecvMessage error");
             }
 
             return 0;
@@ -2613,7 +2907,7 @@ namespace spider
                 if(recvMessageId == nextRecvMessageId)
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client <- server] RecvMessage message_id:{0}",
+                    Console.WriteLine("[+] [client <- server] ForwarderShowRoute RecvMessage({0})",
                                       recvMessageId);
 #endif
 
@@ -2625,17 +2919,15 @@ namespace spider
                 }else
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[-] [client <- server] RecvMessage error message_id:{0}",
+                    Console.WriteLine("[-] [client <- server] ForwarderShowRoute RecvMessage({0}) error",
                                       recvMessageId);
 #endif
-                    Console.WriteLine("[-] RecvMessage error");
                 }
             }else
             {
 #if DEBUGPRINT
-                Console.WriteLine("[-] [client <- server] RecvMessage error");
+                Console.WriteLine("[-] [client <- server] ForwarderShowRoute RecvMessage error");
 #endif
-                Console.WriteLine("[-] RecvMessage error");
             }
 
             return 0;
@@ -2943,6 +3235,7 @@ namespace spider
 
         private void ForwarderUdpRecvSendData()
         {
+            int ret = 0;
             int rec = 0;
             int sen = 0;
             int length = 0;
@@ -2950,9 +3243,7 @@ namespace spider
             byte[] buffer = new byte[NODE_BUFFER_SIZE];
             byte[] data;
             int bufferMaxLength = NODE_BUFFER_SIZE;
-            int socks5MessageDataMaxSize = SOCKS5_MESSAGE_DATA_SIZE;
-            Dictionary<uint, (IPEndPoint, int, byte[])> msgsMap = new Dictionary<uint, (IPEndPoint, int, byte[])>();
-            ValueTuple<IPEndPoint, int, byte[]> msg;
+            int socks5MessageDataMaxSize = SPIDER_MESSAGE_DATA_SIZE;
             recvMessageId = 0;
 
 
@@ -2961,7 +3252,7 @@ namespace spider
                 try
                 {
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client -> client] Receive");
+                    Console.WriteLine("[+] [client -> client] ForwarderUdpRecvSendData Receive");
 #endif
                     Array.Clear(buffer,
                                 0,
@@ -2976,7 +3267,7 @@ namespace spider
                     if(rec > socks5MessageDataMaxSize)
                     {
 #if DEBUGPRINT
-                        Console.WriteLine("[-] Receive error: {0}",
+                        Console.WriteLine("[-] ForwarderUdpRecvSendData Receive error: {0}",
                                           rec);
 #endif
                         break;
@@ -2990,26 +3281,52 @@ namespace spider
                         }
 
 #if DEBUGPRINT
-                        Console.WriteLine("[+] [client -> server] SendMessage message_id:{0}",
+                        Console.WriteLine("[+] [client -> server] ForwarderUdpRecvSendData SendMessage({0})",
                                           sendMessageId);
 #endif
                         sen = SendMessage(buffer,
                                           rec,
                                           forwarderTvSec,
                                           forwarderTvUsec);
-                        if(sen <= 0){
-//                            break;
+                        if(sen <= 0)
+                        {
+                            break;
+                        }
+
+#if DEBUGPRINT
+                        Console.WriteLine("[+] [client <- server] ForwarderUdpRecvSendData RecvReceiveMessage({0})",
+                                          sendMessageId);
+#endif
+                        ret = RecvReceiveMessage(sendMessageId,
+                                                 forwarderTvSec,
+                                                 forwarderTvUsec);
+                        if(ret == 0)    // ok
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client <- server] ForwarderUdpRecvSendData RecvReceiveMessage({0}) ok",
+                                              sendMessageId);
+#endif
+                        }else if(ret == 1)    // ng
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[-] [client <- server] ForwarderUdpRecvSendData RecvReceiveMessage({0}) ng",
+                                              sendMessageId);
+#endif
+                            break;
+                        }else
+                        {
+                            break;
                         }
 
                         sendMessageId++;
                     }else
                     {
-//                        break;
+                        break;
                     }
 
 
 #if DEBUGPRINT
-                    Console.WriteLine("[+] [client <- server] RecvMessage");
+                    Console.WriteLine("[+] [client <- server] ForwarderUdpRecvSendData RecvMessage");
 #endif
                     Array.Clear(buffer,
                                 0,
@@ -3024,11 +3341,26 @@ namespace spider
                     {
                         if(recvMessageId == nextRecvMessageId)
                         {
+#if DEBUGPRINT
+                            Console.WriteLine("[+] [client -> server] ForwarderUdpRecvSendData SendReceiveMessage({0}) ok",
+                                              recvMessageId);
+#endif
+                            ret = SendReceiveMessage(recvMessageId,
+                                                     1,   // received
+                                                     0,   // ok
+                                                     0,
+                                                     forwarderTvSec,
+                                                     forwarderTvUsec);
+                            if(ret < 0)
+                            {
+                                break;
+                            }
+
                             length = rec;
 
 #if DEBUGPRINT
-                            Console.WriteLine("[+] [client <- client] Send message_id:{0}",
-                                              nextRecvMessageId);
+                            Console.WriteLine("[+] [client <- client] ForwarderUdpRecvSendData Send({0})",
+                                              recvMessageId);
 #endif
                             udpClient.Send(buffer,
                                            length,
@@ -3038,34 +3370,17 @@ namespace spider
                             nextRecvMessageId++;
                         }else
                         {
-                            msg = (ipEndPoint,
-                                   rec,
-                                   buffer);
-                            msgsMap.Add(recvMessageId,
-                                        msg);
-
-                            while(msgsMap.ContainsKey(nextRecvMessageId))
-                            {
-                                msg = msgsMap[nextRecvMessageId];
-                                msgsMap.Remove(nextRecvMessageId);
-
-                                ipEndPoint = msg.Item1;
-                                length = msg.Item2;
-                                buffer = msg.Item3;
-
 #if DEBUGPRINT
-                                Console.WriteLine("[+] [client <- client] Send message_id:{0}",
-                                                  nextRecvMessageId);
+                            Console.WriteLine("[-] [client -> server] ForwarderUdpRecvSendData SendReceiveMessage({0}) ng",
+                                              recvMessageId);
 #endif
-                                udpClient.Send(buffer,
-                                               length,
-                                               ipEndPoint);
-
-                                sen = length;
-                                nextRecvMessageId++;
-                            }
-
-                            buffer = new byte[NODE_BUFFER_SIZE];
+                            ret = SendReceiveMessage(recvMessageId,
+                                                     1,   // received
+                                                     1,   // ng
+                                                     0,
+                                                     forwarderTvSec,
+                                                     forwarderTvUsec);
+                            break;
                         }
                     }else
                     {

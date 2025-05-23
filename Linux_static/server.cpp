@@ -256,8 +256,8 @@ namespace spider
                     print_bytes(buffer, rec);
 #endif
 
-                    if(encryption != nullptr
-                       && encryption->get_flag())
+                    if(encryption != nullptr &&
+                       encryption->get_flag())
                     {
                         ret = encryption->decrypt(buffer,
                                                   rec,
@@ -310,7 +310,7 @@ namespace spider
         std::shared_ptr<Socks5message> socks5_message;
 
 
-        if(data_size > SOCKS5_MESSAGE_DATA_SIZE){
+        if(data_size > SPIDER_MESSAGE_DATA_SIZE){
 #ifdef _DEBUG
             std::printf("[-] send_message data size error: %d\n",
                         data_size);
@@ -318,12 +318,12 @@ namespace spider
             return -1;
         }
 
-        if(encryption != nullptr
-           && encryption->get_flag())
+        if(encryption != nullptr &&
+           encryption->get_flag())
         {
             ret = encryption->encrypt(buffer,
                                       data_size,
-                                      SOCKS5_MESSAGE_DATA_SIZE);
+                                      SPIDER_MESSAGE_DATA_MAX_SIZE);
             if(ret <= 0)
             {
 #ifdef _DEBUG
@@ -370,7 +370,112 @@ namespace spider
         return sen;
     }
 
+    int32_t Server::recv_receive_message(uint32_t message_id,
+                                         int32_t tv_sec,
+                                         int32_t tv_usec)
+    {
+        std::shared_ptr<Socks5message> socks5_message;
+        struct timeval start;
+        struct timeval end;
+        long t = 0;
 
+
+        if(gettimeofday(&start, NULL) == -1)
+        {
+#ifdef _DEBUG
+            std::printf("[-] gettimeofday error\n");
+#endif
+            return -1;
+        }
+
+        while(1)
+        {
+            socks5_message = get_socks5_receive_message_from_map(message_id);
+            if(socks5_message != nullptr)
+            {
+                if(socks5_message->get_receive_flag() == 1 &&
+                   socks5_message->get_receive_result() == 0 &&         // ok
+                   socks5_message->get_command_result() == 0)           // command ok
+                {
+                    break;
+                }else if(socks5_message->get_receive_flag() == 1 &&
+                         socks5_message->get_receive_result() == 1 &&   // ng
+                         socks5_message->get_command_result() == 0)     // command ok
+                {
+                    return 1;
+                }else if(socks5_message->get_receive_flag() == 1 &&
+                         socks5_message->get_receive_result() == 0 &&   // ok
+                         socks5_message->get_command_result() == 1)     // command ng
+                {
+                    return 2;
+                }else if(socks5_message->get_receive_flag() == 1 &&
+                         socks5_message->get_receive_result() == 1 &&   // ng
+                         socks5_message->get_command_result() == 1)     // command ng
+                {
+                    return 3;
+                }else
+                {
+                    return -1;
+                }
+            }else
+            {
+
+                if(gettimeofday(&end, NULL) == -1)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] gettimeofday error\n");
+#endif
+                    return -1;
+                }
+
+                t = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec);	// microsecond
+                if(t >= (tv_sec * 1000000 + tv_usec)){
+#ifdef _DEBUG
+                    std::printf("[+] recv_receive_message timeout\n");
+#endif
+                    return 9;
+                }
+
+                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+            }
+        }
+
+        return 0;
+    }
+
+
+    int32_t Server::send_receive_message(uint32_t message_id,
+                                         uint8_t receive_flag,
+                                         uint8_t receive_result,
+                                         uint8_t command_result,
+                                         int32_t tv_sec,
+                                         int32_t tv_usec)
+    {
+        int32_t ret = 0;
+        std::shared_ptr<Socks5message> socks5_message = std::make_shared<Socks5message>('s',
+                                                                                        receive_flag,
+                                                                                        receive_result,
+                                                                                        command_result,
+                                                                                        message_id,
+                                                                                        this->connection_id,
+                                                                                        this->client_id,
+                                                                                        this->server_id,
+                                                                                        's',
+                                                                                        this->server_ip,
+                                                                                        'c',
+                                                                                        this->client_destination_ip);
+
+
+        ret = message_manager->push_timeout_socks5_message(socks5_message,
+                                                           tv_sec,
+                                                           tv_usec);
+        if(ret < 0)
+        {
+            return -1;
+        }
+
+        return ret;
+    }
 
     int32_t Server::forwarder_recv_data()
     {
@@ -386,10 +491,7 @@ namespace spider
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
-        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
-        std::size_t check_msg_count = 0;
-        std::pair<int32_t, char *> msg;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
         recv_message_id = 0;
 
 
@@ -416,9 +518,9 @@ namespace spider
 
             ret = FD_ISSET(target_sock,
                            &writefds);
-            if(ret){
+            if(ret > 0){
 #ifdef _DEBUG
-                std::printf("[+] [client -> server] recv_message\n");
+                std::printf("[+] [client -> server] forwarder_recv_data recv_message\n");
 #endif
                 std::memset(buffer,
                             0,
@@ -432,11 +534,26 @@ namespace spider
                 {
                     if(recv_message_id == next_recv_message_id)
                     {
+#ifdef _DEBUG
+                        std::printf("[+] [client <- server] forwarder_recv_data send_receive_message(%u) ok\n",
+                                    recv_message_id);
+#endif
+                        ret = send_receive_message(recv_message_id,
+                                                   1,   // received
+                                                   0,   // ok
+                                                   0,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                        if(ret < 0)
+                        {
+                            break;
+                        }
+
                         len = rec;
                         send_length = 0;
 #ifdef _DEBUG
-                        std::printf("[+] [server -> target] send message_id:%u\n",
-                                    next_recv_message_id);
+                        std::printf("[+] [server -> target] forwarder_recv_data send(%u)\n",
+                                    recv_message_id);
 #endif
                         while(len > 0)
                         {
@@ -456,7 +573,7 @@ namespace spider
                                 }else
                                 {
 #ifdef _DEBUG
-                                    std::printf("[-] forwarder_recv_data send error: %d\n",
+                                    std::printf("[-] [server -> target] forwarder_recv_data send error: %d\n",
                                                 errno);
 #endif
                                     break;
@@ -469,71 +586,24 @@ namespace spider
                         next_recv_message_id++;
                     }else
                     {
-                        msg = std::make_pair(rec,
-                                             buffer);
-                        msgs_map.insert({recv_message_id, msg});
-
-                        check_msg_count = msgs_map.count(next_recv_message_id);
-                        while(check_msg_count > 0)
-                        {
-                            msg = msgs_map[next_recv_message_id];
-                            msgs_map.erase(next_recv_message_id);
-
-                            len = msg.first;
-                            buffer = msg.second;
-                            send_length = 0;
 #ifdef _DEBUG
-                            std::printf("[+] [server -> target] send message_id:%u\n",
-                                        next_recv_message_id);
+                        std::printf("[+] [client <- server] forwarder_recv_data send_receive_message(%u) ng\n",
+                                    recv_message_id);
 #endif
-                            while(len > 0)
-                            {
-                                sen = send(target_sock,
-                                           buffer+send_length,
-                                           len,
-                                           MSG_NOSIGNAL);
-                                if(sen <= 0)
-                                {
-                                    if(errno == EINTR)
-                                    {
-                                        continue;
-                                    }else if(errno == EAGAIN)
-                                    {
-                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                                        continue;
-                                    }else
-                                    {
-#ifdef _DEBUG
-                                        std::printf("[-] forwarder_recv_data send error: %d\n",
-                                                    errno);
-#endif
-                                        break;
-                                    }
-                                }
-                                send_length += sen;
-                                len -= sen;
-                            }
+                        ret = send_receive_message(recv_message_id,
+                                                   1,   // received
+                                                   1,   // ng
+                                                   0,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
 
-                            free(buffer);
-                            next_recv_message_id++;
-                            check_msg_count = msgs_map.count(next_recv_message_id);
-                        }
-
-                        buffer = (char *)calloc(NODE_BUFFER_SIZE,
-                                                sizeof(char));
+                        break;
                     }
                 }else
                 {
                     break;
                 }
             }
-        }
-
-        for(auto it = msgs_map.begin(); it != msgs_map.end();)
-        {
-            msg = it->second;
-            free(msg.second);
-            it = msgs_map.erase(it);
         }
 
         free(buffer);
@@ -552,7 +622,7 @@ namespace spider
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
 
 
         while(1)
@@ -578,10 +648,10 @@ namespace spider
 
             ret = FD_ISSET(target_sock,
                            &readfds);
-            if(ret)
+            if(ret > 0)
             {
 #ifdef _DEBUG
-                std::printf("[+] [server <- target] recv\n");
+                std::printf("[+] [server <- target] forwarder_send_data recv\n");
 #endif
                 std::memset(buffer,
                             0,
@@ -603,7 +673,7 @@ namespace spider
                     }else
                     {
 #ifdef _DEBUG
-                        std::printf("[-] forwarder_send_data recv error: %d\n",
+                        std::printf("[-] [server <- target] forwarder_send_data recv error: %d\n",
                                     errno);
 #endif
                         break;
@@ -611,7 +681,7 @@ namespace spider
                 }else
                 {
 #ifdef _DEBUG
-                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                    std::printf("[+] [client <- server] forwarder_send_data send_message(%u)\n",
                                 send_message_id);
 #endif
                     sen = send_message(buffer,
@@ -619,6 +689,31 @@ namespace spider
                                        forwarder_tv_sec,
                                        forwarder_tv_usec);
                     if(sen <= 0)
+                    {
+                        break;
+                    }
+
+#ifdef _DEBUG
+                    std::printf("[+] [client -> server] forwarder_send_data recv_receive_message(%u)\n",
+                                send_message_id);
+#endif
+                    ret = recv_receive_message(send_message_id,
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                    if(ret == 0)    //ok
+                    {
+#ifdef _DEBUG
+                        std::printf("[+] [client -> server] forwarder_send_data recv_receive_message(%u) ok\n",
+                                    send_message_id);
+#endif
+                    }else if(ret == 1)    // ng
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] [client -> server] forwarder_send_data recv_receive_message(%u) ng\n",
+                                    send_message_id);
+#endif
+                        break;
+                    }else
                     {
                         break;
                     }
@@ -784,10 +879,7 @@ namespace spider
                                       sizeof(char));
         char *data = NULL;
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
-        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
-        std::size_t check_msg_count = 0;
-        std::pair<int32_t, char *> msg;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
         recv_message_id = 0;
 
         std::string prompt = "\ncommand >";
@@ -800,6 +892,7 @@ namespace spider
         std::size_t result_remaining_size = 0;
         const char *result_cstr = NULL;
         bool exit_flag = false;
+        bool error_flag = false;
 
         std::string upload_file_name = "";
         std::string upload_file_path = "";
@@ -819,8 +912,14 @@ namespace spider
 
         while(1)
         {
+            if(error_flag == true ||
+               exit_flag == true)
+            {
+                break;
+            }
+
 #ifdef _DEBUG
-            std::printf("[+] [client -> server] recv_message\n");
+            std::printf("[+] [client -> server] forwarder_shell recv_message\n");
 #endif
             std::memset(buffer,
                         0,
@@ -834,171 +933,358 @@ namespace spider
             {
                 if(recv_message_id == next_recv_message_id)
                 {
-                    next_recv_message_id++;
                     result = "";
-
                     upload_download_data = (struct upload_download_data *)buffer;
-                    ret = strncmp(upload_download_data->command,
+                    ret = strncmp(upload_download_data->header.command,
                                   "upload",
                                   sizeof("upload"));
                     if(ret == 0)
                     {
-                        if(upload_file_flag == false)
+                        while(1)
                         {
-                            upload_file_flag = true;
-                            upload_file_path = upload_download_data->file_path;
-                            upload_file_path += "/";
-                            upload_file_name = upload_download_data->file_name;
-                            upload_file_name = upload_file_path + upload_file_name;
-                            upload_file_size = ntohll(upload_download_data->file_size);
-
-                            output_file = std::unique_ptr<std::ofstream>(new std::ofstream(upload_file_name.c_str(),
-                                                                                           std::ios::out | std::ios::trunc));
-                            if(!output_file->is_open())
+                            if(upload_file_flag == false)
                             {
+                                upload_file_flag = true;
+                                upload_file_path = upload_download_data->header.file_path;
+                                upload_file_path += "/";
+                                upload_file_name = upload_download_data->header.file_name;
+                                upload_file_name = upload_file_path + upload_file_name;
+                                upload_file_size = ntohll(upload_download_data->header.file_size);
+
+                                output_file = std::unique_ptr<std::ofstream>(new std::ofstream(upload_file_name.c_str(),
+                                                                                               std::ios::out | std::ios::trunc));
+                                if(!output_file->is_open())
+                                {
+#ifdef _DEBUG
+                                    std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) command ng\n",
+                                                recv_message_id);
+#endif
+                                    ret = send_receive_message(recv_message_id,
+                                                               1,   // received
+                                                               0,   // ok
+                                                               1,   // command ng
+                                                               forwarder_tv_sec,
+                                                               forwarder_tv_usec);
+                                    if(ret < 0)
+                                    {
+                                        error_flag = true;
+                                        break;
+                                    }
+
+                                    upload_file_flag = false;
+                                    upload_file_name = "";
+                                    upload_file_path = "";
+                                    upload_file_size = 0;
+                                    recv_upload_file_data_size = 0;
+                                    upload_file_remaining_size = 0;
+
+                                    next_recv_message_id++;
+                                    break;
+                                }
+
+                                output_file->close();
+
+                                output_file.reset(new std::ofstream(upload_file_name.c_str(),
+                                                                    std::ios::binary | std::ios::app));
+                                if(!output_file->is_open())
+                                {
+#ifdef _DEBUG
+                                    std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) command ng\n",
+                                                recv_message_id);
+#endif
+                                    ret = send_receive_message(recv_message_id,
+                                                               1,   // received
+                                                               0,   // ok
+                                                               1,   // command ng
+                                                               forwarder_tv_sec,
+                                                               forwarder_tv_usec);
+                                    if(ret < 0)
+                                    {
+                                        error_flag = true;
+                                        break;
+                                    }
+
+                                    upload_file_flag = false;
+                                    upload_file_name = "";
+                                    upload_file_path = "";
+                                    upload_file_size = 0;
+                                    recv_upload_file_data_size = 0;
+                                    upload_file_remaining_size = 0;
+
+                                    next_recv_message_id++;
+                                    break;
+                                }
+
+                                recv_upload_file_data_size = ntohll(upload_download_data->header.data_size);
+                                data = upload_download_data->data;
+
+                                output_file->write(data,
+                                                   recv_upload_file_data_size);
+
+                                upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
+
+                                if(upload_file_remaining_size > 0)
+                                {
+#ifdef _DEBUG
+                                    std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                                recv_message_id);
+#endif
+                                    ret = send_receive_message(recv_message_id,
+                                                               1,   // received
+                                                               0,   // ok
+                                                               0,   // command ok
+                                                               forwarder_tv_sec,
+                                                               forwarder_tv_usec);
+                                    if(ret < 0)
+                                    {
+                                        output_file->close();
+                                        error_flag = true;
+                                        break;
+                                    }
+
+                                    next_recv_message_id++;
+                                    continue;
+                                }
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[+] [client -> server] forwarder_shell recv_message\n");
+#endif
                                 std::memset(buffer,
                                             0,
                                             buffer_max_length);
 
-                                result = "[-] upload file error: ";
-                                result += upload_file_name;
-                                result += prompt;
-
-                                std::memcpy(buffer,
-                                            result.c_str(),
-                                            result.size());
-
-#ifdef _DEBUG
-                                std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                            send_message_id);
-#endif
-                                sen = send_message(buffer,
-                                                   result.size(),
+                                rec = recv_message(buffer,
+                                                   buffer_max_length,
                                                    forwarder_tv_sec,
                                                    forwarder_tv_usec);
-                                if(sen > 0)
+                                if(rec > 0)
                                 {
-                                    send_message_id++;
+                                    if(recv_message_id == next_recv_message_id)
+                                    {
+                                        upload_download_data = (struct upload_download_data *)buffer;
+                                        ret = strncmp(upload_download_data->header.command,
+                                                      "upload",
+                                                      sizeof("upload"));
+
+                                        if(ret == 0)
+                                        {
+                                            recv_upload_file_data_size = ntohll(upload_download_data->header.data_size);
+                                            data = upload_download_data->data;
+
+                                            output_file->write(data,
+                                                               recv_upload_file_data_size);
+
+                                            upload_file_remaining_size -= recv_upload_file_data_size;
+                                            if(upload_file_remaining_size > 0)
+                                            {
+#ifdef _DEBUG
+                                                std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                                            recv_message_id);
+#endif
+                                                ret = send_receive_message(recv_message_id,
+                                                                           1,   // received
+                                                                           0,   // ok
+                                                                           0,   // command ok
+                                                                           forwarder_tv_sec,
+                                                                           forwarder_tv_usec);
+                                                if(ret < 0)
+                                                {
+                                                    output_file->close();
+                                                    error_flag = true;
+                                                    break;
+                                                }
+
+                                                next_recv_message_id++;
+                                                continue;
+                                            }
+                                        }else
+                                        {
+#ifdef _DEBUG
+                                            std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) command ng\n",
+                                                        recv_message_id);
+#endif
+                                            ret = send_receive_message(recv_message_id,
+                                                                       1,   // received
+                                                                       0,   // ok
+                                                                       1,   // command ng
+                                                                       forwarder_tv_sec,
+                                                                       forwarder_tv_usec);
+                                            if(ret < 0)
+                                            {
+                                                output_file->close();
+                                                error_flag = true;
+                                                break;
+                                            }
+
+                                            output_file->close();
+                                            upload_file_flag = false;
+                                            upload_file_name = "";
+                                            upload_file_path = "";
+                                            upload_file_size = 0;
+                                            recv_upload_file_data_size = 0;
+                                            upload_file_remaining_size = 0;
+
+                                            next_recv_message_id++;
+                                            break;
+                                        }
+                                    }else
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) ng\n",
+                                                    recv_message_id);
+#endif
+                                        ret = send_receive_message(recv_message_id,
+                                                                   1,   // received
+                                                                   1,   // ng
+                                                                   1,
+                                                                   forwarder_tv_sec,
+                                                                   forwarder_tv_usec);
+                                        output_file->close();
+                                        error_flag = true;
+                                        break;
+                                    }
+                                }else
+                                {
+#ifdef _DEBUG
+                                    std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) ng\n",
+                                                next_recv_message_id);
+#endif
+                                    ret = send_receive_message(next_recv_message_id,
+                                                               1,   // received
+                                                               1,   // ng
+                                                               1,
+                                                               forwarder_tv_sec,
+                                                               forwarder_tv_usec);
+
+                                    output_file->close();
+                                    error_flag = true;
+                                    break;
                                 }
-
-                                upload_file_flag = false;
-                                upload_file_name = "";
-                                upload_file_path = "";
-                                upload_file_size = 0;
-                                recv_upload_file_data_size = 0;
-                                upload_file_remaining_size = 0;
-
-                                continue;
                             }
 
                             output_file->close();
 
-                            output_file.reset(new std::ofstream(upload_file_name.c_str(),
-                                                                std::ios::binary | std::ios::app));
-                            if(!output_file->is_open())
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                        recv_message_id);
+#endif
+                            ret = send_receive_message(recv_message_id,
+                                                       1,   // received
+                                                       0,   // ok
+                                                       0,   // command ok
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret < 0)
                             {
-                                std::memset(buffer,
-                                            0,
-                                            buffer_max_length);
+                                error_flag = true;
+                                break;
+                            }
 
-                                result = "[-] upload file error: ";
-                                result += upload_file_name;
-                                result += prompt;
+                            next_recv_message_id++;
 
-                                std::memcpy(buffer,
-                                            result.c_str(),
-                                            result.size());
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            result = "[+] upload file: ";
+                            result += upload_file_name;
+                            result += prompt;
+
+                            std::memcpy(buffer,
+                                        result.c_str(),
+                                        result.size());
 
 #ifdef _DEBUG
-                                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                            std::printf("[+] [client <- server] forwarder_shell send_message(%u)\n",
+                                        send_message_id);
+#endif
+                            sen = send_message(buffer,
+                                               result.size(),
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                            if(sen <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+#ifdef _DEBUG
+                            std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u)\n",
+                                        send_message_id);
+#endif
+                            ret = recv_receive_message(send_message_id,
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret == 0)    //ok
+                            {
+#ifdef _DEBUG
+                                std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u) ok\n",
                                             send_message_id);
 #endif
-                                sen = send_message(buffer,
-                                                   result.size(),
-                                                   forwarder_tv_sec,
-                                                   forwarder_tv_usec);
-                                if(sen > 0)
-                                {
-                                    send_message_id++;
-                                }
-
-                                upload_file_flag = false;
-                                upload_file_name = "";
-                                upload_file_path = "";
-                                upload_file_size = 0;
-                                recv_upload_file_data_size = 0;
-                                upload_file_remaining_size = 0;
-
-                                continue;
-                            }
-
-                            recv_upload_file_data_size = ntohll(upload_download_data->data_size);
-                            data = upload_download_data->data;
-
-                            output_file->write(data,
-                                               recv_upload_file_data_size);
-
-                            upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
-                            if(upload_file_remaining_size > 0)
+                            }else if(ret == 1 ||
+                                     ret == 3)    // ng
                             {
-                                continue;
-                            }
-                        }else
-                        {
-                            recv_upload_file_data_size = ntohll(upload_download_data->data_size);
-                            data = upload_download_data->data;
-
-                            output_file->write(data,
-                                               recv_upload_file_data_size);
-
-                            upload_file_remaining_size -= recv_upload_file_data_size;
-                            if(upload_file_remaining_size > 0)
-                            {
-                                continue;
-                            }
-                        }
-
-                        output_file->close();
-
-                        std::memset(buffer,
-                                    0,
-                                    buffer_max_length);
-
-                        result = "[+] upload file: ";
-                        result += upload_file_name;
-                        result += prompt;
-
-                        std::memcpy(buffer,
-                                    result.c_str(),
-                                    result.size());
-
 #ifdef _DEBUG
-                        std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                    send_message_id);
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ng\n",
+                                            send_message_id);
 #endif
-                        sen = send_message(buffer,
-                                           result.size(),
-                                           forwarder_tv_sec,
-                                           forwarder_tv_usec);
-                        if(sen > 0)
-                        {
+
+                                error_flag = true;
+                                break;
+                            }else if(ret == 2)  // command ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) command ng\n",
+                                            send_message_id);
+#endif
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ret: %d\n",
+                                            send_message_id,
+                                            ret);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }
+
                             send_message_id++;
+
+                            upload_file_flag = false;
+                            upload_file_name = "";
+                            upload_file_path = "";
+                            upload_file_size = 0;
+                            recv_upload_file_data_size = 0;
+                            upload_file_remaining_size = 0;
+
+                            break;
                         }
-
-                        upload_file_flag = false;
-                        upload_file_name = "";
-                        upload_file_path = "";
-                        upload_file_size = 0;
-                        recv_upload_file_data_size = 0;
-                        upload_file_remaining_size = 0;
-
-                        continue;
                     }else
                     {
                         input = buffer;
                         tokens = split_input(input);
                         if(tokens.empty())
                         {
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                        recv_message_id);
+#endif
+                            ret = send_receive_message(recv_message_id,
+                                                       1,   // received
+                                                       0,   // ok
+                                                       0,   // command ok
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret < 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            next_recv_message_id++;
+
                             std::memset(buffer,
                                         0,
                                         buffer_max_length);
@@ -1008,27 +1294,105 @@ namespace spider
                                         prompt_size);
 
 #ifdef _DEBUG
-                            std::printf("[+] [client <- server] send_message message_id:%u\n",
+                            std::printf("[+] [client <- server] forwarder_shell send_message(%u)\n",
                                         send_message_id);
 #endif
                             sen = send_message(buffer,
                                                prompt_size,
                                                forwarder_tv_sec,
                                                forwarder_tv_usec);
-                            if(sen > 0)
+                            if(sen <= 0)
                             {
-                                send_message_id++;
+                                error_flag = true;
+                                break;
                             }
 
+#ifdef _DEBUG
+                            std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u)\n",
+                                        send_message_id);
+#endif
+                            ret = recv_receive_message(send_message_id,
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret == 0)    //ok
+                            {
+#ifdef _DEBUG
+                                std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u) ok\n",
+                                            send_message_id);
+#endif
+                            }else if(ret == 1 ||
+                                     ret == 3)    // ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ng\n",
+                                            send_message_id);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }else if(ret == 2)  // command ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) command ng\n",
+                                            send_message_id);
+#endif
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ret: %d\n",
+                                            send_message_id,
+                                            ret);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }
+
+                            send_message_id++;
                             continue;
                         }
 
                         if(tokens[0] == "exit")
                         {
                             exit_flag = true;
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                        recv_message_id);
+#endif
+                            ret = send_receive_message(recv_message_id,
+                                                       1,   // received
+                                                       0,   // ok
+                                                       0,   // command ok
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret < 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            next_recv_message_id++;
                             break;
                         }else if(tokens[0] == "cd")
                         {
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                        recv_message_id);
+#endif
+                            ret = send_receive_message(recv_message_id,
+                                                       1,   // received
+                                                       0,   // ok
+                                                       0,   // command ok
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret < 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            next_recv_message_id++;
+
                             if(tokens.size() > 1)
                             {
                                 ret = chdir(tokens[1].c_str());
@@ -1038,29 +1402,6 @@ namespace spider
                                     std::printf("[-] change directory error\n");
 #endif
                                     result = "[-] change directory error\n";
-                                }else{
-                                    std::memset(buffer,
-                                                0,
-                                                buffer_max_length);
-
-                                    std::memcpy(buffer,
-                                                prompt.c_str(),
-                                                prompt_size);
-
-#ifdef _DEBUG
-                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                                send_message_id);
-#endif
-                                    sen = send_message(buffer,
-                                                       prompt_size,
-                                                       forwarder_tv_sec,
-                                                       forwarder_tv_usec);
-                                    if(sen > 0)
-                                    {
-                                        send_message_id++;
-                                    }
-
-                                    continue;
                                 }
                             }else
                             {
@@ -1069,42 +1410,119 @@ namespace spider
 #endif
                                 result = "[-] change directory missing argument\n";
                             }
-                        }else if(tokens.size() == 3
-                                 && tokens[0] == "download")
+
+                            result += prompt;
+                            result_size = result.size();
+
+                            std::memset(buffer,
+                                        0,
+                                        buffer_max_length);
+
+                            std::memcpy(buffer,
+                                        result.c_str(),
+                                        result_size);
+
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_shell send_message(%u)\n",
+                                        send_message_id);
+#endif
+                            sen = send_message(buffer,
+                                               result_size,
+                                               forwarder_tv_sec,
+                                               forwarder_tv_usec);
+                            if(sen <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+#ifdef _DEBUG
+                            std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u)\n",
+                                        send_message_id);
+#endif
+                            ret = recv_receive_message(send_message_id,
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret == 0)    //ok
+                            {
+#ifdef _DEBUG
+                                std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u) ok\n",
+                                            send_message_id);
+#endif
+                            }else if(ret == 1 ||
+                                     ret == 3)    // ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ng\n",
+                                            send_message_id);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }else if(ret == 2)  // command ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) command ng\n",
+                                            send_message_id);
+#endif
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ret: %d\n",
+                                            send_message_id,
+                                            ret);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }
+
+                            send_message_id++;
+                            continue;
+                        }else if(tokens.size() == 3 &&
+                                 tokens[0] == "download")
                         {
                             std::ifstream download_file(tokens[1].c_str(),
                                                         std::ios::binary);
                             if(!download_file.is_open())
                             {
 #ifdef _DEBUG
-                                std::printf("[-] file open error\n");
+                                std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) command ng\n",
+                                            recv_message_id);
 #endif
-
-                                std::memset(buffer,
-                                            0,
-                                            buffer_max_length);
-
-                                result = "[-] file open error";
-                                result += prompt;
-
-                                std::memcpy(buffer,
-                                            result.c_str(),
-                                            result.size());
-
-#ifdef _DEBUG
-                                std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                            send_message_id);
-#endif
-                                sen = send_message(buffer,
-                                                   result.size(),
-                                                   forwarder_tv_sec,
-                                                   forwarder_tv_usec);
-                                if(sen > 0)
+                                ret = send_receive_message(recv_message_id,
+                                                           1,   // received
+                                                           0,   // ok
+                                                           1,   // command ng
+                                                           forwarder_tv_sec,
+                                                           forwarder_tv_usec);
+                                if(ret < 0)
                                 {
-                                    send_message_id++;
+                                    error_flag = true;
+                                    break;
                                 }
+
+                                next_recv_message_id++;
                             }else
                             {
+#ifdef _DEBUG
+                                std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                            recv_message_id);
+#endif
+                                ret = send_receive_message(recv_message_id,
+                                                           1,   // received
+                                                           0,   // ok
+                                                           0,   // command ok
+                                                           forwarder_tv_sec,
+                                                           forwarder_tv_usec);
+                                if(ret < 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+
+                                next_recv_message_id++;
+
                                 download_file.seekg(0, std::ios::end);
                                 download_file_size = download_file.tellg();
                                 download_file_remaining_size = download_file_size;
@@ -1127,61 +1545,122 @@ namespace spider
 
                                     read_bytes = download_file.gcount();
 
-                                    std::memcpy(upload_download_data->command,
+                                    std::memcpy(upload_download_data->header.command,
                                                 "download",
                                                 sizeof("download"));
 
                                     if(download_file_name.size() > 256)
                                     {
-                                        std::memcpy(upload_download_data->file_name,
+                                        std::memcpy(upload_download_data->header.file_name,
                                                     download_file_name.c_str(),
                                                     255);
                                     }else
                                     {
-                                        std::memcpy(upload_download_data->file_name,
+                                        std::memcpy(upload_download_data->header.file_name,
                                                     download_file_name.c_str(),
                                                     download_file_name.size());
                                     }
 
                                     if(download_file_path.size() > 256)
                                     {
-                                        std::memcpy(upload_download_data->file_path,
+                                        std::memcpy(upload_download_data->header.file_path,
                                                     download_file_path.c_str(),
                                                     255);
                                     }else
                                     {
-                                        std::memcpy(upload_download_data->file_path,
+                                        std::memcpy(upload_download_data->header.file_path,
                                                     download_file_path.c_str(),
                                                     download_file_path.size());
                                     }
 
-                                    upload_download_data->file_size = htonll(download_file_size);
-                                    upload_download_data->data_size = htonll(read_bytes);
+                                    upload_download_data->header.file_size = htonll(download_file_size);
+                                    upload_download_data->header.data_size = htonll(read_bytes);
 
                                     len = sizeof(struct upload_download_data_header) + read_bytes;
 
 #ifdef _DEBUG
-                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
+                                    std::printf("[+] [client <- server] forwarder_shell send_message(%u)\n",
                                                 send_message_id);
 #endif
                                     sen = send_message(buffer,
                                                        len,
                                                        forwarder_tv_sec,
                                                        forwarder_tv_usec);
-                                    if(sen > 0)
+                                    if(sen <= 0)
                                     {
-                                        send_message_id++;
+                                        error_flag = true;
+                                        break;
                                     }
 
+#ifdef _DEBUG
+                                    std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u)\n",
+                                                send_message_id);
+#endif
+                                    ret = recv_receive_message(send_message_id,
+                                                               forwarder_tv_sec,
+                                                               forwarder_tv_usec);
+                                    if(ret == 0)    //ok
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u) ok\n",
+                                                    send_message_id);
+#endif
+                                    }else if(ret == 1 ||
+                                             ret == 3)    // ng
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ng\n",
+                                                    send_message_id);
+#endif
+
+                                        error_flag = true;
+                                        break;
+                                    }else if(ret == 2)  // command ng
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) command ng\n",
+                                                    send_message_id);
+#endif
+                                    }else
+                                    {
+#ifdef _DEBUG
+                                        std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ret: %d\n",
+                                                    send_message_id,
+                                                    ret);
+#endif
+
+                                        error_flag = true;
+                                        break;
+                                    }
+
+                                    send_message_id++;
                                     download_file_remaining_size -= read_bytes;
 
-                                    std::this_thread::sleep_for(std::chrono::microseconds(1000));  // 1000µs
+//                                    std::this_thread::sleep_for(std::chrono::microseconds(1000));  // 1000µs
                                 }
                             }
 
                             continue;
                         }else
                         {
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_shell send_receive_message(%u) command ok\n",
+                                        recv_message_id);
+#endif
+                            ret = send_receive_message(recv_message_id,
+                                                       1,   // received
+                                                       0,   // ok
+                                                       0,   // command ok
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret < 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            next_recv_message_id++;
+
                             result = execute_command(input);
                         }
 
@@ -1218,453 +1697,90 @@ namespace spider
                                                len,
                                                forwarder_tv_sec,
                                                forwarder_tv_usec);
-                            if(sen > 0)
+                            if(sen <= 0)
                             {
-                                send_length += sen;
-                                result_remaining_size -= sen;
-                                send_message_id++;
+                                error_flag = true;
+                                break;
                             }
+
+#ifdef _DEBUG
+                            std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u)\n",
+                                        send_message_id);
+#endif
+                            ret = recv_receive_message(send_message_id,
+                                                       forwarder_tv_sec,
+                                                       forwarder_tv_usec);
+                            if(ret == 0)    //ok
+                            {
+#ifdef _DEBUG
+                                std::printf("[+] [client -> server] forwarder_shell recv_receive_message(%u) ok\n",
+                                            send_message_id);
+#endif
+                            }else if(ret == 1 ||
+                                     ret == 3)    // ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ng\n",
+                                            send_message_id);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }else if(ret == 2)  // command ng
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) command ng\n",
+                                            send_message_id);
+#endif
+                            }else
+                            {
+#ifdef _DEBUG
+                                std::printf("[-] [client -> server] forwarder_shell recv_receive_message(%u) ret: %d\n",
+                                            send_message_id,
+                                            ret);
+#endif
+
+                                error_flag = true;
+                                break;
+                            }
+
+                            send_message_id++;
+                            send_length += sen;
+                            result_remaining_size -= sen;
                         }
                     }
                 }else
                 {
-                    msg = std::make_pair(rec,
-                                         buffer);
-                    msgs_map.insert({recv_message_id, msg});
-
-                    check_msg_count = msgs_map.count(next_recv_message_id);
-                    while(check_msg_count > 0)
-                    {
-                        msg = msgs_map[next_recv_message_id];
-                        msgs_map.erase(next_recv_message_id);
-                        next_recv_message_id++;
-                        check_msg_count = msgs_map.count(next_recv_message_id);
-
-                        result = "";
-                        buffer = msg.second;
-
-                        upload_download_data = (struct upload_download_data *)buffer;
-                        ret = strncmp(upload_download_data->command,
-                                      "upload",
-                                      sizeof("upload"));
-                        if(ret == 0)
-                        {
-                            if(upload_file_flag == false)
-                            {
-                                upload_file_flag = true;
-                                upload_file_path = upload_download_data->file_path;
-                                upload_file_path += "/";
-                                upload_file_name = upload_download_data->file_name;
-                                upload_file_name = upload_file_path + upload_file_name;
-                                upload_file_size = ntohll(upload_download_data->file_size);
-                                output_file = std::unique_ptr<std::ofstream>(new std::ofstream(upload_file_name.c_str(),
-                                                                                               std::ios::out | std::ios::trunc));
-                                if(!output_file->is_open())
-                                {
-                                    std::memset(buffer,
-                                                0,
-                                                buffer_max_length);
-
-                                    result = "[-] upload file error: ";
-                                    result += upload_file_name;
-                                    result += prompt;
-
-                                    std::memcpy(buffer,
-                                                result.c_str(),
-                                                result.size());
-
 #ifdef _DEBUG
-                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                                send_message_id);
+                    std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) ng\n",
+                                recv_message_id);
 #endif
-                                    sen = send_message(buffer,
-                                                       result.size(),
-                                                       forwarder_tv_sec,
-                                                       forwarder_tv_usec);
-                                    if(sen > 0)
-                                    {
-                                        send_message_id++;
-                                    }
-
-                                    upload_file_flag = false;
-                                    upload_file_name = "";
-                                    upload_file_path = "";
-                                    upload_file_size = 0;
-                                    recv_upload_file_data_size = 0;
-                                    upload_file_remaining_size = 0;
-
-                                    free(buffer);
-                                    continue;
-                                }
-
-                                output_file->close();
-
-                                output_file.reset(new std::ofstream(upload_file_name.c_str(),
-                                                                    std::ios::binary | std::ios::app));
-                                if(!output_file->is_open())
-                                {
-                                    std::memset(buffer,
-                                                0,
-                                                buffer_max_length);
-
-                                    result = "[-] upload file error: ";
-                                    result += upload_file_name;
-                                    result += prompt;
-
-                                    std::memcpy(buffer,
-                                                result.c_str(),
-                                                result.size());
-
-#ifdef _DEBUG
-                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                                send_message_id);
-#endif
-                                    sen = send_message(buffer,
-                                                       result.size(),
-                                                       forwarder_tv_sec,
-                                                       forwarder_tv_usec);
-                                    if(sen > 0)
-                                    {
-                                        send_message_id++;
-                                    }
-
-                                    upload_file_flag = false;
-                                    upload_file_name = "";
-                                    upload_file_path = "";
-                                    upload_file_size = 0;
-                                    recv_upload_file_data_size = 0;
-                                    upload_file_remaining_size = 0;
-
-                                    free(buffer);
-                                    continue;
-                                }
-
-                                recv_upload_file_data_size = ntohll(upload_download_data->data_size);
-                                data = upload_download_data->data;
-
-                                output_file->write(data,
-                                                   recv_upload_file_data_size);
-
-                                upload_file_remaining_size = upload_file_size - recv_upload_file_data_size;
-                                if(upload_file_remaining_size > 0)
-                                {
-                                    free(buffer);
-                                    continue;
-                                }
-                            }else
-                            {
-                                recv_upload_file_data_size = ntohll(upload_download_data->data_size);
-                                data = upload_download_data->data;
-
-                                output_file->write(data,
-                                                   recv_upload_file_data_size);
-
-                                upload_file_remaining_size -= recv_upload_file_data_size;
-                                if(upload_file_remaining_size > 0)
-                                {
-                                    free(buffer);
-                                    continue;
-                                }
-                            }
-
-                            output_file->close();
-
-                            std::memset(buffer,
-                                        0,
-                                        buffer_max_length);
-
-                            result = "[+] upload file: ";
-                            result += upload_file_name;
-                            result += prompt;
-
-                            std::memcpy(buffer,
-                                        result.c_str(),
-                                        result.size());
-
-#ifdef _DEBUG
-                            std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                        send_message_id);
-#endif
-                            sen = send_message(buffer,
-                                               result.size(),
+                    ret = send_receive_message(recv_message_id,
+                                               1,   // received
+                                               1,   // ng
+                                               0,
                                                forwarder_tv_sec,
                                                forwarder_tv_usec);
-                            if(sen > 0)
-                            {
-                                send_message_id++;
-                            }
 
-                            upload_file_flag = false;
-                            upload_file_name = "";
-                            upload_file_path = "";
-                            upload_file_size = 0;
-                            recv_upload_file_data_size = 0;
-                            upload_file_remaining_size = 0;
-
-                            free(buffer);
-                            continue;
-                        }else
-                        {
-                            buffer = msg.second;
-                            input = buffer;
-
-                            tokens = split_input(input);
-                            if(tokens.empty())
-                            {
-                                std::memset(buffer,
-                                            0,
-                                            buffer_max_length);
-
-                                std::memcpy(buffer,
-                                            prompt.c_str(),
-                                            prompt_size);
-
-#ifdef _DEBUG
-                                std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                            send_message_id);
-#endif
-                                sen = send_message(buffer,
-                                                   prompt_size,
-                                                   forwarder_tv_sec,
-                                                   forwarder_tv_usec);
-                                if(sen > 0)
-                                {
-                                    send_message_id++;
-                                }
-
-                                free(buffer);
-                                continue;
-                            }
-
-                            if(tokens[0] == "exit")
-                            {
-                                exit_flag = true;
-                                break;
-                            }else if(tokens[0] == "cd")
-                            {
-                                if(tokens.size() > 1)
-                                {
-                                    ret = chdir(tokens[1].c_str());
-                                    if(ret != 0)
-                                    {
-#ifdef _DEBUG
-                                        std::printf("[-] change directory error\n");
-#endif
-                                        result = "[-] change directory error\n";
-                                    }else
-                                    {
-                                        std::memset(buffer,
-                                                    0,
-                                                    buffer_max_length);
-
-                                        std::memcpy(buffer,
-                                                    prompt.c_str(),
-                                                    prompt_size);
-
-#ifdef _DEBUG
-                                        std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                                    send_message_id);
-#endif
-                                        sen = send_message(buffer,
-                                                           prompt_size,
-                                                           forwarder_tv_sec,
-                                                           forwarder_tv_usec);
-                                        if(sen > 0)
-                                        {
-                                            send_message_id++;
-                                        }
-
-                                        free(buffer);
-                                        continue;
-                                    }
-                                }else
-                                {
-#ifdef _DEBUG
-                                    std::printf("[-] change directory missing argument\n");
-#endif
-                                    result = "[-] change directory missing argument\n";
-                                }
-                            }else if(tokens.size() == 3
-                                     && tokens[0] == "download")
-                            {
-                                std::ifstream download_file(tokens[1].c_str(),
-                                                            std::ios::binary);
-                                if(!download_file.is_open())
-                                {
-#ifdef _DEBUG
-                                    std::printf("[-] file open error\n");
-#endif
-
-                                    std::memset(buffer,
-                                                0,
-                                                buffer_max_length);
-
-                                    result = "[-] file open error";
-                                    result += prompt;
-
-                                    std::memcpy(buffer,
-                                                result.c_str(),
-                                                result.size());
-
-#ifdef _DEBUG
-                                    std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                                send_message_id);
-#endif
-                                    sen = send_message(buffer,
-                                                       result.size(),
-                                                       forwarder_tv_sec,
-                                                       forwarder_tv_usec);
-                                    if(sen > 0)
-                                    {
-                                        send_message_id++;
-                                    }
-                                }else
-                                {
-                                    download_file.seekg(0, std::ios::end);
-                                    download_file_size = download_file.tellg();
-                                    download_file_remaining_size = download_file_size;
-                                    download_file.seekg(0, std::ios::beg);
-
-                                    std::filesystem::path path(tokens[1].c_str());
-                                    download_file_name = path.filename().string();
-                                    download_file_path = tokens[2];
-
-                                    while(download_file_remaining_size > 0)
-                                    {
-                                        std::memset(buffer,
-                                                    0,
-                                                    buffer_max_length);
-
-                                        upload_download_data = (struct upload_download_data *)buffer;
-
-                                        download_file.read(upload_download_data->data,
-                                                           SHELL_UPLOAD_DOWNLOAD_DATA_SIZE);
-
-                                        read_bytes = download_file.gcount();
-
-                                        std::memcpy(upload_download_data->command,
-                                                    "download",
-                                                    sizeof("download"));
-
-                                        if(download_file_name.size() > 256)
-                                        {
-                                            std::memcpy(upload_download_data->file_name,
-                                                        download_file_name.c_str(),
-                                                        255);
-                                        }else
-                                        {
-                                            std::memcpy(upload_download_data->file_name,
-                                                        download_file_name.c_str(),
-                                                        download_file_name.size());
-                                        }
-
-                                        if(download_file_path.size() > 256)
-                                        {
-                                            std::memcpy(upload_download_data->file_path,
-                                                        download_file_path.c_str(),
-                                                        255);
-                                        }else
-                                        {
-                                            std::memcpy(upload_download_data->file_path,
-                                                        download_file_path.c_str(),
-                                                        download_file_path.size());
-                                        }
-
-                                        upload_download_data->file_size = htonll(download_file_size);
-                                        upload_download_data->data_size = htonll(read_bytes);
-
-                                        len = sizeof(struct upload_download_data_header) + read_bytes;
-
-#ifdef _DEBUG
-                                        std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                                    send_message_id);
-#endif
-                                        sen = send_message(buffer,
-                                                           len,
-                                                           forwarder_tv_sec,
-                                                           forwarder_tv_usec);
-                                        if(sen > 0)
-                                        {
-                                            send_message_id++;
-                                        }
-
-                                        download_file_remaining_size -= read_bytes;
-
-                                        std::this_thread::sleep_for(std::chrono::microseconds(1000));  // 1000µs
-                                    }
-                                }
-
-                                free(buffer);
-                                continue;
-                            }else
-                            {
-                                result = execute_command(input);
-                            }
-
-                            result += prompt;
-                            result_cstr = result.c_str();
-                            result_size = result.size();
-                            result_remaining_size = result_size;
-                            send_length = 0;
-                            len = 0;
-
-                            while(result_remaining_size > 0)
-                            {
-                                std::memset(buffer,
-                                            0,
-                                            buffer_max_length);
-
-                                if(result_remaining_size > SHELL_RESULT_DATA_SIZE)
-                                {
-                                    len = SHELL_RESULT_DATA_SIZE;
-                                }else
-                                {
-                                    len = result_remaining_size;
-                                }
-
-                                std::memcpy(buffer,
-                                            result_cstr+send_length,
-                                            len);
-
-#ifdef _DEBUG
-                                std::printf("[+] [client <- server] send_message message_id:%u\n",
-                                            send_message_id);
-#endif
-                                sen = send_message(buffer,
-                                                   len,
-                                                   forwarder_tv_sec,
-                                                   forwarder_tv_usec);
-                                if(sen > 0)
-                                {
-                                    send_length += sen;
-                                    result_remaining_size -= sen;
-                                    send_message_id++;
-                                }
-                            }
-                        }
-
-                        if(exit_flag == true)
-                        {
-                            break;
-                        }
-
-                        free(buffer);
-                    }
-
-                    buffer = (char *)calloc(NODE_BUFFER_SIZE,
-                                            sizeof(char));
+                    error_flag = true;
+                    break;
                 }
             }else
             {
+#ifdef _DEBUG
+                std::printf("[-] [client <- server] forwarder_shell send_receive_message(%u) ng\n",
+                            next_recv_message_id);
+#endif
+                ret = send_receive_message(next_recv_message_id,
+                                           1,   // received
+                                           1,   // ng
+                                           1,
+                                           forwarder_tv_sec,
+                                           forwarder_tv_usec);
+
+                error_flag = true;
                 break;
             }
-        }
-
-        for(auto it = msgs_map.begin(); it != msgs_map.end();)
-        {
-            msg = it->second;
-            free(msg.second);
-            it = msgs_map.erase(it);
         }
 
         free(buffer);
@@ -1680,7 +1796,7 @@ namespace spider
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
         recv_message_id = 0;
 
         std::vector<char> config;
@@ -1690,7 +1806,7 @@ namespace spider
 
 
 #ifdef _DEBUG
-        std::printf("[+] [client -> server] recv_message\n");
+        std::printf("[+] [client -> server] forwarder_add_node recv_message\n");
 #endif
         std::memset(buffer,
                     0,
@@ -1717,13 +1833,13 @@ namespace spider
                 if(ret != 0)
                 {
 #ifdef _DEBUG
-                    std::printf("[-] read_config error\n");
+                    std::printf("[-] forwarder_add_node read_config error\n");
 #endif
                     result = "read_config ng\n";
                 }else
                 {
 #ifdef _DEBUG
-                    std::printf("[+] read_config\n");
+                    std::printf("[+] forwarder_add_node read_config\n");
 #endif
                     result = "read_config ok\n";
                 }
@@ -1734,7 +1850,7 @@ namespace spider
                             result_size);
 
 #ifdef _DEBUG
-                std::printf("[+] [client <- server] send_message message_id:%u\n",
+                std::printf("[+] [client <- server] forwarder_add_node send_message(%u)\n",
                             send_message_id);
 #endif
                 sen = send_message(buffer,
@@ -1749,7 +1865,7 @@ namespace spider
         }else
         {
 #ifdef _DEBUG
-            std::printf("[-] [client -> server] recv_message error\n");
+            std::printf("[-] [client -> server] forwarder_add_node recv_message error\n");
 #endif
             free(buffer);
             return -1;
@@ -1768,7 +1884,7 @@ namespace spider
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
         recv_message_id = 0;
 
         std::string result = "";
@@ -1801,7 +1917,7 @@ namespace spider
         }
 
 #ifdef _DEBUG
-        std::printf("[+] [client <- server] send_message message_id:%u\n",
+        std::printf("[+] [client <- server] forwarder_show_node send_message(%u)\n",
                     send_message_id);
 #endif
         sen = send_message(buffer,
@@ -1826,7 +1942,7 @@ namespace spider
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
         recv_message_id = 0;
 
         std::string result = "";
@@ -1852,7 +1968,7 @@ namespace spider
         }
 
 #ifdef _DEBUG
-        std::printf("[+] [client <- server] send_message message_id:%u\n",
+        std::printf("[+] [client <- server] forwarder_show_route send_message(%u)\n",
                     send_message_id);
 #endif
         sen = send_message(buffer,
@@ -1884,10 +2000,7 @@ namespace spider
         char *buffer = (char *)calloc(NODE_BUFFER_SIZE,
                                       sizeof(char));
         int32_t buffer_max_length = (int32_t)NODE_BUFFER_SIZE;
-        int32_t socks5_message_data_max_size = (int32_t)SOCKS5_MESSAGE_DATA_SIZE;
-        std::map<uint32_t, std::pair<int32_t, char *>> msgs_map;
-        std::size_t check_msg_count = 0;
-        std::pair<int32_t, char *> msg;
+        int32_t socks5_message_data_max_size = (int32_t)SPIDER_MESSAGE_DATA_SIZE;
         recv_message_id = 0;
 
 
@@ -1914,9 +2027,9 @@ namespace spider
 
             ret = FD_ISSET(target_sock,
                            &writefds);
-            if(ret){
+            if(ret > 0){
 #ifdef _DEBUG
-                std::printf("[+] [client -> server] recv_message\n");
+                std::printf("[+] [client -> server] forwarder_udp_recv_send_data recv_message\n");
 #endif
                 std::memset(buffer,
                             0,
@@ -1930,11 +2043,26 @@ namespace spider
                 {
                     if(recv_message_id == next_recv_message_id)
                     {
+#ifdef _DEBUG
+                        std::printf("[+] [client <- server] forwarder_udp_recv_send_data send_receive_message(%u) ok\n",
+                                    recv_message_id);
+#endif
+                        ret = send_receive_message(recv_message_id,
+                                                   1,   // received
+                                                   0,   // ok
+                                                   0,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                        if(ret < 0)
+                        {
+                            break;
+                        }
+
                         len = rec;
                         send_length = 0;
 #ifdef _DEBUG
-                        std::printf("[+] [server -> target] sendto message_id:%u\n",
-                                    next_recv_message_id);
+                        std::printf("[+] [server -> target] forwarder_udp_recv_send_data sendto(%u)\n",
+                                    recv_message_id);
 #endif
                         while(len > 0)
                         {
@@ -1959,8 +2087,8 @@ namespace spider
                                     std::printf("[-] forwarder_udp_recv_send_data sendto error: %d\n",
                                                 errno);
 #endif
-//                                  free(buffer);
-//                                  return 0;
+                                    free(buffer);
+                                    return 0;
                                 }
                             }
                             send_length += sen;
@@ -1970,61 +2098,17 @@ namespace spider
                         next_recv_message_id++;
                     }else
                     {
-                        msg = std::make_pair(rec,
-                                             buffer);
-                        msgs_map.insert({recv_message_id, msg});
-
-                        check_msg_count = msgs_map.count(next_recv_message_id);
-                        while(check_msg_count > 0)
-                        {
-                            msg = msgs_map[next_recv_message_id];
-                            msgs_map.erase(next_recv_message_id);
-
-                            len = msg.first;
-                            buffer = msg.second;
-                            send_length = 0;
 #ifdef _DEBUG
-                            std::printf("[+] [server -> target] sendto message_id:%u\n",
-                                        next_recv_message_id);
+                        std::printf("[-] [client <- server] forwarder_udp_recv_send_data send_receive_message(%u) ng\n",
+                                    recv_message_id);
 #endif
-                            while(len > 0)
-                            {
-                                sen = sendto(target_sock,
-                                             buffer+send_length,
-                                             len,
-                                             MSG_NOSIGNAL,
-                                             target_addr,
-                                             target_addr_length);
-                                if(sen <= 0)
-                                {
-                                    if(errno == EINTR)
-                                    {
-                                        continue;
-                                    }else if(errno == EAGAIN)
-                                    {
-                                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                                        continue;
-                                    }else
-                                    {
-#ifdef _DEBUG
-                                        std::printf("[-] forwarder_udp_recv_send_data sendto error: %d\n",
-                                                    errno);
-#endif
-//                                      free(buffer);
-//                                      return 0;
-                                    }
-                                }
-                                send_length += sen;
-                                len -= sen;
-                            }
-
-                            free(buffer);
-                            next_recv_message_id++;
-                            check_msg_count = msgs_map.count(next_recv_message_id);
-                        }
-
-                        buffer = (char *)calloc(NODE_BUFFER_SIZE,
-                                                sizeof(char));
+                        ret = send_receive_message(recv_message_id,
+                                                   1,   // received
+                                                   1,   // ng
+                                                   0,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                        break;
                     }
                 }else
                 {
@@ -2048,15 +2132,15 @@ namespace spider
 #ifdef _DEBUG
                     std::printf("[+] forwarder_udp_recv_send_data select timeout\n");
 #endif
-//                    break;
+                    break;
                 }
 
                 ret = FD_ISSET(target_sock,
                                &readfds);
-                if(ret)
+                if(ret > 0)
                 {
 #ifdef _DEBUG
-                    std::printf("[+] [server <- target] recvfrom\n");
+                    std::printf("[+] [server <- target] forwarder_udp_recv_send_data recvfrom\n");
 #endif
                     std::memset(buffer,
                                 0,
@@ -2083,33 +2167,52 @@ namespace spider
                             std::printf("[-] forwarder_udp_recv_send_data recvfrom error: %d\n",
                                         errno);
 #endif
-//                            break;
+                            break;
                         }
                     }else
                     {
 #ifdef _DEBUG
-                        std::printf("[+] [client <- server] send_message message_id:%u\n", send_message_id);
+                        std::printf("[+] [client <- server] forwarder_udp_recv_send_data send_message(%u)\n",
+                                    send_message_id);
 #endif
                         sen = send_message(buffer,
                                            rec,
                                            forwarder_tv_sec,
                                            forwarder_tv_usec);
-                        if(sen <= 0){
-//                          break;
+                        if(sen <= 0)
+                        {
+                            break;
+                        }
+
+#ifdef _DEBUG
+                        std::printf("[+] [client <- server] forwarder_udp_recv_send_data recv_receive_message(%u)\n",
+                                    send_message_id);
+#endif
+                        ret = recv_receive_message(send_message_id,
+                                                   forwarder_tv_sec,
+                                                   forwarder_tv_usec);
+                        if(ret == 0)    // ok
+                        {
+#ifdef _DEBUG
+                            std::printf("[+] [client <- server] forwarder_udp_recv_send_data recv_receive_message(%u) ok\n",
+                                        send_message_id);
+#endif
+                        }else if(ret == 1)    // ng
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] [client <- server] forwarder_udp_recv_send_data recv_receive_message(%u) ng\n",
+                                        send_message_id);
+#endif
+                            break;
                         }else
                         {
-                            send_message_id++;
+                            break;
                         }
                     }
+
+                    send_message_id++;
                 }
             }
-        }
-
-        for(auto it = msgs_map.begin(); it != msgs_map.end();)
-        {
-            msg = it->second;
-            free(msg.second);
-            it = msgs_map.erase(it);
         }
 
         free(buffer);
@@ -2138,7 +2241,7 @@ namespace spider
         bool socks5_connect_show_route_flag = false;
         bool socks5_connect_udp_flag = false;
 
-        static char authentication_method = SOCKS5_AUTHENTICATION_METHOD; // 0x0:No Authentication Required  0x2:Username/Password Authentication
+        static char authentication_method = SOCKS5_AUTHENTICATION_METHOD;   // 0x0:No Authentication Required  0x2:Username/Password Authentication
         char username[256] = SOCKS5_USERNAME;
         char password[256] = SOCKS5_PASSWORD;
 
@@ -3427,10 +3530,12 @@ namespace spider
         {
             if(family == AF_INET)
             {
-                ret = forwarder_udp((sockaddr *)&target_addr, target_addr_length);
+                ret = forwarder_udp((sockaddr *)&target_addr,
+                                    target_addr_length);
             }else if(family == AF_INET6)
             {
-                ret = forwarder_udp((sockaddr *)&target_addr6, target_addr6_length);
+                ret = forwarder_udp((sockaddr *)&target_addr6,
+                                    target_addr6_length);
             }
         }
 

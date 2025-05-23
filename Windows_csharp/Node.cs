@@ -4,6 +4,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -12,7 +13,10 @@ namespace spider
 {
     public class Node
     {
-        protected const int NODE_BUFFER_SIZE = 65535;
+        protected const int NODE_BUFFER_SIZE = 72000;
+        protected const int SPIDER_MESSAGE_DATA_SIZE = 65536;
+        protected const int SPIDER_MESSAGE_DATA_MAX_SIZE = 65552;     // 65536 + 16 (AES padding)
+        protected const int INET6_ADDR_STRING_LENGTH = 46;
 
         protected TcpListener tcpListener = null;
         protected TcpClient tcpClient = null;
@@ -21,6 +25,8 @@ namespace spider
         protected NetworkStream stream = null;
         protected MessageManager messageManager;
         protected Socks5MessageQueue socks5MessagesQueue;
+        protected Dictionary<uint, Socks5Message> socks5ReceiveMessagesMap = new Dictionary<uint, Socks5Message>();
+        protected static readonly object socks5ReceiveMessagesMapLock = new object();
 
         public Node(TcpListener tcpListener,
                     TcpClient tcpClient,
@@ -138,6 +144,41 @@ namespace spider
         {
             Socks5Message socks5Message = socks5MessagesQueue.PopTimeout(tvSec,
                                                                          tvUsec);
+
+            return socks5Message;
+        }
+
+        public void AddSocks5ReceiveMessageToMap(Object obj)
+        {
+            Socks5Message socks5Message = obj as Socks5Message;
+            uint message_id = 0;
+
+            if(socks5Message != null)
+            {
+                message_id = socks5Message.MessageId;
+
+                lock(socks5ReceiveMessagesMapLock)
+                {
+                    socks5ReceiveMessagesMap.Add(message_id,
+                                                 socks5Message);
+                }
+            }
+
+            return;
+        }
+
+        protected Socks5Message GetSocks5ReceiveMessageFromMap(uint messageId)
+        {
+            Socks5Message socks5Message = null;
+
+            lock(socks5ReceiveMessagesMapLock)
+            {
+                if(socks5ReceiveMessagesMap.ContainsKey(messageId))
+                {
+                    socks5Message = socks5ReceiveMessagesMap[messageId];
+                    socks5ReceiveMessagesMap.Remove(messageId);
+                }
+            }
 
             return socks5Message;
         }

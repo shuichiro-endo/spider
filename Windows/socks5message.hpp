@@ -12,71 +12,6 @@
 
 namespace spider
 {
-#pragma pack(push, 1)
-    struct socks5_message_data
-    {
-        char message_type;
-        char reserved1;
-        char reserved2;
-        char reserved3;
-        uint32_t message_id;
-        uint32_t connection_id;
-        uint32_t client_id;
-        uint32_t server_id;
-        char source_node_type;
-        char reserved4;
-        char source_ip[INET6_ADDR_STRING_LENGTH + 1];
-        char reserved5;
-        char destination_node_type;
-        char reserved6;
-        char destination_ip[INET6_ADDR_STRING_LENGTH + 1];
-        char reserved7;
-        int32_t tv_sec;
-        int32_t tv_usec;
-        int32_t forwarder_tv_sec;
-        int32_t forwarder_tv_usec;
-        uint16_t data_size;
-        char reserved8;
-        char reserved9;
-        char reserved10;
-        char reserved11;
-        char reserved12;
-        char reserved13;
-        char data[SOCKS5_MESSAGE_DATA_SIZE];
-    };
-
-    struct socks5_message_data_header
-    {
-        char message_type;
-        char reserved1;
-        char reserved2;
-        char reserved3;
-        uint32_t message_id;
-        uint32_t connection_id;
-        uint32_t client_id;
-        uint32_t server_id;
-        char source_node_type;
-        char reserved4;
-        char source_ip[INET6_ADDR_STRING_LENGTH + 1];
-        char reserved5;
-        char destination_node_type;
-        char reserved6;
-        char destination_ip[INET6_ADDR_STRING_LENGTH + 1];
-        char reserved7;
-        int32_t tv_sec;
-        int32_t tv_usec;
-        int32_t forwarder_tv_sec;
-        int32_t forwarder_tv_usec;
-        uint16_t data_size;
-        char reserved8;
-        char reserved9;
-        char reserved10;
-        char reserved11;
-        char reserved12;
-        char reserved13;
-    };
-#pragma pack(pop)
-
     class Socks5message : public Message
     {
     private:
@@ -92,8 +27,9 @@ namespace spider
         int32_t tv_usec;
         int32_t forwarder_tv_sec;
         int32_t forwarder_tv_usec;
-        uint16_t data_size;
-        char *data;
+        uint8_t receive_flag;      // received:1
+        uint8_t receive_result;    // ok:0  ng:1
+        uint8_t command_result;    // ok:0  ng:1
 
     public:
 
@@ -113,10 +49,23 @@ namespace spider
                       int32_t tv_usec,
                       int32_t forwarder_tv_sec,
                       int32_t forwarder_tv_usec,
-                      uint16_t data_size,
+                      int32_t data_size,
                       char *data);
 
-        Socks5message(struct socks5_message_data *socks5_message_data);
+        Socks5message(char message_type,
+                      uint8_t receive_flag,
+                      uint8_t receive_result,
+                      uint8_t command_result,
+                      uint32_t message_id,
+                      uint32_t connection_id,
+                      uint32_t client_id,
+                      uint32_t server_id,
+                      char source_node_type,
+                      std::string source_ip,
+                      char destination_node_type,
+                      std::string destination_ip);
+
+        Socks5message(struct spider_message *spider_message);
 
         ~Socks5message();
 
@@ -156,13 +105,14 @@ namespace spider
         void set_forwarder_tv_usec(int32_t forwarder_tv_usec);
         int32_t get_forwarder_tv_usec();
 
-        void set_data_size(uint16_t data_size);
-        uint16_t get_data_size();
+        void set_receive_flag(uint8_t receive_flag);
+        uint8_t get_receive_flag();
 
-        void set_data(char *);
-        char *get_data();
+        void set_receive_result(uint8_t receive_result);
+        uint8_t get_receive_result();
 
-        void print_bytes();
+        void set_command_result(uint8_t command_result);
+        uint8_t get_command_result();
 
         int32_t copy_to_buffer(char *buffer) override;
     };

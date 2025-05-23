@@ -74,10 +74,41 @@ namespace spider
     }
 
     std::shared_ptr<Socks5message> Node::pop_timeout_socks5_message(int32_t tv_sec,
-                                                              int32_t tv_usec)
+                                                                    int32_t tv_usec)
     {
         std::shared_ptr<Socks5message> socks5_message = socks5_messages_queue->pop_timeout(tv_sec,
                                                                                            tv_usec);
+
+        return socks5_message;
+    }
+
+    void Node::add_socks5_receive_message_to_map(uint32_t message_id,
+                                                 std::shared_ptr<Socks5message> socks5_message)
+    {
+        std::unique_lock<std::mutex> lock(socks5_receive_messages_map_mutex);
+
+        socks5_receive_messages_map.insert({message_id, socks5_message});
+
+        lock.unlock();
+
+        return;
+    }
+
+    std::shared_ptr<Socks5message> Node::get_socks5_receive_message_from_map(uint32_t message_id)
+    {
+        std::shared_ptr<Socks5message> socks5_message = nullptr;
+        std::size_t check_key_count = 0;
+
+        std::unique_lock<std::mutex> lock(socks5_receive_messages_map_mutex);
+
+        check_key_count = socks5_receive_messages_map.count(message_id);
+        if(check_key_count > 0)
+        {
+            socks5_message = socks5_receive_messages_map[message_id];
+            socks5_receive_messages_map.erase(message_id);
+        }
+
+        lock.unlock();
 
         return socks5_message;
     }

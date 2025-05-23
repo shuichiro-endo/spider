@@ -11,11 +11,7 @@ namespace spider
 {
     public class RoutingMessage : Message
     {
-        private const int ROUTING_MESSAGE_DATA_SIZE = 60000;
-
         private uint pipeId;
-        private ushort dataSize;
-        private byte[] data;
 
 
         public RoutingMessage()
@@ -23,7 +19,7 @@ namespace spider
             this.pipeId = 0;
             this.messageType = 'r';
             this.dataSize = 0;
-            this.data = new byte[ROUTING_MESSAGE_DATA_SIZE];
+            this.data = new byte[SPIDER_MESSAGE_DATA_MAX_SIZE];
         }
 
         public RoutingMessage(uint pipeId,
@@ -33,27 +29,36 @@ namespace spider
             try
             {
                 this.messageType = (char)array[0];
-                this.dataSize = NetworkToHostOrderUShort(BitConverter.ToUInt16(array, 2));
-                if(dataSize <= ROUTING_MESSAGE_DATA_SIZE)
+                this.dataSize = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(array, 136));
+
+                if(this.dataSize > 0)
                 {
-                    this.data = new byte[dataSize];
-                    for(int i = 0; i < (int)dataSize; i++)
+                    this.data = new byte[SPIDER_MESSAGE_DATA_MAX_SIZE];
+                }
+
+                if(this.dataSize > 0 &&
+                   this.dataSize <= SPIDER_MESSAGE_DATA_MAX_SIZE)
+                {
+                    for(int i = 0; i < this.dataSize; i++)
                     {
-                        this.data[i] = array[4 + i];
+                        this.data[i] = array[144 + i];
                     }
-                }else
+                }else if(this.dataSize > SPIDER_MESSAGE_DATA_MAX_SIZE)
                 {
-                    this.data = new byte[ROUTING_MESSAGE_DATA_SIZE];
-                    for(int i = 0; i < ROUTING_MESSAGE_DATA_SIZE; i++)
+#if DEBUGPRINT
+                    Console.WriteLine("[-] routing message data size error: {0}",
+                                      this.dataSize);
+#endif
+                    this.dataSize = SPIDER_MESSAGE_DATA_MAX_SIZE;
+                    for(int i = 0; i < SPIDER_MESSAGE_DATA_MAX_SIZE; i++)
                     {
-                        this.data[i] = array[4 + i];
+                        this.data[i] = array[144 + i];
                     }
                 }
             }catch(Exception ex)
             {
                 throw new Exception("", ex);
             }
-
         }
 
         ~RoutingMessage()
@@ -65,33 +70,6 @@ namespace spider
         {
             get { return pipeId; }
             set { pipeId = value; }
-        }
-
-        public ushort DataSize
-        {
-            get { return dataSize; }
-            set { dataSize = value; }
-        }
-
-        public byte[] Data
-        {
-            get { return data; }
-            set { data = value; }
-        }
-
-        public void PrintBytes()
-        {
-            for(int i = 0; i < dataSize; i++)
-            {
-                if(i != 0 && i % 16 == 0){
-                    Console.WriteLine("");
-                }else if(i % 16 == 8)
-                {
-                    Console.Write(" ");
-                }
-                Console.Write($"{data[i]:X2} ");
-            }
-            Console.WriteLine("");
         }
 
         public ushort NetworkToHostOrderUShort(ushort value)
@@ -123,13 +101,13 @@ namespace spider
             int length = 0;
 
             buffer[0] = (byte)this.messageType;
-            BitConverter.GetBytes(HostToNetworkOrderUShort(this.dataSize)).CopyTo(buffer, 2);
-            for(int i = 0; i < (int)this.dataSize; i++)
+            BitConverter.GetBytes(IPAddress.HostToNetworkOrder(this.dataSize)).CopyTo(buffer, 136);
+            for(int i = 0; i < this.dataSize; i++)
             {
-                buffer[4 + i] = this.data[i];
+                buffer[144 + i] = this.data[i];
             }
 
-            length = RoutingMessageDataHeader.ROUTING_MESSAGE_DATA_HEADER_SIZE
+            length = SpiderMessageHeader.SPIDER_MESSAGE_HEADER_SIZE
                    + this.dataSize;
 
             return length;

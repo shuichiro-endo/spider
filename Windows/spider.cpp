@@ -138,7 +138,7 @@ int main(int argc,
     IP_ADAPTER_ADDRESSES *addresses = NULL;
     sockaddr_in *sa_in = NULL;
     sockaddr_in6 *sa_in6 = NULL;
-    char ip_tmp[INET6_ADDRSTRLEN + 1] = {0};
+    char ip_tmp[INET6_ADDR_STRING_LENGTH + 1] = {0};
     std::string ip;
     std::string percent = "%";
     std::string scope_id;
@@ -271,7 +271,7 @@ int main(int argc,
                         sa_in = (sockaddr_in *)unicast->Address.lpSockaddr;
                         memset(ip_tmp,
                                0,
-                               INET6_ADDRSTRLEN + 1);
+                               INET6_ADDR_STRING_LENGTH + 1);
 
                         if(inet_ntop(AF_INET, &sa_in->sin_addr, ip_tmp, INET_ADDRSTRLEN) == NULL)
                         {
@@ -291,9 +291,9 @@ int main(int argc,
                         sa_in6 = (sockaddr_in6 *)unicast->Address.lpSockaddr;
                         memset(ip_tmp,
                                0,
-                               INET6_ADDRSTRLEN + 1);
+                               INET6_ADDR_STRING_LENGTH + 1);
 
-                        if(inet_ntop(AF_INET6, &sa_in6->sin6_addr, ip_tmp, INET6_ADDRSTRLEN) == NULL)
+                        if(inet_ntop(AF_INET6, &sa_in6->sin6_addr, ip_tmp, INET6_ADDR_STRING_LENGTH) == NULL)
                         {
                             std::printf("[-] inet_ntop error\n");
                             free(addresses);

@@ -150,8 +150,8 @@ namespace spider
         std::shared_ptr<Routingmessage> routing_message = std::make_unique<Routingmessage>();
 
         struct route_data *route_data;
-        uint16_t data_size = 0;
-        uint16_t route_data_size = sizeof(struct route_data);
+        int32_t data_size = 0;
+        int32_t route_data_size = sizeof(struct route_data);
         char *p = routing_message->get_data();
 
         std::unique_lock<std::mutex> lock(routes_map_mutex);
@@ -159,11 +159,13 @@ namespace spider
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
             route_data = (struct route_data *)p;
-            std::memcpy(&route_data->ip, iterator->second->get_ip().c_str(), iterator->second->get_ip().size());
+            std::memcpy(&route_data->ip,
+                        iterator->second->get_ip().c_str(),
+                        iterator->second->get_ip().size());
             route_data->metric = iterator->second->get_metric();
 
             data_size += route_data_size;
-            if(data_size + route_data_size > ROUTING_MESSAGE_DATA_SIZE)
+            if(data_size + route_data_size > SPIDER_MESSAGE_DATA_SIZE)
             {
                 break;
             }
@@ -194,10 +196,10 @@ namespace spider
         char mode;
         std::string ip;
         uint8_t metric;
-        int data_size;
+        int32_t data_size;
         char *data;
         struct route_data *route_data;
-        int route_data_size = sizeof(struct route_data);
+        int32_t route_data_size = sizeof(struct route_data);
 
 
         routing_message = pop_routing_message();
@@ -211,15 +213,15 @@ namespace spider
                 data_size = routing_message->get_data_size();
                 data = routing_message->get_data();
 
-                for(int i = 0; i + route_data_size <= data_size; data += route_data_size, i += route_data_size)
+                for(int32_t i = 0; i + route_data_size <= data_size; data += route_data_size, i += route_data_size)
                 {
                     route_data = (struct route_data *)data;
                     mode = 'a';
                     ip = route_data->ip;
-                    if(ip == spider_ip->get_spider_ipv4()
-                       || ip == spider_ip->get_spider_ipv6_global()
-                       || ip == spider_ip->get_spider_ipv6_unique_local()
-                       || ip == spider_ip->get_spider_ipv6_link_local())
+                    if(ip == spider_ip->get_spider_ipv4() ||
+                       ip == spider_ip->get_spider_ipv6_global() ||
+                       ip == spider_ip->get_spider_ipv6_unique_local() ||
+                       ip == spider_ip->get_spider_ipv6_link_local())
                     {
                         continue;
                     }
@@ -274,12 +276,12 @@ namespace spider
 
         for(auto iterator = routes_map.begin(); iterator != routes_map.end(); ++iterator)
         {
-            if(iterator->second->get_mode() != 's'
-               && (iterator->second->get_ip() != spider_ip->get_spider_ipv4()
-                  || iterator->second->get_ip() != spider_ip->get_spider_ipv6_global()
-                  || iterator->second->get_ip() != spider_ip->get_spider_ipv6_unique_local()
-                  || iterator->second->get_ip() != spider_ip->get_spider_ipv6_link_local())
-               && iterator->second->get_metric() != 0)
+            if(iterator->second->get_mode() != 's' &&
+               (iterator->second->get_ip() != spider_ip->get_spider_ipv4() ||
+                iterator->second->get_ip() != spider_ip->get_spider_ipv6_global() ||
+                iterator->second->get_ip() != spider_ip->get_spider_ipv6_unique_local() ||
+                iterator->second->get_ip() != spider_ip->get_spider_ipv6_link_local()) &&
+               iterator->second->get_metric() != 0)
             {
                 struct timeval t = iterator->second->get_time();
                 d = now.tv_sec - t.tv_sec;

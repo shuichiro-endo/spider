@@ -23,6 +23,8 @@ namespace spider
         SOCKET sock = INVALID_SOCKET;
         std::shared_ptr<Messagemanager> message_manager;
         std::unique_ptr<Socks5messagequeue> socks5_messages_queue;
+        std::map<uint32_t, std::shared_ptr<Socks5message>> socks5_receive_messages_map;
+        std::mutex socks5_receive_messages_map_mutex;
 
     public:
 
@@ -32,6 +34,9 @@ namespace spider
         std::shared_ptr<Socks5message> pop_socks5_message();
         std::shared_ptr<Socks5message> pop_timeout_socks5_message(int32_t tv_sec,
                                                                   int32_t tv_usec);
+
+        std::shared_ptr<Socks5message> get_socks5_receive_message_from_map(uint32_t message_id);
+
     public:
         Node(SOCKET sock,
              std::shared_ptr<Messagemanager> message_manager);
@@ -48,6 +53,9 @@ namespace spider
         int32_t push_timeout_socks5_message(std::shared_ptr<Socks5message> socks5_message,
                                             int32_t tv_sec,
                                             int32_t tv_usec);
+
+        void add_socks5_receive_message_to_map(uint32_t message_id,
+                                               std::shared_ptr<Socks5message> socks5_message);
 
         int32_t recv_data(char *buffer,
                           int32_t buffer_size,

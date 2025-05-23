@@ -140,6 +140,7 @@ namespace spider
         std::shared_ptr<Client> client;
         std::shared_ptr<Server> server;
         std::shared_ptr<Pipe> pipe;
+        uint32_t message_id = 0;
         uint32_t connection_id = 0;
         uint32_t client_id = 0;
         uint32_t server_id = 0;
@@ -152,10 +153,10 @@ namespace spider
             message_type = socks5_message->get_message_type();
             if(message_type == 's')  // socks5 message
             {
-                if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip()
-                   || spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip()
-                   || spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip()
-                   || spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
+                if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
                 {
                     connection_id = socks5_message->get_connection_id();
                     client_id = socks5_message->get_client_id();
@@ -167,12 +168,21 @@ namespace spider
                                                             client_id);
                         if(client != nullptr)
                         {
-//                            client->push_socks5_message(socks5_message);
-                            std::thread thread_client(&Client::push_socks5_message,
-                                                      client,
-                                                      socks5_message);
-                            thread_client.detach();
-
+                            if(socks5_message->get_receive_flag() == 1)
+                            {
+                                message_id = socks5_message->get_message_id();
+                                std::thread thread_client(&Client::add_socks5_receive_message_to_map,
+                                                          client,
+                                                          message_id,
+                                                          socks5_message);
+                                thread_client.detach();
+                            }else
+                            {
+                                std::thread thread_client(&Client::push_socks5_message,
+                                                          client,
+                                                          socks5_message);
+                                thread_client.detach();
+                            }
                         }else
                         {
 #ifdef _DEBUG
@@ -181,15 +191,24 @@ namespace spider
                         }
                     }else if(destination_node_type == 's')  // server
                     {
-                       server = server_manager->get_server(connection_id,
+                        server = server_manager->get_server(connection_id,
                                                             server_id);
                         if(server != nullptr)
                         {
-//                            server->push_socks5_message(socks5_message);
-                            std::thread thread_server(&Server::push_socks5_message,
-                                                      server,
-                                                      socks5_message);
-                            thread_server.detach();
+                            if(socks5_message->get_receive_flag() == 1)
+                            {
+                                message_id = socks5_message->get_message_id();
+                                std::thread thread_server(&Server::add_socks5_receive_message_to_map,
+                                                          server,
+                                                          message_id,
+                                                          socks5_message);
+                                thread_server.detach();
+                            }else{
+                                std::thread thread_server(&Server::push_socks5_message,
+                                                          server,
+                                                          socks5_message);
+                                thread_server.detach();
+                            }
                         }else
                         {
                             // generate server
@@ -206,7 +225,6 @@ namespace spider
                     pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
                     if(pipe != nullptr)
                     {
-//                        pipe->push_socks5_message(socks5_message);
                         std::thread thread_pipe(&Pipe::push_socks5_message,
                                                 pipe,
                                                 socks5_message);

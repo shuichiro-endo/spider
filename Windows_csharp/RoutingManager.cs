@@ -14,10 +14,11 @@ namespace spider
 {
     public class RoutingManager
     {
-        private const int ROUTING_MESSAGE_DATA_SIZE = 60000;
+        private const int SPIDER_MESSAGE_DATA_SIZE = 65536;
+        private const int SPIDER_MESSAGE_DATA_MAX_SIZE = 65552;     // 65536 + 16 (AES padding)
         private const int INET6_ADDR_STRING_LENGTH = 46;
         private const int KEYS_MAP_SIZE = 200;
-        private const int METRIC_MAX = 20;   // 0 < METRIC_MAX <= UINT8_MAX(255), UINT8_MAX(255) < delete route
+        private const int METRIC_MAX = 20;   // 0 < METRIC_MAX <= UINT8_MAX(255), METRIC_MAX < delete route
         private const int DELETE_ROUTE_TIME = 5;    // 5s
 
         private SpiderIp spiderIp;
@@ -151,10 +152,10 @@ namespace spider
         public void SendRoutingTable()
         {
             RoutingMessage routingMessage = new RoutingMessage();
-            ushort dataSize = 0;
-            ushort routeDataSize = (ushort)RouteData.ROUTE_DATA_SIZE;
+            int dataSize = 0;
+            int routeDataSize = (int)RouteData.ROUTE_DATA_SIZE;
             byte[] data = routingMessage.Data;
-            ushort p = 0;
+            int p = 0;
 
 
             lock(routesMapLock)
@@ -171,7 +172,7 @@ namespace spider
                     data[p] = kvp.Value.Metric;
                     p += 1;
 
-                    if(p + routeDataSize > ROUTING_MESSAGE_DATA_SIZE)
+                    if(p + routeDataSize > SPIDER_MESSAGE_DATA_SIZE)
                     {
                         break;
                     }
@@ -203,7 +204,7 @@ namespace spider
             byte metric;
             int dataSize;
             byte[] data;
-            ushort p = 0;
+            int p = 0;
             int routeDataSize = RouteData.ROUTE_DATA_SIZE;
 
 

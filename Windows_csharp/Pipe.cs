@@ -160,16 +160,10 @@ namespace spider
             byte[] tmp = new byte[NODE_BUFFER_SIZE];
 
             RoutingMessage routingMessage;
-            RoutingMessageDataHeader routingMessageDataHeader = new RoutingMessageDataHeader(buffer);
-            ushort routingMessageHeaderSize = (ushort)RoutingMessageDataHeader.ROUTING_MESSAGE_DATA_HEADER_SIZE;
-
             Socks5Message socks5Message;
-            Socks5MessageDataHeader socks5MessageDataHeader = new Socks5MessageDataHeader(buffer);
-            ushort socks5MessageHeaderSize = (ushort)Socks5MessageDataHeader.SOCKS5_MESSAGE_DATA_HEADER_SIZE;
-
-            bool recvMessageTypeFlag = false;
+            SpiderMessageHeader spiderMessageHeader = null;
+            int spiderMessageHeaderSize = (int)SpiderMessageHeader.SPIDER_MESSAGE_HEADER_SIZE;
             bool recvHeaderFlag = false;
-            int recvMessageTypeSize = 1;    // byte
             int recvDataSize = 0;
             int remainingSize = 0;
 
@@ -180,12 +174,12 @@ namespace spider
             {
                 try
                 {
-                    if(recvMessageTypeFlag == false)
+                    if(recvHeaderFlag == false)
                     {
 
                         tmprec = stream.Read(buffer,
                                              rec,
-                                             recvMessageTypeSize);
+                                             spiderMessageHeaderSize);
                     }else
                     {
                         tmprec = stream.Read(buffer,
@@ -203,163 +197,97 @@ namespace spider
 //                        PrintBytes(buffer, rec);
 #endif
 
-                        if(recvMessageTypeFlag == false)
+                        if(recvHeaderFlag == false)
                         {
-                            recvMessageTypeFlag = true;
-
-                            if(buffer[0] == 0x72)   // 'r'
+                            if(rec < spiderMessageHeaderSize)
                             {
-                                remainingSize = routingMessageHeaderSize - rec;
-                            }else if(buffer[0] == 0x73 )    // 's'
-                            {
-                                remainingSize = socks5MessageHeaderSize - rec;
-                            }else
-                            {
-#if DEBUGPRINT
-                                Console.WriteLine("[-] RecvMessage message type error: {0}",
-                                                  (char)buffer[0]);
-#endif
-                                return 0;
-                            }
-
-                            continue;
-                        }else if(recvHeaderFlag == false)
-                        {
-                            if(buffer[0] == 0x72)   // 'r'
-                            {
-                                if(rec < routingMessageHeaderSize)
-                                {
-                                    remainingSize = routingMessageHeaderSize - rec;
-                                }else
-                                {
-                                    recvHeaderFlag = true;
-
-                                    routingMessageDataHeader = new RoutingMessageDataHeader(buffer);
-
-                                    recvDataSize = NetworkToHostOrderUShort(routingMessageDataHeader.DataSize);
-
-                                    remainingSize = recvDataSize;
-                                }
-
-                                continue;
-                            }else if(buffer[0] == 0x73) // 's'
-                            {
-                                if(rec < socks5MessageHeaderSize)
-                                {
-                                    remainingSize = socks5MessageHeaderSize - rec;
-                                }else
-                                {
-                                    recvHeaderFlag = true;
-
-                                    socks5MessageDataHeader = new Socks5MessageDataHeader(buffer);
-
-                                    recvDataSize = NetworkToHostOrderUShort(socks5MessageDataHeader.DataSize);
-
-                                    remainingSize = recvDataSize;
-                                }
-
+                                remainingSize = spiderMessageHeaderSize - rec;
                                 continue;
                             }else
                             {
-#if DEBUGPRINT
-                                Console.WriteLine("[-] RecvMessage message type error: {0}",
-                                                  (char)buffer[0]);
-#endif
-                                return 0;
-                            }
-                        }else
-                        {
-                            if(buffer[0] == 0x72)   // 'r'
-                            {
-                                if(rec < routingMessageHeaderSize + recvDataSize)
+                                recvHeaderFlag = true;
+
+                                spiderMessageHeader = new SpiderMessageHeader(buffer);
+
+                                recvDataSize = IPAddress.NetworkToHostOrder(spiderMessageHeader.DataSize);
+
+                                remainingSize = recvDataSize;
+                                if(remainingSize > 0)
                                 {
-                                    remainingSize = routingMessageHeaderSize + recvDataSize - rec;
                                     continue;
-                                }else
+                                }
+                            }
+                        }
+
+                        if(recvHeaderFlag == true)
+                        {
+                            if(rec < spiderMessageHeaderSize + recvDataSize)
+                            {
+                                remainingSize = spiderMessageHeaderSize + recvDataSize - rec;
+                                continue;
+                            }else
+                            {
+                                spiderMessageHeader = new SpiderMessageHeader(buffer);
+                                if(spiderMessageHeader.MessageType == 'r')
                                 {
-                                    routingMessageDataHeader = new RoutingMessageDataHeader(buffer);
-                                    if(rec < routingMessageHeaderSize + NetworkToHostOrderUShort(routingMessageDataHeader.DataSize))
-                                    {
-                                        continue;
-                                    }else if(rec == routingMessageHeaderSize + NetworkToHostOrderUShort(routingMessageDataHeader.DataSize))
-                                    {
-                                        routingMessage = new RoutingMessage(this.PipeId,
-                                                                            buffer);
+                                    routingMessage = new RoutingMessage(this.PipeId,
+                                                                        buffer);
 
-                                        Thread threadMessageManager = new Thread(new ParameterizedThreadStart(messageManager.PushRoutingMessage));
-                                        threadMessageManager.Start(routingMessage);
+                                    Thread threadMessageManager = new Thread(new ParameterizedThreadStart(messageManager.PushRoutingMessage));
+                                    threadMessageManager.Start(routingMessage);
 
-                                        recvMessageTypeFlag = false;
+                                    recvHeaderFlag = false;
+                                    Array.Clear(buffer,
+                                                0,
+                                                NODE_BUFFER_SIZE);
+                                }else if(spiderMessageHeader.MessageType == 's')
+                                {
+                                    socks5Message = new Socks5Message(buffer);
+
+                                    if((String.Compare(spiderIp.SpiderIpv4, socks5Message.DestinationIp) == 0) ||
+                                       (String.Compare(spiderIp.SpiderIpv6Global, socks5Message.DestinationIp) == 0) ||
+                                       (String.Compare(spiderIp.SpiderIpv6UniqueLocal, socks5Message.DestinationIp) == 0) ||
+                                       (String.Compare(spiderIp.SpiderIpv6LinkLocal, socks5Message.DestinationIp) == 0))
+                                    {
+                                        Thread threadMessageManager = new Thread(new ParameterizedThreadStart(messageManager.PushSocks5Message));
+                                        threadMessageManager.Start(socks5Message);
+
                                         recvHeaderFlag = false;
                                         Array.Clear(buffer,
                                                     0,
                                                     NODE_BUFFER_SIZE);
-                                    }
-                                }
-                            }else if(buffer[0] == 0x73) // 's'
-                            {
-                                if(rec < socks5MessageHeaderSize + recvDataSize)
-                                {
-                                    remainingSize = socks5MessageHeaderSize + recvDataSize - rec;
-                                    continue;
-                                }else
-                                {
-                                    socks5MessageDataHeader = new Socks5MessageDataHeader(buffer);
-                                    if(rec < socks5MessageHeaderSize + NetworkToHostOrderUShort(socks5MessageDataHeader.DataSize))
+                                    }else
                                     {
-                                        continue;
-                                    }else if(rec == socks5MessageHeaderSize + NetworkToHostOrderUShort(socks5MessageDataHeader.DataSize))
-                                    {
-                                        socks5Message = new Socks5Message(buffer);
-
-                                        if((String.Compare(spiderIp.SpiderIpv4, socks5Message.DestinationIp) == 0) ||
-                                           (String.Compare(spiderIp.SpiderIpv6Global, socks5Message.DestinationIp) == 0) ||
-                                           (String.Compare(spiderIp.SpiderIpv6UniqueLocal, socks5Message.DestinationIp) == 0) ||
-                                           (String.Compare(spiderIp.SpiderIpv6LinkLocal, socks5Message.DestinationIp) == 0))
+                                        pipe = routingManager.GetDestinationPipe(socks5Message.DestinationIp);
+                                        if(pipe != null)
                                         {
-                                            Thread threadMessageManager = new Thread(new ParameterizedThreadStart(messageManager.PushSocks5Message));
-                                            threadMessageManager.Start(socks5Message);
+                                            Thread threadPipe = new Thread(new ParameterizedThreadStart(pipe.PushSocks5Message));
+                                            threadPipe.Start(socks5Message);
 
-                                            recvMessageTypeFlag = false;
                                             recvHeaderFlag = false;
                                             Array.Clear(buffer,
                                                         0,
                                                         NODE_BUFFER_SIZE);
                                         }else
                                         {
-                                            pipe = routingManager.GetDestinationPipe(socks5Message.DestinationIp);
-                                            if(pipe != null)
-                                            {
-                                                Thread threadPipe = new Thread(new ParameterizedThreadStart(pipe.PushSocks5Message));
-                                                threadPipe.Start(socks5Message);
-
-                                                recvMessageTypeFlag = false;
-                                                recvHeaderFlag = false;
-                                                Array.Clear(buffer,
-                                                            0,
-                                                            NODE_BUFFER_SIZE);
-                                            }else
-                                            {
 #if DEBUGPRINT
-                                                Console.WriteLine("[-] cannot transfer pipe message");
+                                            Console.WriteLine("[-] cannot transfer pipe message");
 #endif
 
-                                                return 0;
-                                            }
+                                            return 0;
                                         }
                                     }
-                                }
-                            }else
-                            {
+                                }else
+                                {
 #if DEBUGPRINT
-                                Console.WriteLine("[-] recv_message message type error: {0}",
-                                                  (char)buffer[0]);
+                                    Console.WriteLine("[-] recv_message message type error: {0}",
+                                                      (char)buffer[0]);
 #endif
-                                return 0;
+                                    return 0;
+                                }
                             }
                         }
 
-                        recvMessageTypeFlag = false;
                         recvHeaderFlag = false;
                         Array.Clear(buffer,
                                     0,
@@ -374,7 +302,7 @@ namespace spider
                                       ex.Message);
 #endif
                     return -1;
-                }catch (Exception ex)
+                }catch(Exception ex)
                 {
 #if DEBUGPRINT
                     Console.WriteLine("[-] RecvMessage error: {0}",

@@ -182,8 +182,15 @@ namespace spider
                                                              clientId);
                             if(client != null)
                             {
-                                Thread threadClient = new Thread(new ParameterizedThreadStart(client.PushSocks5Message));
-                                threadClient.Start(socks5Message);
+                                if(socks5Message.ReceiveFlag == 1)
+                                {
+                                    Thread threadClient = new Thread(new ParameterizedThreadStart(client.AddSocks5ReceiveMessageToMap));
+                                    threadClient.Start(socks5Message);
+                                }else
+                                {
+                                    Thread threadClient = new Thread(new ParameterizedThreadStart(client.PushSocks5Message));
+                                    threadClient.Start(socks5Message);
+                                }
                             }else
                             {
 #if DEBUGPRINT
@@ -196,8 +203,15 @@ namespace spider
                                                              serverId);
                             if(server != null)
                             {
-                                Thread threadServer = new Thread(new ParameterizedThreadStart(server.PushSocks5Message));
-                                threadServer.Start(socks5Message);
+                                if(socks5Message.ReceiveFlag == 1)
+                                {
+                                    Thread threadServer = new Thread(new ParameterizedThreadStart(server.AddSocks5ReceiveMessageToMap));
+                                    threadServer.Start(socks5Message);
+                                }else
+                                {
+                                    Thread threadServer = new Thread(new ParameterizedThreadStart(server.PushSocks5Message));
+                                    threadServer.Start(socks5Message);
+                                }
                             }else
                             {
                                 // generate server

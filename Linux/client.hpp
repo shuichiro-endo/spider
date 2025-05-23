@@ -52,6 +52,17 @@ namespace spider
                              int32_t tv_sec,
                              int32_t tv_usec);
 
+        int32_t recv_receive_message(uint32_t message_id,
+                                     int32_t tv_sec,
+                                     int32_t tv_usec);
+
+        int32_t send_receive_message(uint32_t message_id,
+                                     uint8_t receive_flag,
+                                     uint8_t receive_result,
+                                     uint8_t command_result,
+                                     int32_t tv_sec,
+                                     int32_t tv_usec);
+
         int32_t forwarder_recv_data();
 
         int32_t forwarder_send_data();

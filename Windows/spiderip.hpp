@@ -21,7 +21,7 @@ namespace spider
         std::string spider_ipv6_link_local;
         std::string spider_ipv6_link_local_scope_id;
 
-        char addr6_string[INET6_ADDRSTRLEN + 1] = {0};
+        char addr6_string[INET6_ADDR_STRING_LENGTH + 1] = {0};
         char *addr6_string_pointer = addr6_string;
 
     public:

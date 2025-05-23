@@ -8,10 +8,9 @@
 
 //#define _DEBUG
 
-#define NODE_BUFFER_SIZE 65535
-
-#define ROUTING_MESSAGE_DATA_SIZE 60000
-#define SOCKS5_MESSAGE_DATA_SIZE 60000
+#define NODE_BUFFER_SIZE 72000
+#define SPIDER_MESSAGE_DATA_SIZE 65536
+#define SPIDER_MESSAGE_DATA_MAX_SIZE 65552        // 65536 + 16 (AES padding)
 #define SHELL_UPLOAD_DOWNLOAD_DATA_SIZE 50000
 #define SHELL_RESULT_DATA_SIZE 50000
 
@@ -19,7 +18,7 @@
 #define SOCKS5_MESSAGE_QUEUE_CAPACITY 100
 
 #define KEYS_MAP_SIZE 200
-#define METRIC_MAX 20   // 0 < METRIC_MAX <= UINT8_MAX(255), UINT8_MAX(255) < delete route
+#define METRIC_MAX 20   // 0 < METRIC_MAX <= UINT8_MAX(255), METRIC_MAX < delete route
 #define DELETE_ROUTE_TIME 5 // 5s
 
 #define FORWARDER_UDP_TIMEOUT 300
@@ -92,6 +91,47 @@
 
 
 #pragma pack(push, 1)
+struct spider_message_header
+{
+    char message_type;
+    uint8_t receive_flag;
+    uint8_t receive_result;
+    uint8_t command_result;
+    uint32_t message_id;
+    uint32_t connection_id;
+    uint32_t client_id;
+    uint32_t server_id;
+    char source_node_type;
+    char reserved1;
+    char source_ip[INET6_ADDRSTRLEN + 1];
+    char reserved2;
+    char destination_node_type;
+    char reserved3;
+    char destination_ip[INET6_ADDRSTRLEN + 1];
+    char reserved4;
+    int32_t tv_sec;
+    int32_t tv_usec;
+    int32_t forwarder_tv_sec;
+    int32_t forwarder_tv_usec;
+    int32_t data_size;
+    char reserved5;
+    char reserved6;
+    char reserved7;
+    char reserved8;
+};
+
+struct spider_message
+{
+    spider_message_header header;
+    char data[SPIDER_MESSAGE_DATA_MAX_SIZE];
+};
+
+struct route_data
+{
+    char ip[INET6_ADDRSTRLEN + 1];
+    uint8_t metric;
+};
+
 struct upload_download_data_header
 {
     char command[16];
@@ -103,11 +143,7 @@ struct upload_download_data_header
 
 struct upload_download_data
 {
-    char command[16];
-    char file_name[256];
-    char file_path[256];
-    uint64_t file_size;
-    uint64_t data_size;
+    upload_download_data_header header;
     char data[SHELL_UPLOAD_DOWNLOAD_DATA_SIZE];
 };
 #pragma pack(pop)
