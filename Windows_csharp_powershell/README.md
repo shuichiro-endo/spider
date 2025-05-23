@@ -37,7 +37,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -: Windows c# powershell Ver: 1.27  Author: Shuichiro Endo
+        =-    -: Windows c# powershell Ver: 2.0   Author: Shuichiro Endo
 
 
 usage   : .\spider.ps1
@@ -136,7 +136,7 @@ The spider with this option set prevents the spider server from being generated.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -: Windows c# powershell Ver: 1.27  Author: Shuichiro Endo
+        =-    -: Windows c# powershell Ver: 2.0   Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
