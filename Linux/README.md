@@ -785,7 +785,9 @@ Set the ip address of the destination spider that you want to see the node infor
 
 ### 4: show routing table
 > [!NOTE]
-> The default route is not set.
+> In the spider, the default route is not used.
+> 
+> If a packet that cannot be forwarded reaches the spider, it will be discarded.
 
 > [!IMPORTANT]
 > If the value of the metric is abnormal, the spider with that IP address has been disconnected.
