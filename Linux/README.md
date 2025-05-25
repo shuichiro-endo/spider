@@ -784,6 +784,9 @@ Set the ip address of the spider itself.
 Set the ip address of the destination spider that you want to see the node information.
 
 ### 4: show routing table
+> [!NOTE]
+> The default route is not set.
+
 > [!IMPORTANT]
 > If the value of the metric is abnormal, the spider with that IP address has been disconnected.
 > 
