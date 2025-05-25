@@ -433,7 +433,25 @@ namespace spider
         unsigned char pad = *(data + data_size - 1);
 
 
-        for(i = pad; i >= 0; i--)
+        if(pad < 1 ||
+           pad > 16)
+        {
+            return 0;
+        }else if(pad > data_size)
+        {
+            return -1;
+        }else
+        {
+            for(i = pad; i > 0; i--)
+            {
+                if(*(data + data_size - i) != pad)  // check padding
+                {
+                    return -1;
+                }
+            }
+        }
+
+        for(i = pad; i > 0; i--)
         {
             *(data + data_size - pad) = 0x0;
         }
@@ -485,6 +503,7 @@ namespace spider
                          int32_t data_size,
                          int32_t buffer_size)
     {
+        int32_t ret;
         int32_t i;
         unsigned char *p;
         unsigned char *iv_tmp;
@@ -520,8 +539,15 @@ namespace spider
             iv_tmp -= AES_BLOCK_LEN;
         }
 
-        data_size = delete_padding((unsigned char *)data,
-                                   data_size);
+        ret = delete_padding((unsigned char *)data,
+                             data_size);
+        if(ret < 0)
+        {
+            return -1;
+        }else if(ret != 0)
+        {
+            data_size = ret;
+        }
 
 #ifdef _DEBUG
 //        print_bytes(data, data_size);
