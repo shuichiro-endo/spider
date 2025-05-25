@@ -1,7 +1,7 @@
 /*
  * Title:  spider Spider.cs (Windows csharp)
  * Author: Shuichiro Endo
- * Ver:    2.1
+ * Ver:    2.2
  */
 
 using System;
@@ -45,7 +45,7 @@ namespace spider
             Console.WriteLine("  :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     ");
             Console.WriteLine("         -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     ");
             Console.WriteLine("        :*-  :*-   .:.              _//                                   ");
-            Console.WriteLine("        =-    -:       Windows csharp Ver: 2.1    Author: Shuichiro Endo  ");
+            Console.WriteLine("        =-    -:       Windows csharp Ver: 2.2    Author: Shuichiro Endo  ");
             Console.WriteLine("");
         }
 
