@@ -2,6 +2,11 @@
 
 socks5 proxy tunnel tool
 
+> [!NOTE]
+> This tool was created for learning purposes.
+>
+> Therefore, I recommend using other tunnel tools. (e.g. ligolo-ng, sshuttle, chisel, ...)
+
 ## How it works
 ![](./imgs/img01.jpg)
 
