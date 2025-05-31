@@ -180,6 +180,8 @@ command >
 ```
 
 ### 1: add node (spider pipe)
+> [!IMPORTANT]
+> The pipe client's message mode must be the same as the message mode of the pipe server to which it is connecting.
 1. pipe (client), self
 - ipv4
 ```
@@ -188,18 +190,20 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:11:14 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:11:14 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:11:14 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 08:50:30 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 08:50:30 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 08:50:30 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > c
+message mode (default:d http:h)                > d
 pipe ip                                        > 192.168.0.25
 pipe destination ip                            > 192.168.0.26
 pipe destination port                          > 1026
 
 pipe mode                 : c
+message mode              : d
 pipe ip                   : 192.168.0.25
 pipe destination ip       : 192.168.0.26
 pipe destination port     : 1026
@@ -214,18 +218,20 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:12:27 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:12:27 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:12:27 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 08:52:09 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 08:52:09 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 08:52:09 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > c
+message mode (default:d http:h)                > d
 pipe ip                                        > fe80::a00:27ff:febe:3a77
 pipe destination ip                            > fe80::a00:27ff:fe25:c316
 pipe destination port                          > 1026
 
 pipe mode                 : c
+message mode              : d
 pipe ip                   : fe80::a00:27ff:febe:3a77
 pipe ip scope id          : enp0s3 (2)
 pipe destination ip       : fe80::a00:27ff:fe25:c316
@@ -244,17 +250,19 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:18:56 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:18:56 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:18:56 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 08:53:15 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 08:53:15 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 08:53:15 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > s
+message mode (default:d http:h)                > d
 pipe listen ip                                 > 192.168.0.25
 pipe listen port                               > 1025
 
 pipe mode                 : s
+message mode              : d
 pipe listen ip            : 192.168.0.25
 pipe listen port          : 1025
 
@@ -268,17 +276,19 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:19:39 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:19:39 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:19:39 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 08:54:25 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 08:54:25 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 08:54:25 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > s
+message mode (default:d http:h)                > d
 pipe listen ip                                 > fe80::a00:27ff:febe:3a77
 pipe listen port                               > 1025
 
 pipe mode                 : s
+message mode              : d
 pipe listen ip            : fe80::a00:27ff:febe:3a77
 pipe listen ip scope id   : enp0s3 (2)
 pipe listen port          : 1025
@@ -289,6 +299,8 @@ ok? (yes:y no:n quit:q)                        > y
 3. pipe (client), other (other spider)
 > [!IMPORTANT]
 > It is necessary to create a route in advance using pipes.
+>
+> The pipe client's message mode must be the same as the message mode of the pipe server to which it is connecting.
 - ipv4
 ```
 command > 1
@@ -296,18 +308,19 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:23:01 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:23:01 2025|
-|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:23:01 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 08:59:25 2025|
+|a   |192.168.0.26                                  |     1|3183352394|Sat May 31 09:00:37 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 08:59:25 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|3183352394|Sat May 31 09:00:37 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|3183352394|Sat May 31 09:00:37 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 08:59:25 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > c
 source spider ip                               > 192.168.0.25
 destination spider ip                          > 192.168.0.26
+message mode (default:d http:h)                > d
 pipe ip                                        > 192.168.0.26
 pipe destination ip                            > 192.168.0.27
 pipe destination port                          > 1027
@@ -315,6 +328,7 @@ pipe destination port                          > 1027
 pipe mode                 : c
 source spider ip          : 192.168.0.25
 destination spider ip     : 192.168.0.26
+message mode              : d
 pipe ip                   : 192.168.0.26
 pipe destination ip       : 192.168.0.27
 pipe destination port     : 1027
@@ -329,18 +343,19 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:24:56 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:24:56 2025|
-|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:24:56 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 08:59:25 2025|
+|a   |192.168.0.26                                  |     1|3183352394|Sat May 31 09:04:58 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 08:59:25 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|3183352394|Sat May 31 09:04:58 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|3183352394|Sat May 31 09:04:58 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 08:59:25 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > c
 source spider ip                               > fe80::a00:27ff:febe:3a77
 destination spider ip                          > fe80::a00:27ff:fe25:c316
+message mode (default:d http:h)                > d
 pipe ip                                        > fe80::a00:27ff:fe25:c316
 pipe destination ip                            > fe80::a00:27ff:fe63:4c1f
 pipe destination port                          > 1027
@@ -349,6 +364,7 @@ pipe mode                 : c
 source spider ip          : fe80::a00:27ff:febe:3a77
 source spider ip scope id : enp0s3 (2)
 destination spider ip     : fe80::a00:27ff:fe25:c316
+message mode              : d
 pipe ip                   : fe80::a00:27ff:fe25:c316
 pipe destination ip       : fe80::a00:27ff:fe63:4c1f
 pipe destination port     : 1027
@@ -369,24 +385,26 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:28:45 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:28:45 2025|
-|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:28:45 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 09:07:11 2025|
+|a   |192.168.0.26                                  |     1|1756978290|Sat May 31 09:07:47 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 09:07:11 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1756978290|Sat May 31 09:07:47 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1756978290|Sat May 31 09:07:47 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 09:07:11 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > s
 source spider ip                               > 192.168.0.25
 destination spider ip                          > 192.168.0.26
+message mode (default:d http:h)                > d
 pipe listen ip                                 > 192.168.0.26
 pipe listen port                               > 1026
 
 pipe mode                 : s
 source spider ip          : 192.168.0.25
 destination spider ip     : 192.168.0.26
+message mode              : d
 pipe listen ip            : 192.168.0.26
 pipe listen port          : 1026
 
@@ -400,18 +418,19 @@ command > 1
 ---------------------------------------- routing  table ----------------------------------------
 |mode|ip address                                    |metric|pipe id   |time                    |
 ------------------------------------------------------------------------------------------------
-|-   |192.168.0.25                                  |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |192.168.0.26                                  |     1|1948536240|Thu Apr  3 09:30:54 2025|
-|-   |fd00:abcd:1234:5678::1                        |     0|         0|Thu Apr  3 09:20:28 2025|
-|a   |fd00:abcd:1234:5678::2                        |     1|1948536240|Thu Apr  3 09:30:54 2025|
-|a   |fe80::a00:27ff:fe25:c316                      |     1|1948536240|Thu Apr  3 09:30:54 2025|
-|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Thu Apr  3 09:20:28 2025|
+|-   |192.168.0.25                                  |     0|         0|Sat May 31 09:07:11 2025|
+|a   |192.168.0.26                                  |     1|1604702544|Sat May 31 09:09:25 2025|
+|-   |fd00:abcd:1234:5678::1                        |     0|         0|Sat May 31 09:07:11 2025|
+|a   |fd00:abcd:1234:5678::2                        |     1|1604702544|Sat May 31 09:09:25 2025|
+|a   |fe80::a00:27ff:fe25:c316                      |     1|1604702544|Sat May 31 09:09:25 2025|
+|-   |fe80::a00:27ff:febe:3a77                      |     0|         0|Sat May 31 09:07:11 2025|
 ------------------------------------------------------------------------------------------------
 
 mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > s
 source spider ip                               > fe80::a00:27ff:febe:3a77
 destination spider ip                          > fe80::a00:27ff:fe25:c316
+message mode (default:d http:h)                > d
 pipe listen ip                                 > fe80::a00:27ff:fe25:c316
 pipe listen port                               > 1026
 
@@ -419,6 +438,7 @@ pipe mode                 : s
 source spider ip          : fe80::a00:27ff:febe:3a77
 source spider ip scope id : enp0s3 (2)
 destination spider ip     : fe80::a00:27ff:fe25:c316
+message mode              : d
 pipe listen ip            : fe80::a00:27ff:fe25:c316
 pipe listen port          : 1026
 
@@ -447,6 +467,9 @@ Set the ip address of the spider itself.
 
 #### destination spider ip (other)
 Set the ip address of the destination spider that you want to add the pipe node.
+
+#### message mode (default:d http:h)
+Set the message mode used by the pipe node.
 
 #### pipe listen ip (pipe server)
 Set the ip address of the interface that the pipe server node will listen on.

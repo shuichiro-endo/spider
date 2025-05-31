@@ -24,6 +24,7 @@ namespace spider
         std::shared_ptr<Spiderip> spider_ip;
         uint32_t pipe_id;
         char mode;                          // client:c server:s
+        char message_mode;                  // default:d http:h
         std::string pipe_ip;
         std::string pipe_ip_scope_id;
         std::string pipe_listen_port;
@@ -37,11 +38,13 @@ namespace spider
 
     private:
         std::shared_ptr<Routingmessage> pop_routing_message();
+        std::shared_ptr<Routingmessage> pop_latest_routing_message();
 
     public:
         Pipe(std::shared_ptr<Spiderip> spider_ip,
              uint32_t pipe_id,
              char mode,
+             char message_mode,
              std::string pipe_ip,
              std::string pipe_ip_scope_id,
              std::string pipe_destination_ip,
@@ -54,6 +57,7 @@ namespace spider
         Pipe(std::shared_ptr<Spiderip> spider_ip,
              uint32_t pipe_id,
              char mode,
+             char message_mode,
              std::string pipe_ip,
              std::string pipe_ip_scope_id,
              std::string pipe_listen_port,
@@ -71,6 +75,9 @@ namespace spider
 
         void set_mode(char mode);
         char get_mode();
+
+        void set_message_mode(char message_mode);
+        char get_message_mode();
 
         void set_pipe_ip(std::string pipe_ip);
         std::string get_pipe_ip();
@@ -95,6 +102,11 @@ namespace spider
         int32_t recv_message();
         int32_t send_routing_message();
         int32_t send_socks5_message();
+
+        int32_t get_http_header_length(const char* buffer);
+        int32_t get_content_length(const char* buffer);
+        int32_t do_http_connection_client();
+        int32_t do_http_connection_server();
     };
 }
 

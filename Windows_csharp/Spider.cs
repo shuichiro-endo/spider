@@ -55,7 +55,7 @@ namespace spider
             Console.WriteLine("usage   : {0}", fileName);
             Console.WriteLine("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]");
             Console.WriteLine("        : [-f config_file]");
-            Console.WriteLine("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port]");
+            Console.WriteLine("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]");
             Console.WriteLine("        : [-r routing_mode(auto:a self:s)]");
             Console.WriteLine("        : [-e x(xor encryption)] [-k key(hexstring)]");
             Console.WriteLine("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]");
@@ -67,7 +67,7 @@ namespace spider
             Console.WriteLine("        : {0} -l fe80::xxxx:xxxx:xxxx:xxxx%14", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%14", fileName);
             Console.WriteLine("        : {0} -f config_sample.txt", fileName);
-            Console.WriteLine("        : {0} -d -i 192.168.0.25 -p 1025", fileName);
+            Console.WriteLine("        : {0} -d -i 192.168.0.25 -p 1025 -m d", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -r s", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -e x -k deadbeef", fileName);
             Console.WriteLine("        : {0} -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a", fileName);
@@ -96,6 +96,7 @@ namespace spider
             string pipeIpScopeId = "";
             string pipeDestinationIp = "";
             string pipeDestinationPort = "";
+            string messageMode = "";
             string routingMode = "a";
             string encryptionType = "";
             string key = "";
@@ -175,6 +176,14 @@ namespace spider
                         if(i + 1 < args.Length)
                         {
                             pipeDestinationPort = args[i + 1];
+                            i++;
+                        }
+                        break;
+
+                    case "-m":
+                        if(i + 1 < args.Length)
+                        {
+                            messageMode = args[i + 1];
                             i++;
                         }
                         break;
@@ -426,13 +435,25 @@ namespace spider
                     Environment.Exit(-1);
                 }
 
-                parameters = new object[] {mode,
-                                           pipeIp,
-                                           pipeIpScopeId,
-                                           pipeDestinationIp,
-                                           pipeDestinationPort};
-                Thread thread = new Thread(new ParameterizedThreadStart(spiderCommand.ConnectPipe));
-                thread.Start(parameters);
+                if(messageMode == "h")  // http
+                {
+                    parameters = new object[] {mode,
+                                               pipeIp,
+                                               pipeIpScopeId,
+                                               pipeDestinationIp,
+                                               pipeDestinationPort};
+                    Thread thread = new Thread(new ParameterizedThreadStart(spiderCommand.ConnectPipeHttp));
+                    thread.Start(parameters);
+                }else   // default
+                {
+                    parameters = new object[] {mode,
+                                               pipeIp,
+                                               pipeIpScopeId,
+                                               pipeDestinationIp,
+                                               pipeDestinationPort};
+                    Thread thread = new Thread(new ParameterizedThreadStart(spiderCommand.ConnectPipe));
+                    thread.Start(parameters);
+                }
 
                 Thread.Sleep(5000); // 5s
             }

@@ -21,6 +21,9 @@
 #define METRIC_MAX 20   // 0 < METRIC_MAX <= UINT8_MAX(255), METRIC_MAX < delete route
 #define DELETE_ROUTE_TIME 5 // 5s
 
+#define PIPE_MESSAGE_MODE_HTTP_SLEEP 300    // 300ms
+#define HTTP_REQUEST_HEADER_USER_AGENT_VALUE "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.2651.74"
+
 #define FORWARDER_UDP_TIMEOUT 300
 
 #define SHOW_NODE_INFORMATION_WORKER_TV_SEC 10

@@ -25,6 +25,8 @@ namespace spider
         Socks5messagequeue();
         ~Socks5messagequeue();
 
+        int32_t get_count();
+
         void push(std::shared_ptr<Socks5message> message);
         int32_t push_timeout(std::shared_ptr<Socks5message> message,
                             int32_t tv_sec,

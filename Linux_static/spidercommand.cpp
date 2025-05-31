@@ -1225,6 +1225,7 @@ namespace spider
         pipe = std::make_shared<Pipe>(spider_ip,
                                       0,
                                       mode,
+                                      'd',
                                       pipe_ip,
                                       pipe_ip_scope_id,
                                       pipe_destination_ip,
@@ -1335,6 +1336,7 @@ namespace spider
             pipe_listen = std::make_shared<Pipe>(spider_ip,
                                                  0,
                                                  mode,
+                                                 'd',
                                                  pipe_listen_ip,
                                                  "",
                                                  pipe_listen_port,
@@ -1378,6 +1380,7 @@ namespace spider
                 std::shared_ptr<Pipe> pipe = std::make_shared<Pipe>(spider_ip,
                                                                     0,
                                                                     '-',
+                                                                    'd',
                                                                     pipe_listen_ip,
                                                                     "",
                                                                     pipe_destination_ip,
@@ -1465,6 +1468,7 @@ namespace spider
             pipe_listen = std::make_shared<Pipe>(spider_ip,
                                                  0,
                                                  mode,
+                                                 'd',
                                                  pipe_listen_ip,
                                                  pipe_listen_ip_scope_id,
                                                  pipe_listen_port,
@@ -1528,6 +1532,7 @@ namespace spider
                 std::shared_ptr<Pipe> pipe = std::make_shared<Pipe>(spider_ip,
                                                                     0,
                                                                     '-',
+                                                                    'd',
                                                                     pipe_listen_ip,
                                                                     pipe_listen_ip_scope_id,
                                                                     pipe_destination_ip,
@@ -1558,11 +1563,625 @@ namespace spider
         return 0;
     }
 
+    int Spidercommand::connect_pipe_http(char mode,
+                                         std::string pipe_ip,
+                                         std::string pipe_ip_scope_id,
+                                         std::string pipe_destination_ip,
+                                         std::string pipe_destination_port)
+    {
+        int ret = 0;
+        uint32_t pipe_id = 0;
+        struct sockaddr_in pipe_dest_addr;
+        struct sockaddr_in6 pipe_dest_addr6;
+        uint32_t pipe_sock = -1;
+        int reuse = 1;
+        int flags = 0;
+        int pipe_dest_addr_length = sizeof(pipe_dest_addr);
+        int pipe_dest_addr6_length = sizeof(pipe_dest_addr6);
+        char pipe_dest_addr6_string[INET6_ADDRSTRLEN + 1] = {0};
+        char *pipe_dest_addr6_string_pointer = pipe_dest_addr6_string;
+        std::string pipe_destination_ip_scope_id;
+        std::shared_ptr<Pipe> pipe = nullptr;
+        uint32_t pipe_key = 0;
+
+
+        std::memset((char *)&pipe_dest_addr,
+                    0,
+                    sizeof(struct sockaddr_in));
+
+        std::memset((char *)&pipe_dest_addr6,
+                    0,
+                    sizeof(struct sockaddr_in6));
+
+
+        if(pipe_destination_ip.find(":") == std::string::npos)  // ipv4 address
+        {
+            ret = cares_manager->get_addr_info(pipe_destination_ip.c_str(),
+                                               pipe_destination_port.c_str(),
+                                               AF_INET,
+                                               &pipe_dest_addr,
+                                               NULL);
+            if(ret != 0)
+            {
+                std::printf("[-] cannot resolv the address: %s\n",
+                            pipe_destination_ip.c_str());
+                return -1;
+            }
+
+            while(1)
+            {
+                pipe_sock = socket(AF_INET,
+                                   SOCK_STREAM,
+                                   0);
+
+                flags = fcntl(pipe_sock,
+                              F_GETFL,
+                              0);
+                flags &= ~O_NONBLOCK;
+                fcntl(pipe_sock,
+                      F_SETFL,
+                      flags);
+
+#ifdef _DEBUG
+                std::printf("[+] connecting to ip:%s port:%d\n",
+                            inet_ntoa(pipe_dest_addr.sin_addr),
+                            ntohs(pipe_dest_addr.sin_port));
+#endif
+
+                // connect
+                ret = connect(pipe_sock,
+                              (struct sockaddr *)&pipe_dest_addr,
+                              sizeof(pipe_dest_addr));
+                if(ret < 0)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] connect failed:%d\n", ret);
+#endif
+                    close(pipe_sock);
+                    if(pipe != nullptr)
+                    {
+                        pipe_manager->erase_pipe(pipe_key);
+                    }
+                    break;
+                }
+#ifdef _DEBUG
+                std::printf("[+] connected to ip:%s port:%d\n", inet_ntoa(pipe_dest_addr.sin_addr), ntohs(pipe_dest_addr.sin_port));
+#endif
+
+                if(pipe == nullptr)
+                {
+                    pipe = std::make_shared<Pipe>(spider_ip,
+                                                  0,
+                                                  mode,
+                                                  'h',
+                                                  pipe_ip,
+                                                  pipe_ip_scope_id,
+                                                  pipe_destination_ip,
+                                                  pipe_destination_ip_scope_id,
+                                                  pipe_destination_port,
+                                                  pipe_sock,
+                                                  routing_manager,
+                                                  message_manager);
+
+                    do
+                    {
+                        pipe_key = generate_random_id();
+                        ret = pipe_manager->insert_pipe(pipe_key,
+                                                        pipe);
+                    }while(ret != 0);
+                }else
+                {
+                    pipe->set_sock(pipe_sock);
+                }
+
+
+                // http connection
+                ret = pipe->do_http_connection_client();
+                if(ret < 0)
+                {
+                    pipe->set_sock(-1);
+                    close(pipe_sock);
+                    pipe_manager->erase_pipe(pipe_key);
+                    break;
+                }
+
+                pipe->set_sock(-1);
+                close(pipe_sock);
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(PIPE_MESSAGE_MODE_HTTP_SLEEP));
+            }
+        }else   // ipv6 address
+        {
+            ret = cares_manager->get_addr_info(pipe_destination_ip.c_str(),
+                                               pipe_destination_port.c_str(),
+                                               AF_INET6,
+                                               NULL,
+                                               &pipe_dest_addr6);
+            if(ret != 0)
+            {
+                std::printf("[-] cannot resolv the address: %s\n",
+                            pipe_destination_ip.c_str());
+                return -1;
+            }
+
+            if(pipe_ip_scope_id.size() > 0)
+            {
+                pipe_dest_addr6.sin6_scope_id = if_nametoindex(pipe_ip_scope_id.c_str());
+            }
+
+            while(1)
+            {
+                pipe_sock = socket(AF_INET6,
+                                   SOCK_STREAM,
+                                   0);
+
+                flags = fcntl(pipe_sock,
+                              F_GETFL,
+                              0);
+                flags &= ~O_NONBLOCK;
+                fcntl(pipe_sock,
+                      F_SETFL,
+                      flags);
+
+                inet_ntop(AF_INET6,
+                          &pipe_dest_addr6.sin6_addr,
+                          pipe_dest_addr6_string_pointer,
+                          INET6_ADDRSTRLEN);
+#ifdef _DEBUG
+                if(pipe_dest_addr6.sin6_scope_id > 0)
+                {
+                    std::printf("[+] connecting to ip:%s%%%d port:%d\n",
+                                pipe_dest_addr6_string_pointer,
+                                pipe_dest_addr6.sin6_scope_id,
+                                ntohs(pipe_dest_addr6.sin6_port));
+                }else
+                {
+                    std::printf("[+] connecting to ip:%s port:%d\n",
+                                pipe_dest_addr6_string_pointer,
+                                ntohs(pipe_dest_addr6.sin6_port));
+                }
+#endif
+
+                // connect
+                ret = connect(pipe_sock,
+                              (struct sockaddr *)&pipe_dest_addr6,
+                              sizeof(pipe_dest_addr6));
+                if(ret < 0)
+                {
+#ifdef _DEBUG
+                    std::printf("[-] connect failed:%d\n",
+                                ret);
+#endif
+                    close(pipe_sock);
+                    if(pipe != nullptr)
+                    {
+                        pipe_manager->erase_pipe(pipe_key);
+                    }
+                    break;
+                }
+
+                inet_ntop(AF_INET6,
+                          &pipe_dest_addr6.sin6_addr,
+                          pipe_dest_addr6_string_pointer,
+                          INET6_ADDRSTRLEN);
+#ifdef _DEBUG
+                if(pipe_dest_addr6.sin6_scope_id > 0)
+                {
+                    std::printf("[+] connected to ip:%s%%%d port:%d\n",
+                                pipe_dest_addr6_string_pointer,
+                                pipe_dest_addr6.sin6_scope_id,
+                                ntohs(pipe_dest_addr6.sin6_port));
+                }else
+                {
+                    std::printf("[+] connected to ip:%s port:%d\n",
+                                pipe_dest_addr6_string_pointer,
+                                ntohs(pipe_dest_addr6.sin6_port));
+                }
+#endif
+
+                pipe_destination_ip_scope_id = std::to_string(pipe_dest_addr6.sin6_scope_id);
+
+                if(pipe == nullptr)
+                {
+                    pipe = std::make_shared<Pipe>(spider_ip,
+                                                  0,
+                                                  mode,
+                                                  'h',
+                                                  pipe_ip,
+                                                  pipe_ip_scope_id,
+                                                  pipe_destination_ip,
+                                                  pipe_destination_ip_scope_id,
+                                                  pipe_destination_port,
+                                                  pipe_sock,
+                                                  routing_manager,
+                                                  message_manager);
+
+                    do
+                    {
+                        pipe_key = generate_random_id();
+                        ret = pipe_manager->insert_pipe(pipe_key,
+                                                        pipe);
+                    }while(ret != 0);
+                }else
+                {
+                    pipe->set_sock(pipe_sock);
+                }
+
+
+                // http connection
+                ret = pipe->do_http_connection_client();
+                if(ret < 0)
+                {
+                    pipe->set_sock(-1);
+                    close(pipe_sock);
+                    pipe_manager->erase_pipe(pipe_key);
+                    break;
+                }
+
+                pipe->set_sock(-1);
+                close(pipe_sock);
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(PIPE_MESSAGE_MODE_HTTP_SLEEP));
+            }
+        }
+
+        return 0;
+    }
+
+    int Spidercommand::listen_pipe_http(char mode,
+                                        std::string pipe_listen_ip,
+                                        std::string pipe_listen_ip_scope_id,
+                                        std::string pipe_listen_port)
+    {
+        int ret = 0;
+        uint32_t pipe_id = 0;
+        struct sockaddr_in pipe_listen_addr, pipe_addr;
+        struct sockaddr_in6 pipe_listen_addr6, pipe_addr6;
+        uint32_t pipe_listen_sock = -1;
+        uint32_t pipe_sock = -1;
+        int reuse = 1;
+        int flags = 0;
+        int pipe_addr_length = sizeof(pipe_addr);
+        int pipe_addr6_length = sizeof(pipe_addr6);
+        char pipe_listen_addr6_string[INET6_ADDRSTRLEN + 1] = {0};
+        char *pipe_listen_addr6_string_pointer = pipe_listen_addr6_string;
+        char pipe_addr6_string[INET6_ADDRSTRLEN + 1] = {0};
+        char *pipe_addr6_string_pointer = pipe_addr6_string;
+        std::shared_ptr<Pipe> pipe_listen;
+        uint32_t pipe_listen_key = 0;
+        uint32_t pipe_key = 0;
+        std::string pipe_destination_ip;
+        std::string pipe_destination_ip_scope_id;
+        std::string pipe_destination_port;
+        std::shared_ptr<Pipe> pipe = nullptr;
+
+        std::memset((char *)&pipe_listen_addr,
+                    0,
+                    sizeof(struct sockaddr_in));
+
+        std::memset((char *)&pipe_addr,
+                    0,
+                    sizeof(struct sockaddr_in));
+
+        std::memset((char *)&pipe_listen_addr6,
+                    0,
+                    sizeof(struct sockaddr_in6));
+
+        std::memset((char *)&pipe_addr6,
+                    0,
+                    sizeof(struct sockaddr_in6));
+
+
+        if(pipe_listen_ip.find(":") == std::string::npos)  // ipv4 address
+        {
+            ret = cares_manager->get_addr_info(pipe_listen_ip.c_str(),
+                                               pipe_listen_port.c_str(),
+                                               AF_INET,
+                                               &pipe_listen_addr,
+                                               NULL);
+            if(ret != 0)
+            {
+                std::printf("[-] cannot resolv the address: %s\n",
+                            pipe_listen_ip.c_str());
+                return -1;
+            }
+
+            pipe_listen_sock = socket(AF_INET,
+                                      SOCK_STREAM,
+                                      0);
+            reuse = 1;
+            setsockopt(pipe_listen_sock,
+                       SOL_SOCKET,
+                       SO_REUSEADDR,
+                       &reuse,
+                       sizeof(int));
+
+            // bind
+            ret = bind(pipe_listen_sock,
+                       (struct sockaddr *)&pipe_listen_addr,
+                       sizeof(pipe_listen_addr));
+            if(ret == -1)
+            {
+                std::printf("[-] bind error: %d\n",
+                            errno);
+                close(pipe_listen_sock);
+                return -1;
+            }
+
+            // listen
+            listen(pipe_listen_sock,
+                   5);
+
+            std::printf("[+] listening port %d on %s\n",
+                        ntohs(pipe_listen_addr.sin_port),
+                        inet_ntoa(pipe_listen_addr.sin_addr));
+
+            pipe_listen = std::make_shared<Pipe>(spider_ip,
+                                                 0,
+                                                 mode,
+                                                 'h',
+                                                 pipe_listen_ip,
+                                                 "",
+                                                 pipe_listen_port,
+                                                 pipe_listen_sock,
+                                                 routing_manager,
+                                                 message_manager);
+
+            do
+            {
+                pipe_listen_key = generate_random_id();
+                ret = pipe_manager->insert_pipe(pipe_listen_key,
+                                                pipe_listen);
+            }while(ret != 0);
+
+            while(1)
+            {
+                // accept
+                pipe_sock = accept(pipe_listen_sock,
+                                   (struct sockaddr *)&pipe_addr,
+                                   (socklen_t *)&pipe_addr_length);
+
+                if(pipe != nullptr &&
+                    pipe->get_sock() != -1)
+                {
+                    close(pipe_sock);
+                    continue;
+                }
+
+#ifdef _DEBUG
+                std::printf("[+] connected from ip:%s port:%d\n",
+                            inet_ntoa(pipe_addr.sin_addr),
+                            ntohs(pipe_addr.sin_port));
+#endif
+
+                flags = fcntl(pipe_sock,
+                              F_GETFL,
+                              0);
+                flags &= ~O_NONBLOCK;
+                fcntl(pipe_sock,
+                      F_SETFL,
+                      flags);
+
+                pipe_destination_ip = inet_ntoa(pipe_addr.sin_addr);
+                pipe_destination_port = std::to_string(ntohs(pipe_addr.sin_port));
+
+                if(pipe == nullptr)
+                {
+                    pipe = std::make_shared<Pipe>(spider_ip,
+                                                  0,
+                                                  '-',
+                                                  'h',
+                                                  pipe_listen_ip,
+                                                  "",
+                                                  pipe_destination_ip,
+                                                  "",
+                                                  pipe_destination_port,
+                                                  pipe_sock,
+                                                  routing_manager,
+                                                  message_manager);
+
+                    do
+                    {
+                        pipe_id = generate_random_id();
+                        ret = pipe_manager->insert_pipe(pipe_id,
+                                                        pipe);
+                    }while(ret != 0);
+
+                    pipe_key = pipe_id;
+                }else
+                {
+                    pipe->set_pipe_destination_ip(pipe_destination_ip);
+                    pipe->set_pipe_destination_port(pipe_destination_port);
+                    pipe->set_sock(pipe_sock);
+                }
+
+
+                // http connection
+                ret = pipe->do_http_connection_server();
+
+                pipe->set_sock(-1);
+                close(pipe_sock);
+            }
+
+            pipe_manager->erase_pipe(pipe_key);
+            pipe_manager->erase_pipe(pipe_listen_key);
+        }else   // ipv6 address
+        {
+            ret = cares_manager->get_addr_info(pipe_listen_ip.c_str(),
+                                               pipe_listen_port.c_str(),
+                                               AF_INET6,
+                                               NULL,
+                                               &pipe_listen_addr6);
+            if(ret != 0)
+            {
+                std::printf("[-] cannot resolv the address: %s\n",
+                            pipe_listen_ip.c_str());
+                return -1;
+            }
+
+            if(pipe_listen_ip_scope_id.size() != 0)
+            {
+                pipe_listen_addr6.sin6_scope_id = if_nametoindex(pipe_listen_ip_scope_id.c_str());
+            }
+
+            pipe_listen_sock = socket(AF_INET6, SOCK_STREAM, 0);
+            reuse = 1;
+            setsockopt(pipe_listen_sock,
+                       SOL_SOCKET,
+                       SO_REUSEADDR,
+                       &reuse,
+                       sizeof(int));
+
+            // bind
+            ret = bind(pipe_listen_sock,
+                       (struct sockaddr *)&pipe_listen_addr6,
+                       sizeof(pipe_listen_addr6));
+            if(ret == -1)
+            {
+                std::printf("[-] bind error: %d\n",
+                            errno);
+                close(pipe_listen_sock);
+                return -1;
+            }
+
+            // listen
+            listen(pipe_listen_sock,
+                   5);
+
+            inet_ntop(AF_INET6,
+                      &pipe_listen_addr6.sin6_addr,
+                      pipe_listen_addr6_string_pointer,
+                      INET6_ADDRSTRLEN);
+
+            if(pipe_listen_addr6.sin6_scope_id > 0)
+            {
+                std::printf("[+] listening port %d on %s%%%d\n",
+                            ntohs(pipe_listen_addr6.sin6_port),
+                            pipe_listen_addr6_string_pointer,
+                            pipe_listen_addr6.sin6_scope_id);
+            }else
+            {
+                std::printf("[+] listening port %d on %s\n",
+                            ntohs(pipe_listen_addr6.sin6_port),
+                            pipe_listen_addr6_string_pointer);
+            }
+
+            pipe_listen = std::make_shared<Pipe>(spider_ip,
+                                                 0,
+                                                 mode,
+                                                 'h',
+                                                 pipe_listen_ip,
+                                                 pipe_listen_ip_scope_id,
+                                                 pipe_listen_port,
+                                                 pipe_listen_sock,
+                                                 routing_manager,
+                                                 message_manager);
+
+            do
+            {
+                pipe_listen_key = generate_random_id();
+                ret = pipe_manager->insert_pipe(pipe_listen_key,
+                                                pipe_listen);
+            }while(ret != 0);
+
+            while(1)
+            {
+                // accept
+                pipe_sock = accept(pipe_listen_sock,
+                                   (struct sockaddr *)&pipe_addr6,
+                                   (socklen_t *)&pipe_addr6_length);
+                if(pipe != nullptr &&
+                    pipe->get_sock() != -1)
+                {
+                    close(pipe_sock);
+                    continue;
+                }
+
+                inet_ntop(AF_INET6,
+                          &pipe_addr6.sin6_addr,
+                          pipe_addr6_string_pointer,
+                          INET6_ADDRSTRLEN);
+#ifdef _DEBUG
+                if(pipe_addr6.sin6_scope_id > 0)
+                {
+                    std::printf("[+] connected from ip:%s%%%d port:%d\n",
+                                pipe_addr6_string_pointer,
+                                pipe_addr6.sin6_scope_id,
+                                ntohs(pipe_addr6.sin6_port));
+                }else
+                {
+                    std::printf("[+] connected from ip:%s port:%d\n",
+                                pipe_addr6_string_pointer,
+                                ntohs(pipe_addr6.sin6_port));
+                }
+#endif
+
+                flags = fcntl(pipe_sock,
+                              F_GETFL,
+                              0);
+                flags &= ~O_NONBLOCK;
+                fcntl(pipe_sock,
+                      F_SETFL,
+                      flags);
+
+                pipe_destination_ip = pipe_addr6_string_pointer;
+                pipe_destination_ip_scope_id = std::to_string(pipe_addr6.sin6_scope_id);
+                pipe_destination_port = std::to_string(ntohs(pipe_addr6.sin6_port));
+
+                if(pipe == nullptr)
+                {
+                    pipe = std::make_shared<Pipe>(spider_ip,
+                                                  0,
+                                                  '-',
+                                                  'h',
+                                                  pipe_listen_ip,
+                                                  pipe_listen_ip_scope_id,
+                                                  pipe_destination_ip,
+                                                  pipe_destination_ip_scope_id,
+                                                  pipe_destination_port,
+                                                  pipe_sock,
+                                                  routing_manager,
+                                                  message_manager);
+
+                    do
+                    {
+                        pipe_id = generate_random_id();
+                        ret = pipe_manager->insert_pipe(pipe_id,
+                                                        pipe);
+                    }while(ret != 0);
+
+                    pipe_key = pipe_id;
+                }else
+                {
+                    pipe->set_pipe_destination_ip(pipe_destination_ip);
+                    pipe->set_pipe_destination_ip_scope_id(pipe_destination_ip_scope_id);
+                    pipe->set_pipe_destination_port(pipe_destination_port);
+                    pipe->set_sock(pipe_sock);
+                }
+
+
+                // http connection
+                ret = pipe->do_http_connection_server();
+
+                pipe->set_sock(-1);
+                close(pipe_sock);
+            }
+
+            pipe_manager->erase_pipe(pipe_key);
+            pipe_manager->erase_pipe(pipe_listen_key);
+        }
+
+        close(pipe_listen_sock);
+
+        return 0;
+    }
+
     void Spidercommand::add_node_spider_pipe()
     {
         std::string config = "";
         char mode;  // self:s other:o
         char pipe_mode;  // client:c server:s
+        char message_mode;  // default:d http:h
         std::string source_spider_ip;
         std::string source_spider_ip_scope_id;
         std::string destination_spider_ip;
@@ -1604,6 +2223,22 @@ namespace spider
                 {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    std::printf("message mode (default:d http:h)                > ");
+                    std::cin >> message_mode;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        message_mode = 'd';
+                    }
+
+                    if(message_mode != 'd' &&
+                       message_mode != 'h')
+                    {
+                        message_mode = 'd';
+                    }
 
                     std::printf("pipe ip                                        > ");
                     std::cin >> pipe_ip;
@@ -1653,6 +2288,7 @@ namespace spider
 
                     std::printf("\n");
                     std::printf("pipe mode                 : %c\n", pipe_mode);
+                    std::printf("message mode              : %c\n", message_mode);
                     std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
                     if(!pipe_ip_scope_id.empty())
                     {
@@ -1675,14 +2311,27 @@ namespace spider
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        std::thread thread(&Spidercommand::connect_pipe,
-                                           this,
-                                           pipe_mode,
-                                           pipe_ip,
-                                           pipe_ip_scope_id,
-                                           pipe_destination_ip,
-                                           pipe_destination_port);
-                        thread.detach();
+                        if(message_mode == 'd') // default
+                        {
+                            std::thread thread(&Spidercommand::connect_pipe,
+                                               this,
+                                               pipe_mode,
+                                               pipe_ip,
+                                               pipe_ip_scope_id,
+                                               pipe_destination_ip,
+                                               pipe_destination_port);
+                            thread.detach();
+                        }else if(message_mode == 'h')   // http
+                        {
+                            std::thread thread(&Spidercommand::connect_pipe_http,
+                                               this,
+                                               pipe_mode,
+                                               pipe_ip,
+                                               pipe_ip_scope_id,
+                                               pipe_destination_ip,
+                                               pipe_destination_port);
+                            thread.detach();
+                        }
 
                         std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
 
@@ -1709,6 +2358,22 @@ namespace spider
                 {
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                    std::printf("message mode (default:d http:h)                > ");
+                    std::cin >> message_mode;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        message_mode = 'd';
+                    }
+
+                    if(message_mode != 'd' &&
+                       message_mode != 'h')
+                    {
+                        message_mode = 'd';
+                    }
 
                     std::printf("pipe listen ip                                 > ");
                     std::cin >> pipe_ip;
@@ -1748,6 +2413,7 @@ namespace spider
 
                     std::printf("\n");
                     std::printf("pipe mode                 : %c\n", pipe_mode);
+                    std::printf("message mode              : %c\n", message_mode);
                     std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
                     if(!pipe_ip_scope_id.empty())
                     {
@@ -1769,13 +2435,25 @@ namespace spider
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        std::thread thread(&Spidercommand::listen_pipe,
-                                           this,
-                                           pipe_mode,
-                                           pipe_ip,
-                                           pipe_ip_scope_id,
-                                           pipe_listen_port);
-                        thread.detach();
+                        if(message_mode == 'd') // default
+                        {
+                            std::thread thread(&Spidercommand::listen_pipe,
+                                               this,
+                                               pipe_mode,
+                                               pipe_ip,
+                                               pipe_ip_scope_id,
+                                               pipe_listen_port);
+                            thread.detach();
+                        }else if(message_mode == 'h')   // http
+                        {
+                            std::thread thread(&Spidercommand::listen_pipe_http,
+                                               this,
+                                               pipe_mode,
+                                               pipe_ip,
+                                               pipe_ip_scope_id,
+                                               pipe_listen_port);
+                            thread.detach();
+                        }
 
                         std::this_thread::sleep_for(std::chrono::seconds(2));  // 2s
 
@@ -1856,6 +2534,22 @@ namespace spider
                         continue;
                     }
 
+                    std::printf("message mode (default:d http:h)                > ");
+                    std::cin >> message_mode;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        message_mode = 'd';
+                    }
+
+                    if(message_mode != 'd' &&
+                       message_mode != 'h')
+                    {
+                        message_mode = 'd';
+                    }
+
                     std::printf("pipe ip                                        > ");
                     std::cin >> pipe_ip;
                     if(std::cin.fail())
@@ -1894,6 +2588,7 @@ namespace spider
                         std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
                     }
                     std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                    std::printf("message mode              : %c\n", message_mode);
                     std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
                     std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
                     std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
@@ -1912,28 +2607,55 @@ namespace spider
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        config = "";
-                        config += "[pipe_client]\n";
+                        if(message_mode == 'd') // default
+                        {
+                            config = "";
+                            config += "[pipe_client]\n";
 
-                        config += "pipe_ip:";
-                        config += pipe_ip;
-                        config += "\n";
+                            config += "pipe_ip:";
+                            config += pipe_ip;
+                            config += "\n";
 
-                        config += "pipe_destination_ip:";
-                        config += pipe_destination_ip;
-                        config += "\n";
+                            config += "pipe_destination_ip:";
+                            config += pipe_destination_ip;
+                            config += "\n";
 
-                        config += "pipe_destination_port:";
-                        config += pipe_destination_port;
-                        config += "\n";
+                            config += "pipe_destination_port:";
+                            config += pipe_destination_port;
+                            config += "\n";
 
-                        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
-                                           this,
-                                           config,
-                                           source_spider_ip,
-                                           source_spider_ip_scope_id,
-                                           destination_spider_ip);
-                        thread.detach();
+                            std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                               this,
+                                               config,
+                                               source_spider_ip,
+                                               source_spider_ip_scope_id,
+                                               destination_spider_ip);
+                            thread.detach();
+                        }else if(message_mode == 'h')   // http
+                        {
+                            config = "";
+                            config += "[pipe_client_http]\n";
+
+                            config += "pipe_ip:";
+                            config += pipe_ip;
+                            config += "\n";
+
+                            config += "pipe_destination_ip:";
+                            config += pipe_destination_ip;
+                            config += "\n";
+
+                            config += "pipe_destination_port:";
+                            config += pipe_destination_port;
+                            config += "\n";
+
+                            std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                               this,
+                                               config,
+                                               source_spider_ip,
+                                               source_spider_ip_scope_id,
+                                               destination_spider_ip);
+                            thread.detach();
+                        }
 
                         break;
                     }else if(check == 'n')
@@ -1995,6 +2717,22 @@ namespace spider
                         continue;
                     }
 
+                    std::printf("message mode (default:d http:h)                > ");
+                    std::cin >> message_mode;
+                    if(std::cin.fail())
+                    {
+                        std::printf("[-] input error\n");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        message_mode = 'd';
+                    }
+
+                    if(message_mode != 'd' &&
+                       message_mode != 'h')
+                    {
+                        message_mode = 'd';
+                    }
+
                     std::printf("pipe listen ip                                 > ");
                     std::cin >> pipe_ip;
                     if(std::cin.fail())
@@ -2023,6 +2761,7 @@ namespace spider
                         std::printf("source spider ip scope id : %s (%d)\n", source_spider_ip_scope_id.c_str(), if_nametoindex(source_spider_ip_scope_id.c_str()));
                     }
                     std::printf("destination spider ip     : %s\n", destination_spider_ip.c_str());
+                    std::printf("message mode              : %c\n", message_mode);
                     std::printf("pipe listen ip            : %s\n", pipe_ip.c_str());
                     std::printf("pipe listen port          : %s\n", pipe_listen_port.c_str());
                     std::printf("\n");
@@ -2040,24 +2779,47 @@ namespace spider
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                        config = "";
-                        config += "[pipe_server]\n";
+                        if(message_mode == 'd') // default
+                        {
+                            config = "";
+                            config += "[pipe_server]\n";
 
-                        config += "pipe_listen_ip:";
-                        config += pipe_ip;
-                        config += "\n";
+                            config += "pipe_listen_ip:";
+                            config += pipe_ip;
+                            config += "\n";
 
-                        config += "pipe_listen_port:";
-                        config += pipe_listen_port;
-                        config += "\n";
+                            config += "pipe_listen_port:";
+                            config += pipe_listen_port;
+                            config += "\n";
 
-                        std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
-                                           this,
-                                           config,
-                                           source_spider_ip,
-                                           source_spider_ip_scope_id,
-                                           destination_spider_ip);
-                        thread.detach();
+                            std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                               this,
+                                               config,
+                                               source_spider_ip,
+                                               source_spider_ip_scope_id,
+                                               destination_spider_ip);
+                            thread.detach();
+                        }else if(message_mode == 'h')   // http
+                        {
+                            config = "";
+                            config += "[pipe_server_http]\n";
+
+                            config += "pipe_listen_ip:";
+                            config += pipe_ip;
+                            config += "\n";
+
+                            config += "pipe_listen_port:";
+                            config += pipe_listen_port;
+                            config += "\n";
+
+                            std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
+                                               this,
+                                               config,
+                                               source_spider_ip,
+                                               source_spider_ip_scope_id,
+                                               destination_spider_ip);
+                            thread.detach();
+                        }
 
                         break;
                     }else if(check == 'n')
@@ -5390,6 +6152,126 @@ namespace spider
                                pipe_destination_ip,
                                pipe_destination_port);
             thread.detach();
+        }else if(line == "[pipe_client_http]")
+        {
+            char mode = 'c';
+            std::string pipe_ip;
+            std::string pipe_ip_scope_id;
+            std::string pipe_destination_ip;
+            std::string pipe_destination_ip_scope_id;
+            std::string pipe_destination_port;
+
+
+            // pipe_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_ip:") != std::string::npos)
+            {
+                pipe_ip = get_line_value(line,
+                                         "pipe_ip:");
+            }
+
+            if(pipe_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] [pipe_ip] error\n");
+#endif
+                return -1;
+            }
+
+            if(pipe_ip != spider_ip->get_spider_ipv4()
+               && pipe_ip != spider_ip->get_spider_ipv6_global()
+               && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+               && pipe_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] [pipe_ip] please input spider ipv4 or ipv6: %s\n",
+                            pipe_ip.c_str());
+#endif
+                return -1;
+            }
+
+            if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+
+            // pipe_destination_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] error\n");
+#endif
+                return -1;
+            }
+
+
+            if(line.find("pipe_destination_ip:") != std::string::npos)
+            {
+                pipe_destination_ip = get_line_value(line,
+                                                     "pipe_destination_ip:");
+            }
+
+            if(pipe_destination_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] [pipe_destination_ip] error\n");
+#endif
+                return -1;
+            }
+
+
+            // pipe_destination_port
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_destination_port:") != std::string::npos)
+            {
+                pipe_destination_port = get_line_value(line,
+                                                       "pipe_destination_port:");
+            }
+
+            if(pipe_destination_port.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] [pipe_destination_port] error\n");
+#endif
+                return -1;
+            }
+
+
+            std::thread thread(&Spidercommand::connect_pipe_http,
+                               this,
+                               mode,
+                               pipe_ip,
+                               pipe_ip_scope_id,
+                               pipe_destination_ip,
+                               pipe_destination_port);
+            thread.detach();
         }else if(line == "[pipe_server]")
         {
             char mode = 's';
@@ -5472,6 +6354,94 @@ namespace spider
 
 
             std::thread thread(&Spidercommand::listen_pipe,
+                               this,
+                               mode,
+                               pipe_listen_ip,
+                               pipe_listen_ip_scope_id,
+                               pipe_listen_port);
+            thread.detach();
+        }else if(line == "[pipe_server_http]")
+        {
+            char mode = 's';
+            std::string pipe_listen_ip;
+            std::string pipe_listen_ip_scope_id;
+            std::string pipe_listen_port;
+
+
+            // pipe_listen_ip
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_listen_ip:") != std::string::npos)
+            {
+                pipe_listen_ip = get_line_value(line,
+                                                "pipe_listen_ip:");
+            }
+
+            if(pipe_listen_ip.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] [pipe_listen_ip] error\n");
+#endif
+                return -1;
+            }
+
+            if(pipe_listen_ip != spider_ip->get_spider_ipv4()
+               && pipe_listen_ip != spider_ip->get_spider_ipv6_global()
+               && pipe_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+               && pipe_listen_ip != spider_ip->get_spider_ipv6_link_local())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] [pipe_listen_ip] please input spider ipv4 or ipv6: %s\n",
+                            pipe_listen_ip.c_str());
+#endif
+                return -1;
+            }
+
+            if(pipe_listen_ip == spider_ip->get_spider_ipv6_link_local())
+            {
+                pipe_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+            }
+
+
+            // pipe_listen_port
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("pipe_listen_port:") != std::string::npos)
+            {
+                pipe_listen_port = get_line_value(line,
+                                                  "pipe_listen_port:");
+            }
+
+            if(pipe_listen_port.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] [pipe_listen_port] error\n");
+#endif
+                return -1;
+            }
+
+
+            std::thread thread(&Spidercommand::listen_pipe_http,
                                this,
                                mode,
                                pipe_listen_ip,
@@ -6849,6 +7819,112 @@ namespace spider
                                    pipe_destination_ip,
                                    pipe_destination_port);
                 thread.detach();
+            }else if(line == "[pipe_client_http]")
+            {
+                char mode = 'c';
+                std::string pipe_ip;
+                std::string pipe_ip_scope_id;
+                std::string pipe_destination_ip;
+                std::string pipe_destination_ip_scope_id;
+                std::string pipe_destination_port;
+
+
+                // pipe_ip
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_client_http] error\n");
+                    break;
+                }
+
+                if(line.find("pipe_ip:") != std::string::npos)
+                {
+                    pipe_ip = get_line_value(line,
+                                             "pipe_ip:");
+                }
+
+                if(pipe_ip.empty())
+                {
+                    std::printf("[-] [pipe_client_http] [pipe_ip] error\n");
+                    break;
+                }
+
+                if(pipe_ip != spider_ip->get_spider_ipv4()
+                   && pipe_ip != spider_ip->get_spider_ipv6_global()
+                   && pipe_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && pipe_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] [pipe_client_http] [pipe_ip] please input spider ipv4 or ipv6: %s\n",
+                                pipe_ip.c_str());
+                    break;
+                }
+
+                if(pipe_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    pipe_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+
+                // pipe_destination_ip
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_client_http] error\n");
+                    break;
+                }
+
+
+                if(line.find("pipe_destination_ip:") != std::string::npos)
+                {
+                    pipe_destination_ip = get_line_value(line,
+                                                         "pipe_destination_ip:");
+                }
+
+                if(pipe_destination_ip.empty())
+                {
+                    std::printf("[-] [pipe_client_http] [pipe_destination_ip] error\n");
+                    break;
+                }
+
+
+                // pipe_destination_port
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_client_http] error\n");
+                    break;
+                }
+
+                if(line.find("pipe_destination_port:") != std::string::npos)
+                {
+                    pipe_destination_port = get_line_value(line,
+                                                           "pipe_destination_port:");
+                }
+
+                if(pipe_destination_port.empty())
+                {
+                    std::printf("[-] [pipe_client_http] [pipe_destination_port] error\n");
+                    break;
+                }
+
+
+                std::thread thread(&Spidercommand::connect_pipe_http,
+                                   this,
+                                   mode,
+                                   pipe_ip,
+                                   pipe_ip_scope_id,
+                                   pipe_destination_ip,
+                                   pipe_destination_port);
+                thread.detach();
             }else if(line == "[pipe_server]")
             {
                 char mode = 's';
@@ -6921,6 +7997,84 @@ namespace spider
 
 
                 std::thread thread(&Spidercommand::listen_pipe,
+                                   this,
+                                   mode,
+                                   pipe_listen_ip,
+                                   pipe_listen_ip_scope_id,
+                                   pipe_listen_port);
+                thread.detach();
+            }else if(line == "[pipe_server_http]")
+            {
+                char mode = 's';
+                std::string pipe_listen_ip;
+                std::string pipe_listen_ip_scope_id;
+                std::string pipe_listen_port;
+
+
+                // pipe_listen_ip
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_server_http] error\n");
+                    break;
+                }
+
+                if(line.find("pipe_listen_ip:") != std::string::npos)
+                {
+                    pipe_listen_ip = get_line_value(line,
+                                                    "pipe_listen_ip:");
+                }
+
+                if(pipe_listen_ip.empty())
+                {
+                    std::printf("[-] [pipe_server_http] [pipe_listen_ip] error\n");
+                    break;
+                }
+
+                if(pipe_listen_ip != spider_ip->get_spider_ipv4()
+                   && pipe_listen_ip != spider_ip->get_spider_ipv6_global()
+                   && pipe_listen_ip != spider_ip->get_spider_ipv6_unique_local()
+                   && pipe_listen_ip != spider_ip->get_spider_ipv6_link_local())
+                {
+                    std::printf("[-] [pipe_server_http] [pipe_listen_ip] please input spider ipv4 or ipv6: %s\n",
+                                pipe_listen_ip.c_str());
+                    break;
+                }
+
+                if(pipe_listen_ip == spider_ip->get_spider_ipv6_link_local())
+                {
+                    pipe_listen_ip_scope_id = spider_ip->get_spider_ipv6_link_local_scope_id();
+                }
+
+
+                // pipe_listen_port
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_server_http] error\n");
+                    break;
+                }
+
+                if(line.find("pipe_listen_port:") != std::string::npos)
+                {
+                    pipe_listen_port = get_line_value(line,
+                                                      "pipe_listen_port:");
+                }
+
+                if(pipe_listen_port.empty())
+                {
+                    std::printf("[-] [pipe_server_http] [pipe_listen_port] error\n");
+                    break;
+                }
+
+
+                std::thread thread(&Spidercommand::listen_pipe_http,
                                    this,
                                    mode,
                                    pipe_listen_ip,

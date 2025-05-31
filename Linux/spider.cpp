@@ -61,7 +61,7 @@ namespace spider
         std::printf("usage   : %s\n", filename);
         std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-f config_file]\n");
-        std::printf("        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port]\n");
+        std::printf("        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
@@ -73,7 +73,7 @@ namespace spider
         std::printf("        : %s -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("        : %s -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%%eth0\n", filename);
         std::printf("        : %s -f config_sample.txt\n", filename);
-        std::printf("        : %s -d -i 192.168.0.25 -p 1025\n", filename);
+        std::printf("        : %s -d -i 192.168.0.25 -p 1025 -m d\n", filename);
         std::printf("        : %s -4 192.168.0.10 -r s\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e x -k deadbeef\n", filename);
         std::printf("        : %s -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a\n", filename);
@@ -86,7 +86,7 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:4:6:u:l:f:di:p:r:e:k:v:s";
+    const char *optstring = "h:4:6:u:l:f:di:p:m:r:e:k:v:s";
     opterr = 0;
     std::string spider_ipv4;
     std::string spider_ipv6_global;
@@ -107,6 +107,7 @@ int main(int argc,
     std::string pipe_ip_scope_id;
     std::string pipe_destination_ip;
     std::string pipe_destination_port;
+    std::string message_mode;
     std::string ipv6_global_prefix = "2001:";
     std::string ipv6_unique_local_prefix = "fd00:";
     std::string ipv6_link_local_prefix = "fe80:";
@@ -161,6 +162,10 @@ int main(int argc,
 
             case 'p':
                 pipe_destination_port = optarg;
+                break;
+
+            case 'm':
+                message_mode = optarg;
                 break;
 
             case 'r':
@@ -448,14 +453,27 @@ int main(int argc,
             exit(-1);
         }
 
-        std::thread thread(&spider::Spidercommand::connect_pipe,
-                           spider_command,
-                           mode,
-                           pipe_ip,
-                           pipe_ip_scope_id,
-                           pipe_destination_ip,
-                           pipe_destination_port);
-        thread.detach();
+        if(message_mode == "h") // http
+        {
+            std::thread thread(&spider::Spidercommand::connect_pipe_http,
+                               spider_command,
+                               mode,
+                               pipe_ip,
+                               pipe_ip_scope_id,
+                               pipe_destination_ip,
+                               pipe_destination_port);
+            thread.detach();
+        }else   // default
+        {
+            std::thread thread(&spider::Spidercommand::connect_pipe,
+                               spider_command,
+                               mode,
+                               pipe_ip,
+                               pipe_ip_scope_id,
+                               pipe_destination_ip,
+                               pipe_destination_port);
+            thread.detach();
+        }
 
         std::this_thread::sleep_for(std::chrono::seconds(5));  // 5s
     }

@@ -19,6 +19,11 @@ namespace spider
 
     }
 
+    int32_t Socks5messagequeue::get_count()
+    {
+        return this->count;
+    }
+
     void Socks5messagequeue::push(std::shared_ptr<Socks5message> message)
     {
         guard.acquire();

@@ -15,6 +15,7 @@ namespace spider
         private Queue<RoutingMessage> queue = new Queue<RoutingMessage>();
         private SemaphoreSlim token = new SemaphoreSlim(0, ROUTING_MESSAGE_QUEUE_CAPACITY);
         private SemaphoreSlim guard = new SemaphoreSlim(1, 1);
+        private int count = 0;
 
         public RoutingMessageQueue()
         {
@@ -24,6 +25,11 @@ namespace spider
         ~RoutingMessageQueue()
         {
 
+        }
+
+        public int GetCount()
+        {
+            return count;
         }
 
         public void Push(RoutingMessage message)
@@ -38,6 +44,7 @@ namespace spider
                     guard.Wait();
                 }
                 queue.Enqueue(message);
+                count++;
                 token.Release();
             }finally
             {
@@ -63,6 +70,7 @@ namespace spider
                         guard.Wait();
                     }
                     queue.Enqueue(message);
+                    count++;
                     token.Release();
                 }finally
                 {
@@ -86,6 +94,7 @@ namespace spider
             token.Wait();
             guard.Wait();
             message = queue.Dequeue();
+            count--;
             guard.Release();
 
             return message;
@@ -101,12 +110,25 @@ namespace spider
             {
                 guard.Wait();
                 message = queue.Dequeue();
+                count--;
                 guard.Release();
             }else
             {
 #if DEBUGPRINT
                 Console.WriteLine("[-] pop timeout");
 #endif
+            }
+
+            return message;
+        }
+
+        public RoutingMessage PopLatestMessage()
+        {
+            RoutingMessage message = null;
+
+            for(int i=count; i>0; i--)
+            {
+                message = this.Pop();
             }
 
             return message;

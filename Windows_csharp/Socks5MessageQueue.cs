@@ -15,6 +15,7 @@ namespace spider
         private Queue<Socks5Message> queue = new Queue<Socks5Message>();
         private SemaphoreSlim token = new SemaphoreSlim(0, SOCKS5_MESSAGE_QUEUE_CAPACITY);
         private SemaphoreSlim guard = new SemaphoreSlim(1, 1);
+        private int count = 0;
 
         public Socks5MessageQueue()
         {
@@ -24,6 +25,11 @@ namespace spider
         ~Socks5MessageQueue()
         {
 
+        }
+
+        public int GetCount()
+        {
+            return count;
         }
 
         public void Push(Socks5Message message)
@@ -38,6 +44,7 @@ namespace spider
                     guard.Wait();
                 }
                 queue.Enqueue(message);
+                count++;
                 token.Release();
             }finally
             {
@@ -63,6 +70,7 @@ namespace spider
                         guard.Wait();
                     }
                     queue.Enqueue(message);
+                    count++;
                     token.Release();
                 }finally
                 {
@@ -86,6 +94,7 @@ namespace spider
             token.Wait();
             guard.Wait();
             message = queue.Dequeue();
+            count--;
             guard.Release();
 
             return message;
@@ -101,6 +110,7 @@ namespace spider
             {
                 guard.Wait();
                 message = queue.Dequeue();
+                count--;
                 guard.Release();
             }else
             {

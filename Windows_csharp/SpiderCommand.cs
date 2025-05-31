@@ -21,6 +21,7 @@ namespace spider
         public static extern uint if_nametoindex(string ifname);
 
         private const int METRIC_MAX = 20;   // 0 < METRIC_MAX <= UINT8_MAX(255), UINT8_MAX(255) < delete route
+        private const int PIPE_MESSAGE_MODE_HTTP_SLEEP = 300;
         private const int FORWARDER_UDP_TIMEOUT = 300;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_SEC = 10;
         private const int SHOW_NODE_INFORMATION_WORKER_TV_USEC = 0;
@@ -1132,6 +1133,7 @@ namespace spider
                 pipe = new Pipe(spiderIp,
                                 0,
                                 mode,
+                                'd',
                                 pipeIp,
                                 pipeIpScopeId,
                                 pipeDestinationIp,
@@ -1220,6 +1222,7 @@ namespace spider
                     pipeListen = new Pipe(spiderIp,
                                           0,
                                           mode,
+                                          'd',
                                           pipeListenIp,
                                           pipeListenIpScopeId,
                                           pipeListenPort,
@@ -1278,6 +1281,7 @@ namespace spider
                             Pipe pipe = new Pipe(spiderIp,
                                                  0,
                                                  '-',
+                                                 'd',
                                                  pipeListenIp,
                                                  pipeListenIpScopeId,
                                                  pipeDestinationIp,
@@ -1320,6 +1324,7 @@ namespace spider
                     pipeListen = new Pipe(spiderIp,
                                           0,
                                           mode,
+                                          'd',
                                           pipeListenIp,
                                           "",
                                           pipeListenPort,
@@ -1367,6 +1372,7 @@ namespace spider
                             Pipe pipe = new Pipe(spiderIp,
                                                  0,
                                                  '-',
+                                                 'd',
                                                  pipeListenIp,
                                                  "",
                                                  pipeDestinationIp,
@@ -1434,11 +1440,513 @@ namespace spider
             return;
         }
 
+        private int ConnectPipeHttp(char mode,
+                                    string pipeIp,
+                                    string pipeIpScopeId,
+                                    string pipeDestinationIp,
+                                    string pipeDestinationPort)
+        {
+            int ret = 0;
+            TcpClient pipeTcpClient = null;
+            string pipeDestinationIpTmp = "";
+            string pipeDestinationIpScodeId = "";
+            Pipe pipe = null;
+            uint pipeKey = 0;
+            string ipv6LinkLocalPrefix = "fe80:";
+
+
+            try
+            {
+                if(pipeDestinationIp.Contains(":") &&   // ipv6 link local
+                   pipeDestinationIp.StartsWith(ipv6LinkLocalPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    pipeDestinationIpScodeId = pipeIpScopeId;
+                    pipeDestinationIpTmp = pipeDestinationIp + "%" + pipeDestinationIpScodeId;
+
+                    while(true)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[+] connecting to ip:{0} port:{1}",
+                                          pipeDestinationIpTmp,
+                                          pipeDestinationPort);
+#endif
+
+                        pipeTcpClient = new TcpClient(pipeDestinationIpTmp,
+                                                      int.Parse(pipeDestinationPort));
+
+                        if(pipeTcpClient != null)
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[+] connected to ip:{0} port:{1}",
+                                              pipeDestinationIpTmp,
+                                              pipeDestinationPort);
+#endif
+                        }
+
+                        if(pipe == null)
+                        {
+                            pipe = new Pipe(spiderIp,
+                                            0,
+                                            mode,
+                                            'h',
+                                            pipeIp,
+                                            pipeIpScopeId,
+                                            pipeDestinationIp,
+                                            pipeDestinationIpScodeId,
+                                            pipeDestinationPort,
+                                            pipeTcpClient,
+                                            routingManager,
+                                            messageManager);
+
+                            do
+                            {
+                                pipeKey = GenerateRandomId();
+                                ret = pipeManager.InsertPipe(pipeKey,
+                                                             pipe);
+                            }while(ret != 0);
+                        }else
+                        {
+                                pipe.TcpClient = pipeTcpClient;
+                                pipe.Sock = pipeTcpClient.Client.Handle;
+                                pipe.Stream = pipeTcpClient.GetStream();
+                        }
+
+
+                        // http connection
+                        ret = pipe.DoHttpConnectionClient();
+                        if(ret < 0)
+                        {
+                            pipe.TcpClient = null;
+                            pipe.Sock = IntPtr.Zero;
+                            pipe.Stream = null;
+                            pipeTcpClient.Dispose();
+                            pipeManager.ErasePipe(pipeKey);
+                            break;
+                        }
+
+                        pipe.TcpClient = null;
+                        pipe.Sock = IntPtr.Zero;
+                        pipe.Stream = null;
+                        pipeTcpClient.Dispose();
+
+                        Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
+                    }
+                }else
+                {
+                    while(true)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[+] connecting to ip:{0} port:{1}",
+                                          pipeDestinationIp,
+                                          pipeDestinationPort);
+#endif
+
+                        pipeTcpClient = new TcpClient(pipeDestinationIp,
+                                                      int.Parse(pipeDestinationPort));
+
+                        if(pipeTcpClient != null)
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[+] connected to ip:{0} port:{1}",
+                                              pipeDestinationIp,
+                                              pipeDestinationPort);
+#endif
+                        }
+
+                        if(pipe == null)
+                        {
+                            pipe = new Pipe(spiderIp,
+                                            0,
+                                            mode,
+                                            'h',
+                                            pipeIp,
+                                            pipeIpScopeId,
+                                            pipeDestinationIp,
+                                            pipeDestinationIpScodeId,
+                                            pipeDestinationPort,
+                                            pipeTcpClient,
+                                            routingManager,
+                                            messageManager);
+
+                            do
+                            {
+                                pipeKey = GenerateRandomId();
+                                ret = pipeManager.InsertPipe(pipeKey,
+                                                             pipe);
+                            }while(ret != 0);
+                        }else
+                        {
+                            pipe.TcpClient = pipeTcpClient;
+                            pipe.Sock = pipeTcpClient.Client.Handle;
+                            pipe.Stream = pipeTcpClient.GetStream();
+                        }
+
+
+                        // http connection
+                        ret = pipe.DoHttpConnectionClient();
+                        if(ret < 0)
+                        {
+                            pipe.TcpClient = null;
+                            pipe.Sock = IntPtr.Zero;
+                            pipe.Stream = null;
+                            pipeTcpClient.Dispose();
+                            pipeManager.ErasePipe(pipeKey);
+                            break;
+                        }
+
+                        pipe.TcpClient = null;
+                        pipe.Sock = IntPtr.Zero;
+                        pipe.Stream = null;
+                        pipeTcpClient.Dispose();
+
+                        Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
+                    }
+                }
+            }catch(Exception ex)
+            {
+                Console.WriteLine("[-] ConnectPipeHttp error: {0}",
+                                  ex.Message);
+                if(pipe != null)
+                {
+                    if(pipe.TcpClient != null)
+                    {
+                        pipe.TcpClient.Dispose();
+                    }
+                    pipeManager.ErasePipe(pipeKey);
+                }
+                return -1;
+            }
+
+            return 0;
+        }
+
+        public void ConnectPipeHttp(object obj)
+        {
+            object[] parameters = obj as object[];
+
+            char mode = (char)parameters[0];
+            string pipeIp = parameters[1] as string;
+            string pipeIpScopeId = parameters[2] as string;
+            string pipeDestinationIp = parameters[3] as string;
+            string pipeDestinationPort = parameters[4] as string;
+
+
+            if(pipeIp != null &&
+               pipeIpScopeId != null &&
+               pipeDestinationIp != null &&
+               pipeDestinationPort != null)
+            {
+                int ret = ConnectPipeHttp(mode,
+                                          pipeIp,
+                                          pipeIpScopeId,
+                                          pipeDestinationIp,
+                                          pipeDestinationPort);
+            }
+
+            return;
+        }
+
+        private int ListenPipeHttp(char mode,
+                                   string pipeListenIp,
+                                   string pipeListenIpScopeId,
+                                   string pipeListenPort)
+        {
+            int ret = 0;
+            uint pipeId = 0;
+            TcpListener pipeTcpListener = null;
+            IPAddress pipeListenerIpAddress = null;
+            string pipeListenIpTmp = "";
+            TcpClient pipeTcpClient = null;
+            Pipe pipeListen = null;
+            Pipe pipe = null;
+            uint pipeListenKey = 0;
+            uint pipeKey = 0;
+            string ipv6LinkLocalPrefix = "fe80:";
+
+
+            try
+            {
+                if(pipeListenIp.Contains(":") &&   // ipv6 link local
+                   pipeListenIp.StartsWith(ipv6LinkLocalPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    pipeListenIpTmp = pipeListenIp + "%" + pipeListenIpScopeId;
+                    pipeListenerIpAddress = IPAddress.Parse(pipeListenIpTmp);
+
+                    pipeTcpListener = new TcpListener(pipeListenerIpAddress,
+                                                      int.Parse(pipeListenPort));
+                    pipeTcpListener.Start();
+
+                    Console.WriteLine("[+] listening port {0} on {1}",
+                                      pipeListenPort,
+                                      pipeListenIpTmp);
+
+                    pipeListen = new Pipe(spiderIp,
+                                          0,
+                                          mode,
+                                          'h',
+                                          pipeListenIp,
+                                          pipeListenIpScopeId,
+                                          pipeListenPort,
+                                          pipeTcpListener,
+                                          routingManager,
+                                          messageManager);
+
+                    do
+                    {
+                        pipeListenKey = GenerateRandomId();
+                        ret = pipeManager.InsertPipe(pipeListenKey,
+                                                     pipeListen);
+                    }while(ret != 0);
+
+                    while(true)
+                    {
+                        pipeTcpClient = pipeTcpListener.AcceptTcpClient();
+
+                        if(pipe != null &&
+                           pipe.TcpClient != null)
+                        {
+                            pipeTcpClient.Dispose();
+                            continue;
+                        }
+
+                        IPEndPoint pipeRemoteEndPoint = pipeTcpClient.Client.RemoteEndPoint as IPEndPoint;
+                        IPAddress pipeClientIpAddress = null;
+                        int port;
+                        long scopeId;
+                        string pipeDestinationIp = "";
+                        string pipeDestinationIpScopeId = "";
+                        string pipeDestinationPort = "";
+                        int percentIndex = -1;
+
+                        if(pipeRemoteEndPoint != null)
+                        {
+                            pipeClientIpAddress = pipeRemoteEndPoint.Address;
+                            port = pipeRemoteEndPoint.Port;
+                            scopeId = pipeClientIpAddress.ScopeId;
+
+                            pipeDestinationIp = pipeClientIpAddress.ToString();
+                            percentIndex = pipeDestinationIp.IndexOf('%');
+                            if(percentIndex != -1)
+                            {
+                                pipeDestinationIp = pipeDestinationIp.Substring(0, percentIndex);
+                            }
+                            pipeDestinationIpScopeId = scopeId.ToString();
+                            pipeDestinationPort = port.ToString();
+
+#if DEBUGPRINT
+                            Console.WriteLine("[+] connected from ip:{0}%{1} port:{2}",
+                                              pipeDestinationIp,
+                                              pipeDestinationIpScopeId,
+                                              pipeDestinationPort);
+#endif
+
+                            if(pipe == null)
+                            {
+                                pipe = new Pipe(spiderIp,
+                                                0,
+                                                '-',
+                                                'h',
+                                                pipeListenIp,
+                                                pipeListenIpScopeId,
+                                                pipeDestinationIp,
+                                                pipeDestinationIpScopeId,
+                                                pipeDestinationPort,
+                                                pipeTcpClient,
+                                                routingManager,
+                                                messageManager);
+
+                                do
+                                {
+                                    pipeId = GenerateRandomId();
+                                    ret = pipeManager.InsertPipe(pipeId,
+                                                                 pipe);
+                                }while(ret != 0);
+
+                                pipeKey = pipeId;
+                            }else
+                            {
+                                pipe.PipeDestinationIp = pipeDestinationIp;
+                                pipe.PipeDestinationIpScopeId = pipeDestinationIpScopeId;
+                                pipe.PipeDestinationPort = pipeDestinationPort;
+                                pipe.TcpClient = pipeTcpClient;
+                                pipe.Sock = pipeTcpClient.Client.Handle;
+                                pipe.Stream = pipeTcpClient.GetStream();
+                            }
+
+
+                            // http connection
+                            ret = pipe.DoHttpConnectionServer();
+
+                            pipe.TcpClient = null;
+                            pipe.Sock = IntPtr.Zero;
+                            pipe.Stream = null;
+                            pipeTcpClient.Dispose();
+                        }else
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[-] pipeRemoteEndPoint is null");
+#endif
+                            pipeTcpClient.Dispose();
+                            continue;
+                        }
+                    }
+                }else
+                {
+                    pipeListenerIpAddress = IPAddress.Parse(pipeListenIp);
+
+                    pipeTcpListener = new TcpListener(pipeListenerIpAddress,
+                                                      int.Parse(pipeListenPort));
+                    pipeTcpListener.Start();
+
+                    Console.WriteLine("[+] listening port {0} on {1}",
+                                      pipeListenPort,
+                                      pipeListenIp);
+
+                    pipeListen = new Pipe(spiderIp,
+                                          0,
+                                          mode,
+                                          'h',
+                                          pipeListenIp,
+                                          "",
+                                          pipeListenPort,
+                                          pipeTcpListener,
+                                          routingManager,
+                                          messageManager);
+
+                    do
+                    {
+                        pipeListenKey = GenerateRandomId();
+                        ret = pipeManager.InsertPipe(pipeListenKey,
+                                                     pipeListen);
+                    }while(ret != 0);
+
+                    while(true)
+                    {
+                        pipeTcpClient = pipeTcpListener.AcceptTcpClient();
+
+                        if(pipe != null &&
+                           pipe.TcpClient != null)
+                        {
+                            pipeTcpClient.Dispose();
+                            continue;
+                        }
+
+                        IPEndPoint pipeRemoteEndPoint = pipeTcpClient.Client.RemoteEndPoint as IPEndPoint;
+                        IPAddress pipeClientIpAddress = null;
+                        int port;
+                        string pipeDestinationIp = "";
+                        string pipeDestinationPort = "";
+
+                        if(pipeRemoteEndPoint != null)
+                        {
+                            pipeClientIpAddress = pipeRemoteEndPoint.Address;
+                            port = pipeRemoteEndPoint.Port;
+
+                            pipeDestinationIp = pipeClientIpAddress.ToString();
+                            pipeDestinationPort = port.ToString();
+
+#if DEBUGPRINT
+                            Console.WriteLine("[+] connected from ip:{0} port:{1}",
+                                              pipeDestinationIp,
+                                              pipeDestinationPort);
+#endif
+
+                            if(pipe == null)
+                            {
+                                pipe = new Pipe(spiderIp,
+                                                0,
+                                                '-',
+                                                'h',
+                                                pipeListenIp,
+                                                "",
+                                                pipeDestinationIp,
+                                                "",
+                                                pipeDestinationPort,
+                                                pipeTcpClient,
+                                                routingManager,
+                                                messageManager);
+
+                                do
+                                {
+                                    pipeId = GenerateRandomId();
+                                    ret = pipeManager.InsertPipe(pipeId,
+                                                                 pipe);
+                                }while(ret != 0);
+
+                                pipeKey = pipeId;
+                            }else
+                            {
+                                pipe.PipeDestinationIp = pipeDestinationIp;
+                                pipe.PipeDestinationPort = pipeDestinationPort;
+                                pipe.TcpClient = pipeTcpClient;
+                                pipe.Sock = pipeTcpClient.Client.Handle;
+                                pipe.Stream = pipeTcpClient.GetStream();
+                            }
+
+
+                            // http connection
+                            ret = pipe.DoHttpConnectionServer();
+
+                            pipe.TcpClient = null;
+                            pipe.Sock = IntPtr.Zero;
+                            pipe.Stream = null;
+                            pipeTcpClient.Dispose();
+                        }else
+                        {
+#if DEBUGPRINT
+                            Console.WriteLine("[-] pipeRemoteEndPoint is null");
+#endif
+                            pipeTcpClient.Dispose();
+                            continue;
+                        }
+                    }
+                }
+            }catch(Exception ex)
+            {
+                Console.WriteLine("[-] ListenPipeHttp error: {0}",
+                                  ex.Message);
+            }
+
+            pipeManager.ErasePipe(pipeKey);
+            pipeManager.ErasePipe(pipeListenKey);
+
+            if(pipeTcpListener != null)
+            {
+                pipeTcpListener.Stop();
+            }
+
+            return 0;
+        }
+
+        private void ListenPipeHttp(object obj)
+        {
+            object[] parameters = obj as object[];
+
+            char mode = (char)parameters[0];
+            string pipeListenIp = parameters[1] as string;
+            string pipeListenIpScopeId = parameters[2] as string;
+            string pipeListenPort = parameters[3] as string;
+
+
+            if(pipeListenIp != null &&
+               pipeListenIpScopeId != null &&
+               pipeListenPort != null)
+            {
+                int ret = ListenPipeHttp(mode,
+                                         pipeListenIp,
+                                         pipeListenIpScopeId,
+                                         pipeListenPort);
+            }
+
+            return;
+        }
+
         public void AddNodeSpiderPipe()
         {
             string config = "";
             char mode;  // self:s other:o
             char pipeMode;  // client:c server:s
+            char messageMode;  // default:d http:h
             string sourceSpiderIp = "";
             string sourceSpiderIpScopeId = "";
             string destinationSpiderIp = "";
@@ -1470,6 +1978,17 @@ namespace spider
                     pipeMode = input[0];
                     if(pipeMode == 'c')
                     {
+                        Console.Write("message mode (default:d http:h)                > ");
+                        input = Console.ReadLine();
+                        input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                        messageMode = input[0];
+
+                        if(messageMode != 'd' &&
+                           messageMode != 'h')
+                        {
+                            messageMode = 'd';
+                        }
+
                         Console.Write("pipe ip                                        > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -1504,6 +2023,7 @@ namespace spider
 
                         Console.WriteLine("");
                         Console.WriteLine("pipe mode                 : {0}", pipeMode);
+                        Console.WriteLine("messagemode mode          : {0}", messageMode);
                         Console.WriteLine("pipe ip                   : {0}", pipeIp);
                         if(!string.IsNullOrEmpty(pipeIpScopeId))
                         {
@@ -1519,14 +2039,27 @@ namespace spider
                         check = input[0];
                         if(check == 'y')
                         {
-                            parameters = new object[] {pipeMode,
-                                                       pipeIp,
-                                                       pipeIpScopeId,
-                                                       pipeDestinationIp,
-                                                       pipeDestinationPort};
+                            if(messageMode == 'd')
+                            {
+                                parameters = new object[] {pipeMode,
+                                                           pipeIp,
+                                                           pipeIpScopeId,
+                                                           pipeDestinationIp,
+                                                           pipeDestinationPort};
 
-                            Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
-                            thread.Start(parameters);
+                                Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
+                                thread.Start(parameters);
+                            }else if(messageMode == 'h')
+                            {
+                                parameters = new object[] {pipeMode,
+                                                           pipeIp,
+                                                           pipeIpScopeId,
+                                                           pipeDestinationIp,
+                                                           pipeDestinationPort};
+
+                                    Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipeHttp));
+                                    thread.Start(parameters);
+                            }
 
                             Thread.Sleep(5000); // 5s
 
@@ -1543,6 +2076,17 @@ namespace spider
                         }
                     }else if(pipeMode == 's')
                     {
+                        Console.Write("message mode (default:d http:h)                > ");
+                        input = Console.ReadLine();
+                        input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                        messageMode = input[0];
+
+                        if(messageMode != 'd' &&
+                           messageMode != 'h')
+                        {
+                            messageMode = 'd';
+                        }
+
                         Console.Write("pipe listen ip                                 > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -1571,6 +2115,7 @@ namespace spider
 
                         Console.WriteLine("");
                         Console.WriteLine("pipe mode                 : {0}", pipeMode);
+                        Console.WriteLine("messagemode mode          : {0}", messageMode);
                         Console.WriteLine("pipe listen ip            : {0}", pipeIp);
                         if(!string.IsNullOrEmpty(pipeIpScopeId))
                         {
@@ -1585,13 +2130,25 @@ namespace spider
                         check = input[0];
                         if(check == 'y')
                         {
-                            parameters = new object[] {pipeMode,
-                                                       pipeIp,
-                                                       pipeIpScopeId,
-                                                       pipeListenPort};
+                            if(messageMode == 'd')
+                            {
+                                parameters = new object[] {pipeMode,
+                                                           pipeIp,
+                                                           pipeIpScopeId,
+                                                           pipeListenPort};
 
-                            Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
-                            thread.Start(parameters);
+                                Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
+                                thread.Start(parameters);
+                            }else if(messageMode == 'h')
+                            {
+                                parameters = new object[] {pipeMode,
+                                                           pipeIp,
+                                                           pipeIpScopeId,
+                                                           pipeListenPort};
+
+                                Thread thread = new Thread(new ParameterizedThreadStart(ListenPipeHttp));
+                                thread.Start(parameters);
+                            }
 
                             Thread.Sleep(2000); // 2s
 
@@ -1644,6 +2201,17 @@ namespace spider
                         tmp = Encoding.UTF8.GetBytes(input.Trim());
                         destinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
+                        Console.Write("message mode (default:d http:h)                > ");
+                        input = Console.ReadLine();
+                        input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                        messageMode = input[0];
+
+                        if(messageMode != 'd' &&
+                           messageMode != 'h')
+                        {
+                            messageMode = 'd';
+                        }
+
                         Console.Write("pipe ip                                        > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -1670,6 +2238,7 @@ namespace spider
                             Console.WriteLine("source spider ip scope id : {0} ({1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
                         }
                         Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                        Console.WriteLine("messagemode mode          : {0}", messageMode);
                         Console.WriteLine("pipe ip                   : {0}", pipeIp);
                         Console.WriteLine("pipe destination ip       : {0}", pipeDestinationIp);
                         Console.WriteLine("pipe destination port     : {0}", pipeDestinationPort);
@@ -1681,28 +2250,55 @@ namespace spider
                         check = input[0];
                         if(check == 'y')
                         {
-                            config = "";
-                            config += "[pipe_client]\n";
+                            if(messageMode == 'd')
+                            {
+                                config = "";
+                                config += "[pipe_client]\n";
 
-                            config += "pipe_ip:";
-                            config += pipeIp;
-                            config += "\n";
+                                config += "pipe_ip:";
+                                config += pipeIp;
+                                config += "\n";
 
-                            config += "pipe_destination_ip:";
-                            config += pipeDestinationIp;
-                            config += "\n";
+                                config += "pipe_destination_ip:";
+                                config += pipeDestinationIp;
+                                config += "\n";
 
-                            config += "pipe_destination_port:";
-                            config += pipeDestinationPort;
-                            config += "\n";
+                                config += "pipe_destination_port:";
+                                config += pipeDestinationPort;
+                                config += "\n";
 
-                            parameters = new object[] {config,
-                                                       sourceSpiderIp,
-                                                       sourceSpiderIpScopeId,
-                                                       destinationSpiderIp};
+                                parameters = new object[] {config,
+                                                           sourceSpiderIp,
+                                                           sourceSpiderIpScopeId,
+                                                           destinationSpiderIp};
 
-                            Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
-                            thread.Start(parameters);
+                                Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+                                thread.Start(parameters);
+                            }else if(messageMode == 'h')
+                            {
+                                config = "";
+                                config += "[pipe_client_http]\n";
+
+                                config += "pipe_ip:";
+                                config += pipeIp;
+                                config += "\n";
+
+                                config += "pipe_destination_ip:";
+                                config += pipeDestinationIp;
+                                config += "\n";
+
+                                config += "pipe_destination_port:";
+                                config += pipeDestinationPort;
+                                config += "\n";
+
+                                parameters = new object[] {config,
+                                                           sourceSpiderIp,
+                                                           sourceSpiderIpScopeId,
+                                                           destinationSpiderIp};
+
+                                Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+                                thread.Start(parameters);
+                            }
 
                             break;
                         }else if(check == 'n')
@@ -1743,6 +2339,17 @@ namespace spider
                         tmp = Encoding.UTF8.GetBytes(input.Trim());
                         destinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
+                        Console.Write("message mode (default:d http:h)                > ");
+                        input = Console.ReadLine();
+                        input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                        messageMode = input[0];
+
+                        if(messageMode != 'd' &&
+                           messageMode != 'h')
+                        {
+                            messageMode = 'd';
+                        }
+
                         Console.Write("pipe listen ip                                 > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -1763,6 +2370,7 @@ namespace spider
                             Console.WriteLine("source spider ip scope id : {0} {1})", sourceSpiderIpScopeId, if_nametoindex(sourceSpiderIpScopeId));
                         }
                         Console.WriteLine("destination spider ip     : {0}", destinationSpiderIp);
+                        Console.WriteLine("messagemode mode          : {0}", messageMode);
                         Console.WriteLine("pipe listen ip            : {0}", pipeIp);
                         Console.WriteLine("pipe listen port          : {0}", pipeListenPort);
                         Console.WriteLine("");
@@ -1773,24 +2381,47 @@ namespace spider
                         check = input[0];
                         if(check == 'y')
                         {
-                            config = "";
-                            config += "[pipe_server]\n";
+                            if(messageMode == 'd')
+                            {
+                                config = "";
+                                config += "[pipe_server]\n";
 
-                            config += "pipe_listen_ip:";
-                            config += pipeIp;
-                            config += "\n";
+                                config += "pipe_listen_ip:";
+                                config += pipeIp;
+                                config += "\n";
 
-                            config += "pipe_listen_port:";
-                            config += pipeListenPort;
-                            config += "\n";
+                                config += "pipe_listen_port:";
+                                config += pipeListenPort;
+                                config += "\n";
 
-                            parameters = new object[] {config,
-                                                       sourceSpiderIp,
-                                                       sourceSpiderIpScopeId,
-                                                       destinationSpiderIp};
+                                parameters = new object[] {config,
+                                                           sourceSpiderIp,
+                                                           sourceSpiderIpScopeId,
+                                                           destinationSpiderIp};
 
-                            Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
-                            thread.Start(parameters);
+                                Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+                                thread.Start(parameters);
+                            }else if(messageMode == 'h')
+                            {
+                                config = "";
+                                config += "[pipe_server_http]\n";
+
+                                config += "pipe_listen_ip:";
+                                config += pipeIp;
+                                config += "\n";
+
+                                config += "pipe_listen_port:";
+                                config += pipeListenPort;
+                                config += "\n";
+
+                                parameters = new object[] {config,
+                                                           sourceSpiderIp,
+                                                           sourceSpiderIpScopeId,
+                                                           destinationSpiderIp};
+
+                                Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
+                                thread.Start(parameters);
+                            }
 
                             break;
                         }else if(check == 'n')
@@ -4846,6 +5477,117 @@ namespace spider
                     Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
                     thread.Start(parameters);
 
+                }else if(String.Compare(line, "[pipe_client_http]") == 0)
+                {
+                    char mode = 'c';
+                    string pipeIp = "";
+                    string pipeIpScopeId = "";
+                    string pipeDestinationIp = "";
+                    string pipeDestinationPort = "";
+                    object[] parameters;
+
+
+                    // pipe_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_ip:", StringComparison.Ordinal))
+                    {
+                        pipeIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] [pipe_ip] error");
+#endif
+                        return -1;
+                    }
+
+                    if((String.Compare(pipeIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(pipeIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(pipeIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] [pipe_ip] please input spider ipv4 or ipv6: {0}",
+                                          pipeIp);
+#endif
+                        return -1;
+                    }
+
+                    if(String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        pipeIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+
+                    // pipe_destination_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_destination_ip:"))
+                    {
+                        pipeDestinationIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeDestinationIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] [pipe_destination_ip] error");
+#endif
+                        return -1;
+                    }
+
+
+                    // pipe_destination_port
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_destination_port:"))
+                    {
+                        pipeDestinationPort = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeDestinationPort))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] [pipe_destination_port] error");
+#endif
+                        return -1;
+                    }
+
+
+                    parameters = new object[] {mode,
+                                               pipeIp,
+                                               pipeIpScopeId,
+                                               pipeDestinationIp,
+                                               pipeDestinationPort};
+
+                    Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipeHttp));
+                    thread.Start(parameters);
+
                 }else if(String.Compare(line, "[pipe_server]") == 0)
                 {
                     char mode = 's';
@@ -4928,6 +5670,90 @@ namespace spider
                                                pipeListenPort};
 
                     Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
+                    thread.Start(parameters);
+
+                }else if(String.Compare(line, "[pipe_server_http]") == 0)
+                {
+                    char mode = 's';
+                    string pipeListenIp = "";
+                    string pipeListenIpScopeId = "";
+                    string pipeListenPort = "";
+                    object[] parameters;
+
+
+                    // pipe_listen_ip
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_listen_ip:"))
+                    {
+                        pipeListenIp = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeListenIp))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] [pipe_listen_ip] error");
+#endif
+                        return -1;
+                    }
+
+                    if((String.Compare(pipeListenIp, spiderIp.SpiderIpv4) != 0) &&
+                       (String.Compare(pipeListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                       (String.Compare(pipeListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                       (String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] [pipe_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                          pipeListenIp);
+#endif
+                        return -1;
+                    }
+
+                    if(String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                    {
+                        pipeListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                    }
+
+
+                    // pipe_listen_port
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("pipe_listen_port:"))
+                    {
+                        pipeListenPort = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(pipeListenPort))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] [pipe_listen_port] error");
+#endif
+                        return -1;
+                    }
+
+
+                    parameters = new object[] {mode,
+                                               pipeListenIp,
+                                               pipeListenIpScopeId,
+                                               pipeListenPort};
+
+                    Thread thread = new Thread(new ParameterizedThreadStart(ListenPipeHttp));
                     thread.Start(parameters);
 
                 }else if(String.Compare(line, "[client_tcp]") == 0)
@@ -6180,6 +7006,100 @@ namespace spider
                         Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
                         thread.Start(parameters);
 
+                    }else if(String.Compare(line, "[pipe_client_http]") == 0)
+                    {
+                        char mode = 'c';
+                        string pipeIp = "";
+                        string pipeIpScopeId = "";
+                        string pipeDestinationIp = "";
+                        string pipeDestinationPort = "";
+                        object[] parameters;
+
+
+                        // pipe_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_ip:", StringComparison.Ordinal))
+                        {
+                            pipeIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeIp))
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] [pipe_ip] error");
+                            break;
+                        }
+
+                        if((String.Compare(pipeIp, spiderIp.SpiderIpv4) != 0) &&
+                           (String.Compare(pipeIp, spiderIp.SpiderIpv6Global) != 0) &&
+                           (String.Compare(pipeIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                           (String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] [pipe_ip] please input spider ipv4 or ipv6: {0}",
+                                              pipeIp);
+                            break;
+                        }
+
+                        if(String.Compare(pipeIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                        {
+                            pipeIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                        }
+
+
+                        // pipe_destination_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_destination_ip:"))
+                        {
+                            pipeDestinationIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeDestinationIp))
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] [pipe_destination_ip] error");
+                            break;
+                        }
+
+
+                        // pipe_destination_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_destination_port:"))
+                        {
+                            pipeDestinationPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeDestinationPort))
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] [pipe_destination_port] error");
+                            break;
+                        }
+
+
+                        parameters = new object[] {mode,
+                                                   pipeIp,
+                                                   pipeIpScopeId,
+                                                   pipeDestinationIp,
+                                                   pipeDestinationPort};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipeHttp));
+                        thread.Start(parameters);
+
                     }else if(String.Compare(line, "[pipe_server]") == 0)
                     {
                         char mode = 's';
@@ -6250,6 +7170,78 @@ namespace spider
                                                    pipeListenPort};
 
                         Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
+                        thread.Start(parameters);
+
+                    }else if(String.Compare(line, "[pipe_server_http]") == 0)
+                    {
+                        char mode = 's';
+                        string pipeListenIp = "";
+                        string pipeListenIpScopeId = "";
+                        string pipeListenPort = "";
+                        object[] parameters;
+
+
+                        // pipe_listen_ip
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_listen_ip:"))
+                        {
+                            pipeListenIp = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeListenIp))
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] [pipe_listen_ip] error");
+                            break;
+                        }
+
+                        if((String.Compare(pipeListenIp, spiderIp.SpiderIpv4) != 0) &&
+                           (String.Compare(pipeListenIp, spiderIp.SpiderIpv6Global) != 0) &&
+                           (String.Compare(pipeListenIp, spiderIp.SpiderIpv6UniqueLocal) != 0) &&
+                           (String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) != 0))
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] [pipe_listen_ip] please input spider ipv4 or ipv6: {0}",
+                                              pipeListenIp);
+                            break;
+                        }
+
+                        if(String.Compare(pipeListenIp, spiderIp.SpiderIpv6LinkLocal) == 0)
+                        {
+                            pipeListenIpScopeId = spiderIp.SpiderIpv6LinkLocalScopeId;
+                        }
+
+
+                        // pipe_listen_port
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("pipe_listen_port:"))
+                        {
+                            pipeListenPort = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(pipeListenPort))
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] [pipe_listen_port] error");
+                            break;
+                        }
+
+
+                        parameters = new object[] {mode,
+                                                   pipeListenIp,
+                                                   pipeListenIpScopeId,
+                                                   pipeListenPort};
+
+                        Thread thread = new Thread(new ParameterizedThreadStart(ListenPipeHttp));
                         thread.Start(parameters);
 
                     }else if(String.Compare(line, "[client_tcp]") == 0)

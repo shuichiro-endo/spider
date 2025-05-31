@@ -19,6 +19,11 @@ namespace spider
 
     }
 
+    int32_t Routingmessagequeue::get_count()
+    {
+        return this->count;
+    }
+
     void Routingmessagequeue::push(std::shared_ptr<Routingmessage> message)
     {
         guard.acquire();
@@ -98,6 +103,18 @@ namespace spider
 #ifdef DEBUGPRINT
             std::printf("[-] pop timeout\n");
 #endif
+        }
+
+        return message;
+    }
+
+    std::shared_ptr<Routingmessage> Routingmessagequeue::pop_latest_message()
+    {
+        std::shared_ptr<Routingmessage> message = nullptr;
+
+        for(int32_t i=this->count; i>0; i--)
+        {
+            message = this->pop();
         }
 
         return message;

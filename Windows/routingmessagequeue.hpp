@@ -25,6 +25,8 @@ namespace spider
         Routingmessagequeue();
         ~Routingmessagequeue();
 
+        int32_t get_count();
+
         void push(std::shared_ptr<Routingmessage> message);
         int32_t push_timeout(std::shared_ptr<Routingmessage> message,
                              int32_t tv_sec,
@@ -33,6 +35,7 @@ namespace spider
         std::shared_ptr<Routingmessage> pop();
         std::shared_ptr<Routingmessage> pop_timeout(int32_t tv_sec,
                                                     int32_t tv_usec);
+        std::shared_ptr<Routingmessage> pop_latest_message();
     };
 }
 

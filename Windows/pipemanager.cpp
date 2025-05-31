@@ -98,9 +98,9 @@ namespace spider
 
     void Pipemanager::show_pipes_map()
     {
-        std::printf("---------------------------------------------------------------------------------------------------- pipe ------------------------------------------------------------------------------------------------------\n");
-        std::printf("|pipe id   |mode|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|\n");
-        std::printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("--------------------------------------------------------------------------------------------------------- pipe ---------------------------------------------------------------------------------------------------------\n");
+        std::printf("|pipe id   |mode|message|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|\n");
+        std::printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 
         std::unique_lock<std::mutex> lock_pipes_map(pipes_map_mutex);
         for(auto iterator = pipes_map.begin(); iterator != pipes_map.end(); ++iterator)
@@ -111,9 +111,10 @@ namespace spider
                 sock = iterator->second->get_sock();
             }
 
-            std::printf("|%10u|%c   |%-46s|%-10s      |           %5s|%-46s|%-10s                  |                %5s|      %5d|\n",
+            std::printf("|%10u|%c   |%c      |%-46s|%-10s      |           %5s|%-46s|%-10s                  |                %5s|      %5d|\n",
                         iterator->second->get_pipe_id(),
                         iterator->second->get_mode(),
+                        iterator->second->get_message_mode(),
                         iterator->second->get_pipe_ip().c_str(),
                         iterator->second->get_pipe_ip_scope_id().c_str(),
                         iterator->second->get_pipe_listen_port().c_str(),
@@ -124,7 +125,7 @@ namespace spider
         }
         lock_pipes_map.unlock();
 
-        std::printf("----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+        std::printf("------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
         std::printf("\n");
 
         return;
@@ -135,11 +136,11 @@ namespace spider
         std::string result = "";
 
 
-        result += "---------------------------------------------------------------------------------------------------- pipe ------------------------------------------------------------------------------------------------------\n";
+        result += "--------------------------------------------------------------------------------------------------------- pipe ---------------------------------------------------------------------------------------------------------\n";
 
-        result += "|pipe id   |mode|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|\n";
+        result += "|pipe id   |mode|message|pipe ip                                       |pipe ip scope id|pipe listen port|pipe destination ip                           |pipe destination ip scope id|pipe destination port|pipe socket|\n";
 
-        result += "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+        result += "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
 
         std::unique_lock<std::mutex> lock_pipes_map(pipes_map_mutex);
         for(auto iterator = pipes_map.begin(); iterator != pipes_map.end(); ++iterator)
@@ -172,6 +173,7 @@ namespace spider
             std::ostringstream oss;
             oss << "|" << std::right << std::setw(10) << iterator->second->get_pipe_id()
                 << "|" << iterator->second->get_mode() << "   "
+                << "|" << iterator->second->get_message_mode() << "      "
                 << "|" << std::left << std::setw(46) << iterator->second->get_pipe_ip().c_str()
                 << "|" << std::left << std::setw(10) << iterator->second->get_pipe_ip_scope_id().c_str() << " (" << std::right << std::setw(3) << pipe_ip_scope_id.c_str() << ")"
                 << "|           " << std::right << std::setw(5) << iterator->second->get_pipe_listen_port().c_str()
@@ -186,7 +188,7 @@ namespace spider
         }
         lock_pipes_map.unlock();
 
-        result += "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n";
+        result += "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n";
 
         return result;
     }
