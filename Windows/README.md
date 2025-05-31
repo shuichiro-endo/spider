@@ -51,7 +51,7 @@ The usage is the same as the Linux version.
 usage   : spider.exe
         : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-f config_file]
-        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port]
+        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
@@ -63,7 +63,7 @@ example : spider.exe
         : spider.exe -l fe80::xxxx:xxxx:xxxx:xxxx%14
         : spider.exe -4 192.168.0.10 -6 2001::xxxx:xxxx:xxxx:xxxx -u fd00::xxxx:xxxx:xxxx:xxxx -l fe80::xxxx:xxxx:xxxx:xxxx%14
         : spider.exe -f config_sample.txt
-        : spider.exe -d -i 192.168.0.25 -p 1025
+        : spider.exe -d -i 192.168.0.25 -p 1025 -m d
         : spider.exe -4 192.168.0.10 -r s
         : spider.exe -4 192.168.0.10 -e x -k deadbeef
         : spider.exe -4 192.168.0.10 -e a -k 47a2baa1e39fa16752a2ea8e8e3e24256b3c360f382b9782e2e57d4affb19f8c -v c87114c8b36088074c7ec1398f5c168a
@@ -99,13 +99,15 @@ Hide the console window.
 > 
 > You need to operate from other spider.
 
-#### [-i pipe_destination_ip] [-p pipe_destination_port]
+#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]
 Create pipe client node at startup.
 
 Set the ip address and port number of the destination pipe server node.
 
 > [!IMPORTANT]
 > In advance, you need to create the pipe server node on the other spider.
+>
+> The pipe client's message mode must be the same as the message mode of the pipe server to which it is connecting.
 
 #### [-r routing_mode(auto:a self:s)]
 In auto mode with the -r option, routing information is automatically exchanged between spiders.
