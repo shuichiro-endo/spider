@@ -45,7 +45,7 @@ The usage is the same as the Linux version.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 2.2   Author: Shuichiro Endo
+        =-    -:               Windows Ver: 2.3   Author: Shuichiro Endo
 
 
 usage   : spider.exe
@@ -144,7 +144,7 @@ The spider with this option set prevents the spider server from being generated.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///
         :*-  :*-   .:.              _//
-        =-    -:               Windows Ver: 2.2   Author: Shuichiro Endo
+        =-    -:               Windows Ver: 2.3   Author: Shuichiro Endo
 
 
 --------------------------------- spider ---------------------------------
