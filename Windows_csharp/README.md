@@ -110,7 +110,7 @@ Set the ip address and port number of the destination pipe server node.
 > [!IMPORTANT]
 > In advance, you need to create the pipe server node on the other spider.
 >
-> The pipe client's message mode must be the same as the message mode of the pipe server to which it is connecting.
+> The pipe client's message mode must be the same as the message mode of the pipe server to which it will connect.
 
 #### [-r routing_mode(auto:a self:s)]
 In auto mode with the -r option, routing information is automatically exchanged between spiders.
