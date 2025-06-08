@@ -6,6 +6,7 @@ socks5 proxy tunnel tool
 ### Install dependencies
 - g++ (C++20)
 - make
+- openssl (3.5.0)
 
 ### Install
 1. download files
@@ -27,6 +28,48 @@ make
 #define _DEBUG
 ```
 
+### Change TLS Privatekey and Self Certificate (optional)
+1. generate a new tls privatekey and self certificate (if you have not generated them yet)
+```
+cd spider/tools/tls
+chmod 755 generate_key_pem_and_cert_pem.sh
+./generate_key_pem_and_cert_pem.sh
+```
+
+2. modify Linux/servertls.hpp (pipe_server_https_privatekey and pipe_server_https_certificate variables)
+```
+const char *pipe_server_https_privatekey = "-----BEGIN PRIVATE KEY-----\n"\
+"MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgv8Ec+3gGntf8DJeW\n"\
+"yk3r8MV01TVH08DdUfSEfWeCmS+hRANCAAQZIfYR9kLpiMUlOJLUeqpy6YudRC5J\n"\
+"ZEPeTqts1HPHyjUrs3RXvYTm2n7suBM7GNdknDnnZ5ZiL8BzjwjtFBln\n"\
+"-----END PRIVATE KEY-----\n";
+
+const char *pipe_server_https_certificate = "-----BEGIN CERTIFICATE-----\n"\
+"MIIBdzCCAR2gAwIBAgIUF+nYzTU8BH9wBNxuz62Q9mK19pEwCgYIKoZIzj0EAwIw\n"\
+"ETEPMA0GA1UEAwwGc3BpZGVyMB4XDTI1MDYwNjIwMTMzM1oXDTM1MDYwNDIwMTMz\n"\
+"M1owETEPMA0GA1UEAwwGc3BpZGVyMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\n"\
+"GSH2EfZC6YjFJTiS1HqqcumLnUQuSWRD3k6rbNRzx8o1K7N0V72E5tp+7LgTOxjX\n"\
+"ZJw552eWYi/Ac48I7RQZZ6NTMFEwHQYDVR0OBBYEFObZ/+jm7VextuAPS7enG+es\n"\
+"XDNCMB8GA1UdIwQYMBaAFObZ/+jm7VextuAPS7enG+esXDNCMA8GA1UdEwEB/wQF\n"\
+"MAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAN1D+PyibCQMNEhrWNUgdHW7VHj9ypbp\n"\
+"C6RZ9KdEkyFPAiB1ObgBDfkWRT9sTjayRSdOoKupY/kMfH3FJBobIqX8mw==\n"\
+"-----END CERTIFICATE-----\n";
+```
+
+3. build
+```
+cd spider/Linux
+make
+```
+
+4. copy the new tls self certificate file to spider/Linux directory
+```
+cd spider
+cp tools/tls/pipe_server_https_certificate.pem Linux/
+```
+
+5. change the old tls privatekey and self certificate of other spider (Linux, Linux_static, Windows, Windows_csharp, Windows_csharp_powershell)
+
 ## Usage
 ### help
 ```
@@ -46,7 +89,7 @@ make
 usage   : ./spider
         : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-f config_file]
-        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]
+        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
@@ -101,7 +144,7 @@ ps aux | grep "spider" | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
 >
 > You need to operate from other spider.
 
-#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]
+#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
 Create pipe client node at startup.
 
 Set the ip address and port number of the destination pipe server node.
@@ -137,6 +180,8 @@ The spider with this option set prevents the spider server from being generated.
 > If this option is not set, there is a risk of being attacked through other spiders.
 
 ### run
+> [!IMPORTANT]
+> When performing TLS communication (pipe message_mode (https)), please copy the server certificate (pipe_server_https_certificate.pem) to the same directory as the executable file (spider).
 ```
 > ./spider
 
@@ -199,7 +244,7 @@ command > 1
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > c
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe ip                                        > 192.168.0.25
 pipe destination ip                            > 192.168.0.26
 pipe destination port                          > 1026
@@ -227,7 +272,7 @@ command > 1
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > c
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe ip                                        > fe80::a00:27ff:febe:3a77
 pipe destination ip                            > fe80::a00:27ff:fe25:c316
 pipe destination port                          > 1026
@@ -259,7 +304,7 @@ command > 1
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > s
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe listen ip                                 > 192.168.0.25
 pipe listen port                               > 1025
 
@@ -285,7 +330,7 @@ command > 1
 
 mode (self:s other:o)                          > s
 pipe mode (client:c server:s)                  > s
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe listen ip                                 > fe80::a00:27ff:febe:3a77
 pipe listen port                               > 1025
 
@@ -322,7 +367,7 @@ mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > c
 source spider ip                               > 192.168.0.25
 destination spider ip                          > 192.168.0.26
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe ip                                        > 192.168.0.26
 pipe destination ip                            > 192.168.0.27
 pipe destination port                          > 1027
@@ -357,7 +402,7 @@ mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > c
 source spider ip                               > fe80::a00:27ff:febe:3a77
 destination spider ip                          > fe80::a00:27ff:fe25:c316
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe ip                                        > fe80::a00:27ff:fe25:c316
 pipe destination ip                            > fe80::a00:27ff:fe63:4c1f
 pipe destination port                          > 1027
@@ -399,7 +444,7 @@ mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > s
 source spider ip                               > 192.168.0.25
 destination spider ip                          > 192.168.0.26
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe listen ip                                 > 192.168.0.26
 pipe listen port                               > 1026
 
@@ -432,7 +477,7 @@ mode (self:s other:o)                          > o
 pipe mode (client:c server:s)                  > s
 source spider ip                               > fe80::a00:27ff:febe:3a77
 destination spider ip                          > fe80::a00:27ff:fe25:c316
-message mode (default:d http:h)                > d
+message mode (default:d http:h https:s)        > d
 pipe listen ip                                 > fe80::a00:27ff:fe25:c316
 pipe listen port                               > 1026
 
@@ -470,7 +515,7 @@ Set the ip address of the spider itself.
 #### destination spider ip (other)
 Set the ip address of the destination spider that you want to add the pipe node.
 
-#### message mode (default:d http:h)
+#### message mode (default:d http:h https:s)
 Set the message mode used by the pipe node.
 
 #### pipe listen ip (pipe server)

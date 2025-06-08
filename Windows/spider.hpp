@@ -8,6 +8,8 @@
 
 //#define DEBUGPRINT
 
+#define SECURITY_WIN32
+
 #define NODE_BUFFER_SIZE 72000
 #define SPIDER_MESSAGE_DATA_SIZE 65536
 #define SPIDER_MESSAGE_DATA_MAX_SIZE 65552        // 65536 + 16 (AES padding)
@@ -25,6 +27,8 @@
 
 #define PIPE_MESSAGE_MODE_HTTP_SLEEP 300    // 300 ms
 #define HTTP_REQUEST_HEADER_USER_AGENT_VALUE "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.2651.74"
+
+#define CERT_NAME_MAX_SIZE 1024
 
 #define FORWARDER_UDP_TIMEOUT 300
 
@@ -89,11 +93,18 @@
 #include <stddef.h>
 #include <iphlpapi.h>
 #include <netioapi.h>
+#include <Security.h>
+#include <schannel.h>
+#include <wincrypt.h>
+#include <ncrypt.h>
 
 
 #pragma comment(lib, "user32.lib")      // User32 Library
 #pragma comment(lib, "ws2_32.lib")      // Winsock Library
 #pragma comment(lib, "iphlpapi.lib")    // IP Helper Library
+#pragma comment(lib, "secur32.lib")     // Secur32 Library
+#pragma comment(lib, "crypt32.lib")     // Crypt32 Library
+#pragma comment(lib, "ncrypt.lib")      // Ncrypt Library
 
 
 namespace spider

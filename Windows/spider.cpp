@@ -63,7 +63,7 @@ namespace spider
         std::printf("usage   : %s\n", filename);
         std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-f config_file]\n");
-        std::printf("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]\n");
+        std::printf("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
@@ -151,6 +151,7 @@ int main(int argc,
     std::string pipe_destination_ip;
     std::string pipe_destination_port;
     std::string message_mode;
+    BOOL tls_flag = false;
     std::string ipv6_global_prefix = "2001:";
     std::string ipv6_unique_local_prefix = "fd00:";
     std::string ipv6_link_local_prefix = "fe80:";
@@ -491,11 +492,21 @@ int main(int argc,
             exit(-1);
         }
 
-        if(message_mode == "h") // http
+        if(message_mode == "h" ||
+           message_mode == "s") // http or https
         {
+            if(message_mode == "s")
+            {
+                tls_flag = true;
+            }else
+            {
+                tls_flag = false;
+            }
+
             std::thread thread(&spider::Spidercommand::connect_pipe_http,
                                spider_command,
                                mode,
+                               tls_flag,
                                pipe_ip,
                                pipe_ip_scope_id,
                                pipe_destination_ip,

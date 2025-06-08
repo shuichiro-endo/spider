@@ -1,6 +1,6 @@
 CC       = g++
 CFLAGS   =
-LDFLAGS  = -pthread
+LDFLAGS  = -pthread -lssl -lcrypto
 
 SRCS    += spiderip.cpp
 SRCS    += encryption.cpp

@@ -55,7 +55,7 @@ namespace spider
             Console.WriteLine("usage   : {0}", fileName);
             Console.WriteLine("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]");
             Console.WriteLine("        : [-f config_file]");
-            Console.WriteLine("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]");
+            Console.WriteLine("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]");
             Console.WriteLine("        : [-r routing_mode(auto:a self:s)]");
             Console.WriteLine("        : [-e x(xor encryption)] [-k key(hexstring)]");
             Console.WriteLine("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]");
@@ -97,6 +97,7 @@ namespace spider
             string pipeDestinationIp = "";
             string pipeDestinationPort = "";
             string messageMode = "";
+            bool tlsFlag = false;
             string routingMode = "a";
             string encryptionType = "";
             string key = "";
@@ -435,9 +436,19 @@ namespace spider
                     Environment.Exit(-1);
                 }
 
-                if(messageMode == "h")  // http
+                if(messageMode == "h" ||
+                   messageMode == "s") // http or https
                 {
+                    if(messageMode == "s")
+                    {
+                        tlsFlag = true;
+                    }else
+                    {
+                        tlsFlag = false;
+                    }
+
                     parameters = new object[] {mode,
+                                               tlsFlag,
                                                pipeIp,
                                                pipeIpScopeId,
                                                pipeDestinationIp,

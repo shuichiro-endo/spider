@@ -1,6 +1,6 @@
 CC       = g++
 CFLAGS   =
-LDFLAGS  = -pthread -lcares
+LDFLAGS  = -pthread -lcares -lssl -lcrypto
 
 SRCS    += spiderip.cpp
 SRCS    += encryption.cpp
@@ -28,7 +28,7 @@ SRCS    += spider.cpp
 OBJS     = $(SRCS:.cpp=.o)
 TARGET   = spider
 
-INCDIR   = -I./include -I.
+INCDIR   = -I./include -I./include/openssl -I.
 LIBDIR   = -L./lib
 LIBS     =
 OPTS     = -std=c++20

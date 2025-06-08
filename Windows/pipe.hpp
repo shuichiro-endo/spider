@@ -24,7 +24,9 @@ namespace spider
         std::shared_ptr<Spiderip> spider_ip;
         uint32_t pipe_id;
         char mode;                          // client:c server:s
-        char message_mode;                  // default:d http:h
+        char message_mode;                  // default:d http:h https:s
+        CtxtHandle *ctxt_handle;
+        SecPkgContext_StreamSizes stream_sizes;
         std::string pipe_ip;
         std::string pipe_ip_scope_id;
         std::string pipe_listen_port;
@@ -79,6 +81,12 @@ namespace spider
         void set_message_mode(char message_mode);
         char get_message_mode();
 
+        void set_ctxt_handle(CtxtHandle *ctxt_handle);
+        CtxtHandle *get_ctxt_handle();
+
+        void set_stream_sizes(SecPkgContext_StreamSizes stream_sizes);
+        SecPkgContext_StreamSizes get_stream_sizes();
+
         void set_pipe_ip(std::string pipe_ip);
         std::string get_pipe_ip();
 
@@ -105,6 +113,16 @@ namespace spider
 
         int32_t get_http_header_length(const char* buffer);
         int32_t get_content_length(const char* buffer);
+        int32_t encrypt_data_tls(char *input,
+                                 int32_t input_length,
+                                 char *output,
+                                 int32_t output_length);
+        int32_t decrypt_data_tls(char *input,
+                                 int32_t *input_length,
+                                 char *output,
+                                 int32_t output_length,
+                                 int32_t *decrypt_data_length,
+                                 int32_t *remaining_size);
         int32_t do_http_connection_client();
         int32_t do_http_connection_server();
     };

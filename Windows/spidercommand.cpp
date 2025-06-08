@@ -19,6 +19,8 @@
 #include "routingmanager.hpp"
 #include "messagemanager.hpp"
 #include "encryption.hpp"
+#include "clienttls.hpp"
+#include "servertls.hpp"
 
 
 namespace spider
@@ -1736,7 +1738,59 @@ namespace spider
         return 0;
     }
 
+    void Spidercommand::free_all_buffers(SecBufferDesc *sec_buffer_desc)
+    {
+        for(unsigned long i=0; i<sec_buffer_desc->cBuffers; i++)
+        {
+            if(sec_buffer_desc->pBuffers[i].pvBuffer != NULL)
+            {
+                FreeContextBuffer(sec_buffer_desc->pBuffers[i].pvBuffer);
+            }
+        }
+    }
+
+    PCCERT_CONTEXT Spidercommand::find_certificate(const HCERTSTORE h_cert_store,
+                                                   const char* cert_search_string)
+    {
+        BOOL ret_b = false;
+        PCCERT_CONTEXT cert = NULL;
+        DWORD type = CERT_X500_NAME_STR | CERT_NAME_STR_REVERSE_FLAG;
+        char cert_name[CERT_NAME_MAX_SIZE] = {0};
+
+        while(1)
+        {
+            cert = CertEnumCertificatesInStore(h_cert_store,
+                                               cert);
+            if(cert == NULL)
+            {
+                break;
+            }
+
+            ret_b = CertGetNameStringA(cert,
+                                       CERT_NAME_RDN_TYPE,
+                                       0,
+                                       &type,
+                                       cert_name,
+                                       CERT_NAME_MAX_SIZE);
+            if(ret_b == FALSE)
+            {
+                CertFreeCertificateContext(cert);
+                cert = NULL;
+                break;
+            }
+
+            if((strncmp(cert_name, cert_search_string, CERT_NAME_MAX_SIZE) == 0) &&
+               (cert->dwCertEncodingType == X509_ASN_ENCODING))
+            {
+                break;
+            }
+        }
+
+        return cert;
+    }
+
     int Spidercommand::connect_pipe_http(char mode,
+                                         BOOL tls_flag,
                                          std::string pipe_ip,
                                          std::string pipe_ip_scope_id,
                                          std::string pipe_destination_ip,
@@ -1761,6 +1815,8 @@ namespace spider
         std::string pipe_destination_ip_scope_id;
         std::shared_ptr<Pipe> pipe = nullptr;
         uint32_t pipe_key = 0;
+        char message_mode = tls_flag ? 's' : 'h';
+
 
         std::memset((char *)&pipe_dest_addr,
                     0,
@@ -1898,7 +1954,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   mode,
-                                                  'h',
+                                                  message_mode,
                                                   pipe_ip,
                                                   pipe_ip_scope_id,
                                                   pipe_destination_ip,
@@ -1920,14 +1976,343 @@ namespace spider
                 }
 
 
+                // TLS
+                SCHANNEL_CRED schannel_cred;
+                CredHandle cred_handle;
+                CtxtHandle ctxt_handle;
+                SecPkgContext_StreamSizes stream_sizes;
+                SECURITY_STATUS status;
+                unsigned long f_context_req;
+                unsigned long f_context_attr;
+                TimeStamp ts_expiry;
+                SecBufferDesc input_sec_buffer_desc;
+                SecBufferDesc output_sec_buffer_desc;
+                SecBuffer input_sec_buffer[4];
+                SecBuffer output_sec_buffer[3];
+                BOOL init_flag = true;
+                BOOL error_flag = false;
+                char *buffer = NULL;
+                char *tmp = NULL;
+                int32_t rec = 0;
+                int32_t tmprec = 0;
+                int32_t sen = 0;
+                unsigned long tv_sec = 30;
+                unsigned long tv_usec = 0;
+
+                if(tls_flag == true)
+                {
+                    std::memset(&schannel_cred,
+                                0,
+                                sizeof(schannel_cred));
+                    schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
+                    schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT | SP_PROT_TLS1_3_CLIENT;
+                    schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
+
+                    status = AcquireCredentialsHandleA(NULL,
+                                                       const_cast<LPSTR>(UNISP_NAME_A),
+                                                       SECPKG_CRED_OUTBOUND,
+                                                       NULL,
+                                                       &schannel_cred,
+                                                       NULL,
+                                                       NULL,
+                                                       &cred_handle,
+                                                       NULL);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] AcquireCredentialsHandleA error: %x\n",
+                                    status);
+#endif
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    std::memset(&ctxt_handle,
+                                0,
+                                sizeof(ctxt_handle));
+
+                    f_context_req = ISC_REQ_ALLOCATE_MEMORY;
+
+                    output_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                    output_sec_buffer[0].pvBuffer = NULL;
+                    output_sec_buffer[0].cbBuffer = 0;
+                    output_sec_buffer[1].BufferType = SECBUFFER_ALERT;
+                    output_sec_buffer[1].pvBuffer = NULL;
+                    output_sec_buffer[1].cbBuffer = 0;
+                    output_sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                    output_sec_buffer[2].pvBuffer = NULL;
+                    output_sec_buffer[2].cbBuffer = 0;
+                    output_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                    output_sec_buffer_desc.cBuffers = 3;
+                    output_sec_buffer_desc.pBuffers = output_sec_buffer;
+
+                    buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                            sizeof(char));
+                    tmp = (char *)calloc(NODE_BUFFER_SIZE,
+                                         sizeof(char));
+
+                    while(1)
+                    {
+                        if(init_flag == true)
+                        {
+                            init_flag = false;
+                            status = InitializeSecurityContext(&cred_handle,
+                                                               NULL,
+                                                               target_server_name,
+                                                               f_context_req,
+                                                               0,
+                                                               0,
+                                                               NULL,
+                                                               0,
+                                                               &ctxt_handle,
+                                                               &output_sec_buffer_desc,
+                                                               &f_context_attr,
+                                                               &ts_expiry);
+                        }else
+                        {
+                            input_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                            input_sec_buffer[0].pvBuffer = buffer;
+                            input_sec_buffer[0].cbBuffer = rec;
+                            input_sec_buffer[1].BufferType = SECBUFFER_EMPTY;
+                            input_sec_buffer[1].pvBuffer = NULL;
+                            input_sec_buffer[1].cbBuffer = 0;
+                            input_sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                            input_sec_buffer[2].pvBuffer = NULL;
+                            input_sec_buffer[2].cbBuffer = 0;
+                            input_sec_buffer[3].BufferType = SECBUFFER_EMPTY;
+                            input_sec_buffer[3].pvBuffer = NULL;
+                            input_sec_buffer[3].cbBuffer = 0;
+                            input_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                            input_sec_buffer_desc.cBuffers = 4;
+                            input_sec_buffer_desc.pBuffers = input_sec_buffer;
+
+                            status = InitializeSecurityContext(&cred_handle,
+                                                               &ctxt_handle,
+                                                               target_server_name,
+                                                               f_context_req,
+                                                               0,
+                                                               0,
+                                                               &input_sec_buffer_desc,
+                                                               0,
+                                                               &ctxt_handle,
+                                                               &output_sec_buffer_desc,
+                                                               &f_context_attr,
+                                                               &ts_expiry);
+                        }
+
+                        if(status == SEC_E_OK)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_CONTINUE_NEEDED)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_I_COMPLETE_NEEDED)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] CompleteAuthToken error: %x\n",
+                                            status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_COMPLETE_AND_CONTINUE)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                printf("[-] CompleteAuthToken error: %x\n",
+                                       status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_E_INCOMPLETE_MESSAGE)
+                        {
+                            tmprec = pipe->recv_data(tmp,
+                                                     NODE_BUFFER_SIZE,
+                                                     tv_sec,
+                                                     tv_usec);
+                            if(tmprec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(rec + tmprec <= NODE_BUFFER_SIZE)
+                            {
+                                std::memcpy(buffer + rec,
+                                            tmp,
+                                            tmprec);
+                                rec += tmprec;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] received data size has exceeded the maximum value: %d\n",
+                                            rec + tmprec);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] InitializeSecurityContext error:%x\n",
+                                        status);
+#endif
+                            error_flag = true;
+                            break;
+                        }
+
+                    }
+
+                    free_all_buffers(&output_sec_buffer_desc);
+                    free(buffer);
+                    free(tmp);
+
+                    if(error_flag == true)
+                    {
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    status = QueryContextAttributes(&ctxt_handle,
+                                                    SECPKG_ATTR_STREAM_SIZES,
+                                                    &stream_sizes);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] QueryContextAttributes error:%x\n",
+                                    status);
+#endif
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    pipe->set_ctxt_handle(&ctxt_handle);
+                    pipe->set_stream_sizes(stream_sizes);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_client();
                 if(ret < 0)
                 {
+                    if(tls_flag == true)
+                    {
+                        pipe->set_ctxt_handle(NULL);
+                        pipe->set_stream_sizes({0});
+
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+                    }
+
                     pipe->set_sock(-1);
                     closesocket(pipe_sock);
                     pipe_manager->erase_pipe(pipe_key);
                     break;
+                }
+
+                if(tls_flag == true)
+                {
+                    pipe->set_ctxt_handle(NULL);
+                    pipe->set_stream_sizes({0});
+
+                    DeleteSecurityContext(&ctxt_handle);
+                    FreeCredentialsHandle(&cred_handle);
                 }
 
                 pipe->set_sock(-1);
@@ -2018,7 +2403,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   mode,
-                                                  'h',
+                                                  message_mode,
                                                   pipe_ip,
                                                   pipe_ip_scope_id,
                                                   pipe_destination_ip,
@@ -2040,14 +2425,344 @@ namespace spider
                 }
 
 
+                // TLS
+                SCHANNEL_CRED schannel_cred;
+                CredHandle cred_handle;
+                CtxtHandle ctxt_handle;
+                SecPkgContext_StreamSizes stream_sizes;
+                SECURITY_STATUS status;
+                unsigned long f_context_req;
+                unsigned long f_context_attr;
+                TimeStamp ts_expiry;
+                SecBufferDesc input_sec_buffer_desc;
+                SecBufferDesc output_sec_buffer_desc;
+                SecBuffer input_sec_buffer[4];
+                SecBuffer output_sec_buffer[3];
+                BOOL init_flag = true;
+                BOOL error_flag = false;
+                char *buffer = NULL;
+                char *tmp = NULL;
+                int32_t rec = 0;
+                int32_t tmprec = 0;
+                int32_t sen = 0;
+                unsigned long tv_sec = 30;
+                unsigned long tv_usec = 0;
+
+
+                if(tls_flag == true)
+                {
+                    std::memset(&schannel_cred,
+                                0,
+                                sizeof(schannel_cred));
+                    schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
+                    schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT | SP_PROT_TLS1_3_CLIENT;
+                    schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
+
+                    status = AcquireCredentialsHandleA(NULL,
+                                                       const_cast<LPSTR>(UNISP_NAME_A),
+                                                       SECPKG_CRED_OUTBOUND,
+                                                       NULL,
+                                                       &schannel_cred,
+                                                       NULL,
+                                                       NULL,
+                                                       &cred_handle,
+                                                       NULL);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] AcquireCredentialsHandleA error: %x\n",
+                                    status);
+#endif
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    std::memset(&ctxt_handle,
+                                0,
+                                sizeof(ctxt_handle));
+
+                    f_context_req = ISC_REQ_ALLOCATE_MEMORY;
+
+                    output_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                    output_sec_buffer[0].pvBuffer = NULL;
+                    output_sec_buffer[0].cbBuffer = 0;
+                    output_sec_buffer[1].BufferType = SECBUFFER_ALERT;
+                    output_sec_buffer[1].pvBuffer = NULL;
+                    output_sec_buffer[1].cbBuffer = 0;
+                    output_sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                    output_sec_buffer[2].pvBuffer = NULL;
+                    output_sec_buffer[2].cbBuffer = 0;
+                    output_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                    output_sec_buffer_desc.cBuffers = 3;
+                    output_sec_buffer_desc.pBuffers = output_sec_buffer;
+
+                    buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                            sizeof(char));
+                    tmp = (char *)calloc(NODE_BUFFER_SIZE,
+                                         sizeof(char));
+
+                    while(1)
+                    {
+                        if(init_flag == true)
+                        {
+                            init_flag = false;
+                            status = InitializeSecurityContext(&cred_handle,
+                                                               NULL,
+                                                               target_server_name,
+                                                               f_context_req,
+                                                               0,
+                                                               0,
+                                                               NULL,
+                                                               0,
+                                                               &ctxt_handle,
+                                                               &output_sec_buffer_desc,
+                                                               &f_context_attr,
+                                                               &ts_expiry);
+                        }else
+                        {
+                            input_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                            input_sec_buffer[0].pvBuffer = buffer;
+                            input_sec_buffer[0].cbBuffer = rec;
+                            input_sec_buffer[1].BufferType = SECBUFFER_EMPTY;
+                            input_sec_buffer[1].pvBuffer = NULL;
+                            input_sec_buffer[1].cbBuffer = 0;
+                            input_sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                            input_sec_buffer[2].pvBuffer = NULL;
+                            input_sec_buffer[2].cbBuffer = 0;
+                            input_sec_buffer[3].BufferType = SECBUFFER_EMPTY;
+                            input_sec_buffer[3].pvBuffer = NULL;
+                            input_sec_buffer[3].cbBuffer = 0;
+                            input_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                            input_sec_buffer_desc.cBuffers = 4;
+                            input_sec_buffer_desc.pBuffers = input_sec_buffer;
+
+                            status = InitializeSecurityContext(&cred_handle,
+                                                               &ctxt_handle,
+                                                               target_server_name,
+                                                               f_context_req,
+                                                               0,
+                                                               0,
+                                                               &input_sec_buffer_desc,
+                                                               0,
+                                                               &ctxt_handle,
+                                                               &output_sec_buffer_desc,
+                                                               &f_context_attr,
+                                                               &ts_expiry);
+                        }
+
+                        if(status == SEC_E_OK)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_CONTINUE_NEEDED)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_I_COMPLETE_NEEDED)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] CompleteAuthToken error: %x\n",
+                                            status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_COMPLETE_AND_CONTINUE)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                printf("[-] CompleteAuthToken error: %x\n",
+                                       status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_E_INCOMPLETE_MESSAGE)
+                        {
+                            tmprec = pipe->recv_data(tmp,
+                                                     NODE_BUFFER_SIZE,
+                                                     tv_sec,
+                                                     tv_usec);
+                            if(tmprec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(rec + tmprec <= NODE_BUFFER_SIZE)
+                            {
+                                std::memcpy(buffer + rec,
+                                            tmp,
+                                            tmprec);
+                                rec += tmprec;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] received data size has exceeded the maximum value: %d\n",
+                                            rec + tmprec);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] InitializeSecurityContext error:%x\n",
+                                        status);
+#endif
+                            error_flag = true;
+                            break;
+                        }
+
+                    }
+
+                    free_all_buffers(&output_sec_buffer_desc);
+                    free(buffer);
+                    free(tmp);
+
+                    if(error_flag == true)
+                    {
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    status = QueryContextAttributes(&ctxt_handle,
+                                                    SECPKG_ATTR_STREAM_SIZES,
+                                                    &stream_sizes);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] QueryContextAttributes error:%x\n",
+                                    status);
+#endif
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    pipe->set_ctxt_handle(&ctxt_handle);
+                    pipe->set_stream_sizes(stream_sizes);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_client();
                 if(ret < 0)
                 {
+                    if(tls_flag == true)
+                    {
+                        pipe->set_ctxt_handle(NULL);
+                        pipe->set_stream_sizes({0});
+
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+                    }
+
                     pipe->set_sock(-1);
                     closesocket(pipe_sock);
                     pipe_manager->erase_pipe(pipe_key);
                     break;
+                }
+
+                if(tls_flag == true)
+                {
+                    pipe->set_ctxt_handle(NULL);
+                    pipe->set_stream_sizes({0});
+
+                    DeleteSecurityContext(&ctxt_handle);
+                    FreeCredentialsHandle(&cred_handle);
                 }
 
                 pipe->set_sock(-1);
@@ -2065,11 +2780,13 @@ namespace spider
     }
 
     int Spidercommand::listen_pipe_http(char mode,
+                                        BOOL tls_flag,
                                         std::string pipe_listen_ip,
                                         std::string pipe_listen_ip_scope_id,
                                         std::string pipe_listen_port)
     {
         int ret = 0;
+        BOOL ret_b = false;
         uint32_t pipe_id = 0;
         struct sockaddr_in pipe_listen_addr, pipe_addr;
         struct sockaddr_in *tmp_ipv4;
@@ -2095,6 +2812,8 @@ namespace spider
         std::string pipe_destination_ip_scope_id;
         std::string pipe_destination_port;
         std::shared_ptr<Pipe> pipe = nullptr;
+        char message_mode = tls_flag ? 's' : 'h';
+
 
         std::memset((char *)&pipe_listen_addr,
                     0,
@@ -2234,7 +2953,7 @@ namespace spider
             pipe_listen = std::make_shared<Pipe>(spider_ip,
                                                  0,
                                                  mode,
-                                                 'h',
+                                                 message_mode,
                                                  pipe_listen_ip,
                                                  "",
                                                  pipe_listen_port,
@@ -2276,7 +2995,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   '-',
-                                                  'h',
+                                                  message_mode,
                                                   pipe_listen_ip,
                                                   "",
                                                   pipe_destination_ip,
@@ -2302,8 +3021,412 @@ namespace spider
                 }
 
 
+                // TLS
+                SCHANNEL_CRED schannel_cred;
+                CredHandle cred_handle;
+                CtxtHandle ctxt_handle;
+                SecPkgContext_StreamSizes stream_sizes;
+                SECURITY_STATUS status;
+                unsigned long f_context_req;
+                unsigned long f_context_attr;
+                TimeStamp ts_expiry;
+                SecBufferDesc input_sec_buffer_desc;
+                SecBufferDesc output_sec_buffer_desc;
+                SecBuffer input_sec_buffer[2];
+                SecBuffer output_sec_buffer[3];
+                HCERTSTORE h_cert_store;
+                PCCERT_CONTEXT server_cert = NULL;
+                HCRYPTPROV h_crypt_prov;
+                DWORD key_spec;
+                BOOL caller_free_prov_or_ncryptkey = false;
+                BOOL init_flag = true;
+                BOOL error_flag = false;
+                char *buffer = NULL;
+                char *tmp = NULL;
+                int32_t rec = 0;
+                int32_t tmprec = 0;
+                int32_t sen = 0;
+                unsigned long tv_sec = 30;
+                unsigned long tv_usec = 0;
+
+                if(tls_flag == true)
+                {
+                    h_cert_store = CertOpenStore(CERT_STORE_PROV_SYSTEM_A,
+                                                 0,
+                                                 NULL,
+                                                 CERT_SYSTEM_STORE_CURRENT_USER,
+                                                 store_name);
+                    if(h_cert_store == NULL)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] CertOpenStore error\n");
+#endif
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    server_cert = find_certificate(h_cert_store,
+                                                   cert_search_string);
+                    if(server_cert == NULL)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] findCertificate error\n");
+#endif
+                        CertCloseStore(h_cert_store,
+                                       0);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    BOOL ret_b = CryptAcquireCertificatePrivateKey(server_cert,
+                                                                   CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG | CRYPT_ACQUIRE_COMPARE_KEY_FLAG,
+                                                                   NULL,
+                                                                   &h_crypt_prov,
+                                                                   &key_spec,
+                                                                   &caller_free_prov_or_ncryptkey);
+                    if(ret_b <= 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] CryptAcquireCertificatePrivateKey error\n");
+#endif
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+
+                    std::memset(&schannel_cred,
+                                0,
+                                sizeof(schannel_cred));
+
+                    schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
+                    schannel_cred.cCreds = 1;
+                    schannel_cred.paCred = &server_cert;
+                    schannel_cred.hRootStore = h_cert_store;
+                    schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_2_SERVER | SP_PROT_TLS1_3_SERVER;
+                    schannel_cred.dwFlags = SCH_USE_STRONG_CRYPTO;
+
+                    status = AcquireCredentialsHandleA(NULL,
+                                                       const_cast<LPSTR>(UNISP_NAME_A),
+                                                       SECPKG_CRED_INBOUND,
+                                                       NULL,
+                                                       &schannel_cred,
+                                                       NULL,
+                                                       NULL,
+                                                       &cred_handle,
+                                                       NULL);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] AcquireCredentialsHandleA error: %x\n",
+                                    status);
+#endif
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    std::memset(&ctxt_handle,
+                                0,
+                                sizeof(ctxt_handle));
+
+                    f_context_req = ASC_REQ_ALLOCATE_MEMORY;
+
+                    output_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                    output_sec_buffer[0].pvBuffer = NULL;
+                    output_sec_buffer[0].cbBuffer = 0;
+                    output_sec_buffer[1].BufferType = SECBUFFER_ALERT;
+                    output_sec_buffer[1].pvBuffer = NULL;
+                    output_sec_buffer[1].cbBuffer = 0;
+                    output_sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                    output_sec_buffer[2].pvBuffer = NULL;
+                    output_sec_buffer[2].cbBuffer = 0;
+                    output_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                    output_sec_buffer_desc.cBuffers = 3;
+                    output_sec_buffer_desc.pBuffers = output_sec_buffer;
+
+                    buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                            sizeof(char));
+                    tmp = (char *)calloc(NODE_BUFFER_SIZE,
+                                         sizeof(char));
+
+                    rec = pipe->recv_data(buffer,
+                                          NODE_BUFFER_SIZE,
+                                          tv_sec,
+                                          tv_usec);
+                    if(rec <= 0)
+                    {
+                        free_all_buffers(&output_sec_buffer_desc);
+                        DeleteSecurityContext(&ctxt_handle);
+
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    while(1)
+                    {
+                        input_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                        input_sec_buffer[0].pvBuffer = buffer;
+                        input_sec_buffer[0].cbBuffer = rec;
+                        input_sec_buffer[1].BufferType = SECBUFFER_EMPTY;
+                        input_sec_buffer[1].pvBuffer = NULL;
+                        input_sec_buffer[1].cbBuffer = 0;
+                        input_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                        input_sec_buffer_desc.cBuffers = 2;
+                        input_sec_buffer_desc.pBuffers = input_sec_buffer;
+
+                        if(init_flag == true)
+                        {
+                            init_flag = false;
+
+                            status = AcceptSecurityContext(&cred_handle,
+                                                           NULL,
+                                                           &input_sec_buffer_desc,
+                                                           f_context_req,
+                                                           SECURITY_NATIVE_DREP,
+                                                           &ctxt_handle,
+                                                           &output_sec_buffer_desc,
+                                                           &f_context_attr,
+                                                           &ts_expiry);
+                        }else
+                        {
+                            status = AcceptSecurityContext(&cred_handle,
+                                                           &ctxt_handle,
+                                                           &input_sec_buffer_desc,
+                                                           f_context_req,
+                                                           SECURITY_NATIVE_DREP,
+                                                           &ctxt_handle,
+                                                           &output_sec_buffer_desc,
+                                                           &f_context_attr,
+                                                           &ts_expiry);
+                        }
+
+                        if(status == SEC_E_OK)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_CONTINUE_NEEDED)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_I_COMPLETE_NEEDED)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] CompleteAuthToken error: %x\n",
+                                            status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_COMPLETE_AND_CONTINUE)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[E] CompleteAuthToken error: %x\n",
+                                            status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_E_INCOMPLETE_MESSAGE)
+                        {
+                            tmprec = pipe->recv_data(tmp,
+                                                     NODE_BUFFER_SIZE,
+                                                     tv_sec,
+                                                     tv_usec);
+                            if(tmprec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(rec + tmprec <= NODE_BUFFER_SIZE)
+                            {
+                                std::memcpy(buffer + rec,
+                                            tmp,
+                                            tmprec);
+                                rec += tmprec;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] received data size has exceeded the maximum value: %d\n",
+                                            rec + tmprec);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] AcceptSecurityContext error: %x\n",
+                                        status);
+#endif
+                            error_flag = true;
+                            break;
+                        }
+                    }
+
+                    free_all_buffers(&output_sec_buffer_desc);
+                    free(buffer);
+                    free(tmp);
+
+                    if(error_flag == true)
+                    {
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    status = QueryContextAttributes(&ctxt_handle,
+                                                    SECPKG_ATTR_STREAM_SIZES,
+                                                    &stream_sizes);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] QueryContextAttributes error: %x\n",
+                                    status);
+#endif
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    pipe->set_ctxt_handle(&ctxt_handle);
+                    pipe->set_stream_sizes(stream_sizes);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_server();
+
+                if(tls_flag == true)
+                {
+                    pipe->set_ctxt_handle(NULL);
+                    pipe->set_stream_sizes({0});
+
+                    DeleteSecurityContext(&ctxt_handle);
+                    FreeCredentialsHandle(&cred_handle);
+
+                    CertCloseStore(h_cert_store,
+                                   0);
+                    CertFreeCertificateContext(server_cert);
+                    NCryptFreeObject(h_crypt_prov);
+                }
 
                 pipe->set_sock(-1);
                 closesocket(pipe_sock);
@@ -2372,7 +3495,7 @@ namespace spider
             pipe_listen = std::make_shared<Pipe>(spider_ip,
                                                  0,
                                                  mode,
-                                                 'h',
+                                                 message_mode,
                                                  pipe_listen_ip,
                                                  pipe_listen_ip_scope_id,
                                                  pipe_listen_port,
@@ -2429,7 +3552,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   '-',
-                                                  'h',
+                                                  message_mode,
                                                   pipe_listen_ip,
                                                   pipe_listen_ip_scope_id,
                                                   pipe_destination_ip,
@@ -2456,8 +3579,412 @@ namespace spider
                 }
 
 
+                // TLS
+                SCHANNEL_CRED schannel_cred;
+                CredHandle cred_handle;
+                CtxtHandle ctxt_handle;
+                SecPkgContext_StreamSizes stream_sizes;
+                SECURITY_STATUS status;
+                unsigned long f_context_req;
+                unsigned long f_context_attr;
+                TimeStamp ts_expiry;
+                SecBufferDesc input_sec_buffer_desc;
+                SecBufferDesc output_sec_buffer_desc;
+                SecBuffer input_sec_buffer[2];
+                SecBuffer output_sec_buffer[3];
+                HCERTSTORE h_cert_store;
+                PCCERT_CONTEXT server_cert = NULL;
+                HCRYPTPROV h_crypt_prov;
+                DWORD key_spec;
+                BOOL caller_free_prov_or_ncryptkey = false;
+                BOOL init_flag = true;
+                BOOL error_flag = false;
+                char *buffer = NULL;
+                char *tmp = NULL;
+                int32_t rec = 0;
+                int32_t tmprec = 0;
+                int32_t sen = 0;
+                unsigned long tv_sec = 30;
+                unsigned long tv_usec = 0;
+
+                if(tls_flag == true)
+                {
+                    h_cert_store = CertOpenStore(CERT_STORE_PROV_SYSTEM_A,
+                                                 0,
+                                                 NULL,
+                                                 CERT_SYSTEM_STORE_CURRENT_USER,
+                                                 store_name);
+                    if(h_cert_store == NULL)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] CertOpenStore error\n");
+#endif
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    server_cert = find_certificate(h_cert_store,
+                                                   cert_search_string);
+                    if(server_cert == NULL)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] findCertificate error\n");
+#endif
+                        CertCloseStore(h_cert_store,
+                                       0);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    BOOL ret_b = CryptAcquireCertificatePrivateKey(server_cert,
+                                                                   CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG | CRYPT_ACQUIRE_COMPARE_KEY_FLAG,
+                                                                   NULL,
+                                                                   &h_crypt_prov,
+                                                                   &key_spec,
+                                                                   &caller_free_prov_or_ncryptkey);
+                    if(ret_b <= 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] CryptAcquireCertificatePrivateKey error\n");
+#endif
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+
+                    std::memset(&schannel_cred,
+                                0,
+                                sizeof(schannel_cred));
+
+                    schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
+                    schannel_cred.cCreds = 1;
+                    schannel_cred.paCred = &server_cert;
+                    schannel_cred.hRootStore = h_cert_store;
+                    schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_2_SERVER | SP_PROT_TLS1_3_SERVER;
+                    schannel_cred.dwFlags = SCH_USE_STRONG_CRYPTO;
+
+                    status = AcquireCredentialsHandleA(NULL,
+                                                       const_cast<LPSTR>(UNISP_NAME_A),
+                                                       SECPKG_CRED_INBOUND,
+                                                       NULL,
+                                                       &schannel_cred,
+                                                       NULL,
+                                                       NULL,
+                                                       &cred_handle,
+                                                       NULL);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] AcquireCredentialsHandleA error: %x\n",
+                                    status);
+#endif
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    std::memset(&ctxt_handle,
+                                0,
+                                sizeof(ctxt_handle));
+
+                    f_context_req = ASC_REQ_ALLOCATE_MEMORY;
+
+                    output_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                    output_sec_buffer[0].pvBuffer = NULL;
+                    output_sec_buffer[0].cbBuffer = 0;
+                    output_sec_buffer[1].BufferType = SECBUFFER_ALERT;
+                    output_sec_buffer[1].pvBuffer = NULL;
+                    output_sec_buffer[1].cbBuffer = 0;
+                    output_sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                    output_sec_buffer[2].pvBuffer = NULL;
+                    output_sec_buffer[2].cbBuffer = 0;
+                    output_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                    output_sec_buffer_desc.cBuffers = 3;
+                    output_sec_buffer_desc.pBuffers = output_sec_buffer;
+
+                    buffer = (char *)calloc(NODE_BUFFER_SIZE,
+                                            sizeof(char));
+                    tmp = (char *)calloc(NODE_BUFFER_SIZE,
+                                         sizeof(char));
+
+                    rec = pipe->recv_data(buffer,
+                                          NODE_BUFFER_SIZE,
+                                          tv_sec,
+                                          tv_usec);
+                    if(rec <= 0)
+                    {
+                        free_all_buffers(&output_sec_buffer_desc);
+                        DeleteSecurityContext(&ctxt_handle);
+
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    while(1)
+                    {
+                        input_sec_buffer[0].BufferType = SECBUFFER_TOKEN;
+                        input_sec_buffer[0].pvBuffer = buffer;
+                        input_sec_buffer[0].cbBuffer = rec;
+                        input_sec_buffer[1].BufferType = SECBUFFER_EMPTY;
+                        input_sec_buffer[1].pvBuffer = NULL;
+                        input_sec_buffer[1].cbBuffer = 0;
+                        input_sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+                        input_sec_buffer_desc.cBuffers = 2;
+                        input_sec_buffer_desc.pBuffers = input_sec_buffer;
+
+                        if(init_flag == true)
+                        {
+                            init_flag = false;
+
+                            status = AcceptSecurityContext(&cred_handle,
+                                                           NULL,
+                                                           &input_sec_buffer_desc,
+                                                           f_context_req,
+                                                           SECURITY_NATIVE_DREP,
+                                                           &ctxt_handle,
+                                                           &output_sec_buffer_desc,
+                                                           &f_context_attr,
+                                                           &ts_expiry);
+                        }else
+                        {
+                            status = AcceptSecurityContext(&cred_handle,
+                                                           &ctxt_handle,
+                                                           &input_sec_buffer_desc,
+                                                           f_context_req,
+                                                           SECURITY_NATIVE_DREP,
+                                                           &ctxt_handle,
+                                                           &output_sec_buffer_desc,
+                                                           &f_context_attr,
+                                                           &ts_expiry);
+                        }
+
+                        if(status == SEC_E_OK)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_CONTINUE_NEEDED)
+                        {
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_I_COMPLETE_NEEDED)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] CompleteAuthToken error: %x\n",
+                                            status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            break;
+                        }else if(status == SEC_I_COMPLETE_AND_CONTINUE)
+                        {
+                            status = CompleteAuthToken(&ctxt_handle,
+                                                       &output_sec_buffer_desc);
+                            if(status != SEC_E_OK)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[E] CompleteAuthToken error: %x\n",
+                                            status);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(output_sec_buffer[0].cbBuffer > 0)
+                            {
+                                sen = pipe->send_data((char *)output_sec_buffer[0].pvBuffer,
+                                                      output_sec_buffer[0].cbBuffer,
+                                                      tv_sec,
+                                                      tv_usec);
+                                if(sen <= 0)
+                                {
+                                    error_flag = true;
+                                    break;
+                                }
+                            }
+
+                            free_all_buffers(&output_sec_buffer_desc);
+
+                            rec = pipe->recv_data(buffer,
+                                                  NODE_BUFFER_SIZE,
+                                                  tv_sec,
+                                                  tv_usec);
+                            if(rec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+                        }else if(status == SEC_E_INCOMPLETE_MESSAGE)
+                        {
+                            tmprec = pipe->recv_data(tmp,
+                                                     NODE_BUFFER_SIZE,
+                                                     tv_sec,
+                                                     tv_usec);
+                            if(tmprec <= 0)
+                            {
+                                error_flag = true;
+                                break;
+                            }
+
+                            if(rec + tmprec <= NODE_BUFFER_SIZE)
+                            {
+                                std::memcpy(buffer + rec,
+                                            tmp,
+                                            tmprec);
+                                rec += tmprec;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] received data size has exceeded the maximum value: %d\n",
+                                            rec + tmprec);
+#endif
+                                error_flag = true;
+                                break;
+                            }
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] AcceptSecurityContext error: %x\n",
+                                        status);
+#endif
+                            error_flag = true;
+                            break;
+                        }
+                    }
+
+                    free_all_buffers(&output_sec_buffer_desc);
+                    free(buffer);
+                    free(tmp);
+
+                    if(error_flag == true)
+                    {
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    status = QueryContextAttributes(&ctxt_handle,
+                                                    SECPKG_ATTR_STREAM_SIZES,
+                                                    &stream_sizes);
+                    if(status != SEC_E_OK)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] QueryContextAttributes error: %x\n",
+                                    status);
+#endif
+                        DeleteSecurityContext(&ctxt_handle);
+                        FreeCredentialsHandle(&cred_handle);
+
+                        CertCloseStore(h_cert_store,
+                                       0);
+                        CertFreeCertificateContext(server_cert);
+                        NCryptFreeObject(h_crypt_prov);
+
+                        pipe->set_sock(-1);
+                        closesocket(pipe_sock);
+                        continue;
+                    }
+
+                    pipe->set_ctxt_handle(&ctxt_handle);
+                    pipe->set_stream_sizes(stream_sizes);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_server();
+
+                if(tls_flag == true)
+                {
+                    pipe->set_ctxt_handle(NULL);
+                    pipe->set_stream_sizes({0});
+
+                    DeleteSecurityContext(&ctxt_handle);
+                    FreeCredentialsHandle(&cred_handle);
+
+                    CertCloseStore(h_cert_store,
+                                   0);
+                    CertFreeCertificateContext(server_cert);
+                    NCryptFreeObject(h_crypt_prov);
+                }
 
                 pipe->set_sock(-1);
                 closesocket(pipe_sock);
@@ -2477,7 +4004,8 @@ namespace spider
         std::string config = "";
         char mode;  // self:s other:o
         char pipe_mode;  // client:c server:s
-        char message_mode;  // default:d http:h
+        char message_mode;  // default:d http:h https:s
+        BOOL tls_flag = false;
         std::string source_spider_ip;
         std::string source_spider_ip_scope_id;
         std::string destination_spider_ip;
@@ -2520,7 +4048,7 @@ namespace spider
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2531,9 +4059,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe ip                                        > ");
@@ -2617,11 +4154,13 @@ namespace spider
                                                pipe_destination_ip,
                                                pipe_destination_port);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             std::thread thread(&Spidercommand::connect_pipe_http,
                                                this,
                                                pipe_mode,
+                                               tls_flag,
                                                pipe_ip,
                                                pipe_ip_scope_id,
                                                pipe_destination_ip,
@@ -2655,7 +4194,7 @@ namespace spider
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2666,9 +4205,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe listen ip                                 > ");
@@ -2740,11 +4288,13 @@ namespace spider
                                                pipe_ip_scope_id,
                                                pipe_listen_port);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             std::thread thread(&Spidercommand::listen_pipe_http,
                                                this,
                                                pipe_mode,
+                                               tls_flag,
                                                pipe_ip,
                                                pipe_ip_scope_id,
                                                pipe_listen_port);
@@ -2830,7 +4380,7 @@ namespace spider
                         continue;
                     }
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2841,9 +4391,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe ip                                        > ");
@@ -2927,10 +4486,15 @@ namespace spider
                                                source_spider_ip_scope_id,
                                                destination_spider_ip);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             config = "";
                             config += "[pipe_client_http]\n";
+
+                            config += "tls_flag:";
+                            config += tls_flag ? "true" : "false";
+                            config += "\n";
 
                             config += "pipe_ip:";
                             config += pipe_ip;
@@ -3013,7 +4577,7 @@ namespace spider
                         continue;
                     }
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -3024,9 +4588,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe listen ip                                 > ");
@@ -3095,10 +4668,15 @@ namespace spider
                                                source_spider_ip_scope_id,
                                                destination_spider_ip);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             config = "";
                             config += "[pipe_server_http]\n";
+
+                            config += "tls_flag:";
+                            config += tls_flag ? "true" : "false";
+                            config += "\n";
 
                             config += "pipe_listen_ip:";
                             config += pipe_ip;
@@ -6569,11 +8147,50 @@ namespace spider
         }else if(line == "[pipe_client_http]")
         {
             char mode = 'c';
+            BOOL tls_flag = false;
+            std::string tls_flag_string;
             std::string pipe_ip;
             std::string pipe_ip_scope_id;
             std::string pipe_destination_ip;
             std::string pipe_destination_ip_scope_id;
             std::string pipe_destination_port;
+
+
+            // tls_flag
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] [pipe_client_http] error\n");
+#endif
+                return -1;
+            }
+
+
+            if(line.find("tls_flag:") != std::string::npos)
+            {
+                tls_flag_string = get_line_value(line,
+                                                 "tls_flag:");
+            }
+
+            if(tls_flag_string.empty())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] [pipe_client_http] [tls_flag] error\n");
+#endif
+                return -1;
+            }
+
+            if(tls_flag_string == "true")
+            {
+                tls_flag = true;
+            }else
+            {
+                tls_flag = false;
+            }
 
 
             // pipe_ip
@@ -6681,6 +8298,7 @@ namespace spider
             std::thread thread(&Spidercommand::connect_pipe_http,
                                this,
                                mode,
+                               tls_flag,
                                pipe_ip,
                                pipe_ip_scope_id,
                                pipe_destination_ip,
@@ -6777,9 +8395,48 @@ namespace spider
         }else if(line == "[pipe_server_http]")
         {
             char mode = 's';
+            BOOL tls_flag = false;
+            std::string tls_flag_string;
             std::string pipe_listen_ip;
             std::string pipe_listen_ip_scope_id;
             std::string pipe_listen_port;
+
+
+            // tls_flag
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] [pipe_server_http] error\n");
+#endif
+                return -1;
+            }
+
+
+            if(line.find("tls_flag:") != std::string::npos)
+            {
+                tls_flag_string = get_line_value(line,
+                                                 "tls_flag:");
+            }
+
+            if(tls_flag_string.empty())
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] [pipe_server_http] [tls_flag] error\n");
+#endif
+                return -1;
+            }
+
+            if(tls_flag_string == "true")
+            {
+                tls_flag = true;
+            }else
+            {
+                tls_flag = false;
+            }
 
 
             // pipe_listen_ip
@@ -6858,6 +8515,7 @@ namespace spider
             std::thread thread(&Spidercommand::listen_pipe_http,
                                this,
                                mode,
+                               tls_flag,
                                pipe_listen_ip,
                                pipe_listen_ip_scope_id,
                                pipe_listen_port);
@@ -8236,11 +9894,46 @@ namespace spider
             }else if(line == "[pipe_client_http]")
             {
                 char mode = 'c';
+                BOOL tls_flag = false;
+                std::string tls_flag_string;
                 std::string pipe_ip;
                 std::string pipe_ip_scope_id;
                 std::string pipe_destination_ip;
                 std::string pipe_destination_ip_scope_id;
                 std::string pipe_destination_port;
+
+
+                // tls_flag
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_client_http] error\n");
+                    break;
+                }
+
+
+                if(line.find("tls_flag:") != std::string::npos)
+                {
+                    tls_flag_string = get_line_value(line,
+                                                     "tls_flag:");
+                }
+
+                if(tls_flag_string.empty())
+                {
+                    std::printf("[-] [pipe_client_http] [tls_flag] error\n");
+                    break;
+                }
+
+                if(tls_flag_string == "true")
+                {
+                    tls_flag = true;
+                }else
+                {
+                    tls_flag = false;
+                }
 
 
                 // pipe_ip
@@ -8334,6 +10027,7 @@ namespace spider
                 std::thread thread(&Spidercommand::connect_pipe_http,
                                    this,
                                    mode,
+                                   tls_flag,
                                    pipe_ip,
                                    pipe_ip_scope_id,
                                    pipe_destination_ip,
@@ -8420,9 +10114,44 @@ namespace spider
             }else if(line == "[pipe_server_http]")
             {
                 char mode = 's';
+                BOOL tls_flag = false;
+                std::string tls_flag_string;
                 std::string pipe_listen_ip;
                 std::string pipe_listen_ip_scope_id;
                 std::string pipe_listen_port;
+
+
+                // tls_flag
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_server_http] error\n");
+                    break;
+                }
+
+
+                if(line.find("tls_flag:") != std::string::npos)
+                {
+                    tls_flag_string = get_line_value(line,
+                                                     "tls_flag:");
+                }
+
+                if(tls_flag_string.empty())
+                {
+                    std::printf("[-] [pipe_server_http] [tls_flag] error\n");
+                    break;
+                }
+
+                if(tls_flag_string == "true")
+                {
+                    tls_flag = true;
+                }else
+                {
+                    tls_flag = false;
+                }
 
 
                 // pipe_listen_ip
@@ -8491,6 +10220,7 @@ namespace spider
                 std::thread thread(&Spidercommand::listen_pipe_http,
                                    this,
                                    mode,
+                                   tls_flag,
                                    pipe_listen_ip,
                                    pipe_listen_ip_scope_id,
                                    pipe_listen_port);

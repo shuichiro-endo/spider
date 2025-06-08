@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Net.Security;
 using System.Text;
 using System.Threading;
 
@@ -21,6 +22,7 @@ namespace spider
         private uint pipeId;
         private char mode;
         private char messageMode;
+        SslStream sslStream = null;
         private string pipeIp;
         private string pipeIpScopeId;
         private string pipeListenPort;
@@ -114,6 +116,12 @@ namespace spider
         {
             get { return messageMode; }
             set { messageMode = value; }
+        }
+
+        public SslStream SslStream
+        {
+            get { return sslStream; }
+            set { sslStream = value;}
         }
 
         public string PipeIp
@@ -510,6 +518,7 @@ namespace spider
             int spiderMessageHeaderSize = (int)SpiderMessageHeader.SPIDER_MESSAGE_HEADER_SIZE;
             int dataSize = 0;
             Pipe pipe = null;
+            bool tlsFlag = messageMode == 's' ? true : false;
 
 
             try
@@ -584,10 +593,17 @@ namespace spider
 //                PrintBytes(buffer, len);
 #endif
 
-                stream.Write(buffer,
-                             0,
-                             len);
-
+                if(tlsFlag == false)    // http
+                {
+                    stream.Write(buffer,
+                                 0,
+                                 len);
+                }else   // https
+                {
+                    sslStream.Write(buffer,
+                                    0,
+                                    len);
+                }
 
                 Array.Clear(buffer,
                             0,
@@ -601,14 +617,30 @@ namespace spider
                 {
                     if(recvHttpHeaderFlag == false)
                     {
-                        tmprec = stream.Read(buffer,
-                                             rec,
-                                             bufferHttpHeaderSize);
+                        if(tlsFlag == false)    // http
+                        {
+                            tmprec = stream.Read(buffer,
+                                                 rec,
+                                                 bufferHttpHeaderSize);
+                        }else   // https
+                        {
+                            tmprec = sslStream.Read(buffer,
+                                                    rec,
+                                                    bufferHttpHeaderSize);
+                        }
                     }else
                     {
-                        tmprec = stream.Read(buffer,
-                                             rec,
-                                             remainingSize);
+                        if(tlsFlag == false)    // http
+                        {
+                            tmprec = stream.Read(buffer,
+                                                 rec,
+                                                 remainingSize);
+                        }else   // https
+                        {
+                            tmprec = sslStream.Read(buffer,
+                                                    rec,
+                                                    remainingSize);
+                        }
                     }
 
                     if(tmprec > 0)
@@ -813,6 +845,7 @@ namespace spider
             int spiderMessageHeaderSize = (int)SpiderMessageHeader.SPIDER_MESSAGE_HEADER_SIZE;
             int dataSize = 0;
             Pipe pipe = null;
+            bool tlsFlag = messageMode == 's' ? true : false;
 
 
             try
@@ -821,14 +854,30 @@ namespace spider
                 {
                     if(recvHttpHeaderFlag == false)
                     {
-                        tmprec = stream.Read(buffer,
-                                             rec,
-                                             bufferHttpHeaderSize);
+                        if(tlsFlag == false)    // http
+                        {
+                            tmprec = stream.Read(buffer,
+                                                 rec,
+                                                 bufferHttpHeaderSize);
+                        }else   // https
+                        {
+                            tmprec = sslStream.Read(buffer,
+                                                    rec,
+                                                    bufferHttpHeaderSize);
+                        }
                     }else
                     {
-                        tmprec = stream.Read(buffer,
-                                             rec,
-                                             remainingSize);
+                        if(recvHttpHeaderFlag == false)
+                        {
+                            tmprec = stream.Read(buffer,
+                                                 rec,
+                                                 remainingSize);
+                        }else   // https
+                        {
+                            tmprec = sslStream.Read(buffer,
+                                                    rec,
+                                                    remainingSize);
+                        }
                     }
 
                     if(tmprec > 0)
@@ -1036,9 +1085,17 @@ namespace spider
 //                PrintBytes(buffer, len);
 #endif
 
-                stream.Write(buffer,
-                             0,
-                             len);
+                if(tlsFlag == false)    // http
+                {
+                    stream.Write(buffer,
+                                 0,
+                                 len);
+                }else   // https
+                {
+                    sslStream.Write(buffer,
+                                    0,
+                                    len);
+                }
 
             }catch(IOException ex)
             {

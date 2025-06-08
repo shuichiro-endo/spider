@@ -33,6 +33,39 @@ csc *.cs -define:DEBUGPRINT -nowarn:CS0168 -out:spider.exe
 rem csc *.cs -nowarn:CS0168 -out:spider.exe
 ```
 
+### Import Default TLS Privatekey and Self Certificate 
+1. copy spider/tools/tls directory to windows computer
+- spider/tools/tls/pipe_server_https_certificate.pem
+- spider/tools/tls/pipe_server_https_privatekey_and_certificate.pfx
+- spider/tools/tls/remove_key_and_cert_from_cert_store.ps1
+- spider/tools/tls/import_key_pfx_and_cert_pem.ps1
+
+2. run powershell
+
+3. import the default tls privatekey and self certificate
+```
+.\import_key_pfx_and_cert_pem.ps1
+```
+
+### Change TLS Privatekey and Self Certificate (optional)
+1. copy spider/tools/tls directory to windows computer
+- spider/tools/tls/remove_key_and_cert_from_cert_store.ps1
+- spider/tools/tls/generate_and_import_key_pfx_and_cert_cer.ps1
+
+2. run powershell
+
+3. remove the old tls privatekey and self certificate (if the old privatekey and certificate are imported in the certificate store (Cert:\CurrentUser\Root, Cert:\CurrentUser\My))
+```
+.\remove_key_and_cert_from_cert_store.ps1
+```
+
+4. generate and import a new tls privatekey and self certificate
+```
+.\generate_and_import_key_pfx_and_cert_cer.ps1
+```
+
+5. change the old tls privatekey and self certificate of other spider (Linux, Linux_static, Windows, Windows_csharp, Windows_csharp_powershell)
+
 ## Usage
 The usage is the same as the Linux version.
 
@@ -54,7 +87,7 @@ The usage is the same as the Linux version.
 usage   : spider.exe
         : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-f config_file]
-        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]
+        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
@@ -102,7 +135,7 @@ Hide the console window.
 >
 > You need to operate from other spider.
 
-#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h)]
+#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
 Create pipe client node at startup.
 
 Set the ip address and port number of the destination pipe server node.

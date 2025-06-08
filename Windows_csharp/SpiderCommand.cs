@@ -8,8 +8,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 
@@ -36,6 +39,8 @@ namespace spider
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_SEC = 60;
         private const int ADD_NODE_TO_DESTINATION_SPIDER_WORKER_FORWARDER_TV_USEC = 0;
 
+        private const StoreName STORE_NAME = StoreName.My;
+        private const string CERT_SEARCH_STRING = "spider";
 
         private SpiderIp spiderIp;
         private Encryption encryption;
@@ -1440,7 +1445,28 @@ namespace spider
             return;
         }
 
+        private bool ValidateServerCertificate(object sender,
+                                               X509Certificate certificate,
+                                               X509Chain chain,
+                                               SslPolicyErrors sslPolicyErrors)
+        {
+            if(sslPolicyErrors == SslPolicyErrors.None)
+            {
+                return true;
+            }
+
+            X509Certificate2 cert = certificate as X509Certificate2;
+            if(cert != null &&
+               cert.Subject == cert.Issuer)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private int ConnectPipeHttp(char mode,
+                                    bool tlsFlag,
                                     string pipeIp,
                                     string pipeIpScopeId,
                                     string pipeDestinationIp,
@@ -1453,6 +1479,7 @@ namespace spider
             Pipe pipe = null;
             uint pipeKey = 0;
             string ipv6LinkLocalPrefix = "fe80:";
+            char messageMode = tlsFlag ? 's' : 'h';
 
 
             try
@@ -1488,7 +1515,7 @@ namespace spider
                             pipe = new Pipe(spiderIp,
                                             0,
                                             mode,
-                                            'h',
+                                            messageMode,
                                             pipeIp,
                                             pipeIpScopeId,
                                             pipeDestinationIp,
@@ -1512,22 +1539,71 @@ namespace spider
                         }
 
 
-                        // http connection
-                        ret = pipe.DoHttpConnectionClient();
-                        if(ret < 0)
+                        // TLS
+                        SslStream sslStream = null;
+
+                        if(tlsFlag == true)
                         {
+                            try
+                            {
+                                sslStream = new SslStream(pipe.Stream,
+                                                          true,
+                                                          new RemoteCertificateValidationCallback(ValidateServerCertificate),
+                                                          null);
+
+                                sslStream.AuthenticateAsClient("[" + pipeDestinationIpTmp + "]",
+                                                               null,
+                                                               SslProtocols.Tls12 | SslProtocols.Tls13,
+                                                               false);
+
+                                pipe.SslStream = sslStream;
+
+                                // http connection
+                                ret = pipe.DoHttpConnectionClient();
+                                if(ret < 0)
+                                {
+                                    pipeManager.ErasePipe(pipeKey);
+                                    break;
+                                }
+                            }catch(Exception ex)
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[-] ConnectPipeHttp TLS error: {0}",
+                                                  ex.Message);
+#endif
+                                pipeManager.ErasePipe(pipeKey);
+                            }finally
+                            {
+                                if(sslStream != null)
+                                {
+                                    pipe.SslStream = null;
+                                    sslStream.Close();
+                                }
+
+                                pipe.TcpClient = null;
+                                pipe.Sock = IntPtr.Zero;
+                                pipe.Stream = null;
+                                pipeTcpClient.Dispose();
+                            }
+                        }else
+                        {
+                            // http connection
+                            ret = pipe.DoHttpConnectionClient();
+                            if(ret < 0)
+                            {
+                                pipe.TcpClient = null;
+                                pipe.Sock = IntPtr.Zero;
+                                pipe.Stream = null;
+                                pipeTcpClient.Dispose();
+                                pipeManager.ErasePipe(pipeKey);
+                                break;
+                            }
+
                             pipe.TcpClient = null;
                             pipe.Sock = IntPtr.Zero;
                             pipe.Stream = null;
                             pipeTcpClient.Dispose();
-                            pipeManager.ErasePipe(pipeKey);
-                            break;
                         }
-
-                        pipe.TcpClient = null;
-                        pipe.Sock = IntPtr.Zero;
-                        pipe.Stream = null;
-                        pipeTcpClient.Dispose();
 
                         Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
                     }
@@ -1558,7 +1634,7 @@ namespace spider
                             pipe = new Pipe(spiderIp,
                                             0,
                                             mode,
-                                            'h',
+                                            messageMode,
                                             pipeIp,
                                             pipeIpScopeId,
                                             pipeDestinationIp,
@@ -1582,22 +1658,71 @@ namespace spider
                         }
 
 
-                        // http connection
-                        ret = pipe.DoHttpConnectionClient();
-                        if(ret < 0)
+                        // TLS
+                        SslStream sslStream = null;
+
+                        if(tlsFlag == true)
                         {
+                            try
+                            {
+                                sslStream = new SslStream(pipe.Stream,
+                                                          true,
+                                                          new RemoteCertificateValidationCallback(ValidateServerCertificate),
+                                                          null);
+
+                                sslStream.AuthenticateAsClient(pipeDestinationIp,
+                                                               null,
+                                                               SslProtocols.Tls12 | SslProtocols.Tls13,
+                                                               false);
+
+                                pipe.SslStream = sslStream;
+
+                                // http connection
+                                ret = pipe.DoHttpConnectionClient();
+                                if(ret < 0)
+                                {
+                                    pipeManager.ErasePipe(pipeKey);
+                                    break;
+                                }
+                            }catch(Exception ex)
+                            {
+#if DEBUGPRINT
+                                Console.WriteLine("[-] ConnectPipeHttp TLS error: {0}",
+                                                  ex.Message);
+#endif
+                                pipeManager.ErasePipe(pipeKey);
+                            }finally
+                            {
+                                if(sslStream != null)
+                                {
+                                    pipe.SslStream = null;
+                                    sslStream.Close();
+                                }
+
+                                pipe.TcpClient = null;
+                                pipe.Sock = IntPtr.Zero;
+                                pipe.Stream = null;
+                                pipeTcpClient.Dispose();
+                            }
+                        }else
+                        {
+                            // http connection
+                            ret = pipe.DoHttpConnectionClient();
+                            if(ret < 0)
+                            {
+                                pipe.TcpClient = null;
+                                pipe.Sock = IntPtr.Zero;
+                                pipe.Stream = null;
+                                pipeTcpClient.Dispose();
+                                pipeManager.ErasePipe(pipeKey);
+                                break;
+                            }
+
                             pipe.TcpClient = null;
                             pipe.Sock = IntPtr.Zero;
                             pipe.Stream = null;
                             pipeTcpClient.Dispose();
-                            pipeManager.ErasePipe(pipeKey);
-                            break;
                         }
-
-                        pipe.TcpClient = null;
-                        pipe.Sock = IntPtr.Zero;
-                        pipe.Stream = null;
-                        pipeTcpClient.Dispose();
 
                         Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
                     }
@@ -1625,10 +1750,11 @@ namespace spider
             object[] parameters = obj as object[];
 
             char mode = (char)parameters[0];
-            string pipeIp = parameters[1] as string;
-            string pipeIpScopeId = parameters[2] as string;
-            string pipeDestinationIp = parameters[3] as string;
-            string pipeDestinationPort = parameters[4] as string;
+            bool tlsFlag = (bool)parameters[1];
+            string pipeIp = parameters[2] as string;
+            string pipeIpScopeId = parameters[3] as string;
+            string pipeDestinationIp = parameters[4] as string;
+            string pipeDestinationPort = parameters[5] as string;
 
 
             if(pipeIp != null &&
@@ -1637,6 +1763,7 @@ namespace spider
                pipeDestinationPort != null)
             {
                 int ret = ConnectPipeHttp(mode,
+                                          tlsFlag,
                                           pipeIp,
                                           pipeIpScopeId,
                                           pipeDestinationIp,
@@ -1647,6 +1774,7 @@ namespace spider
         }
 
         private int ListenPipeHttp(char mode,
+                                   bool tlsFlag,
                                    string pipeListenIp,
                                    string pipeListenIpScopeId,
                                    string pipeListenPort)
@@ -1662,6 +1790,7 @@ namespace spider
             uint pipeListenKey = 0;
             uint pipeKey = 0;
             string ipv6LinkLocalPrefix = "fe80:";
+            char messageMode = tlsFlag ? 's' : 'h';
 
 
             try
@@ -1683,7 +1812,7 @@ namespace spider
                     pipeListen = new Pipe(spiderIp,
                                           0,
                                           mode,
-                                          'h',
+                                          messageMode,
                                           pipeListenIp,
                                           pipeListenIpScopeId,
                                           pipeListenPort,
@@ -1745,7 +1874,7 @@ namespace spider
                                 pipe = new Pipe(spiderIp,
                                                 0,
                                                 '-',
-                                                'h',
+                                                messageMode,
                                                 pipeListenIp,
                                                 pipeListenIpScopeId,
                                                 pipeDestinationIp,
@@ -1774,13 +1903,84 @@ namespace spider
                             }
 
 
-                            // http connection
-                            ret = pipe.DoHttpConnectionServer();
+                            // TLS
+                            X509Certificate2 serverCertificate = null;
+                            SslStream sslStream = null;
 
-                            pipe.TcpClient = null;
-                            pipe.Sock = IntPtr.Zero;
-                            pipe.Stream = null;
-                            pipeTcpClient.Dispose();
+                            if(tlsFlag == true)
+                            {
+                                using(X509Store store = new X509Store(STORE_NAME, StoreLocation.CurrentUser))
+                                {
+                                    store.Open(OpenFlags.ReadOnly);
+
+                                    X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySubjectName,
+                                                                                               CERT_SEARCH_STRING,
+                                                                                               false);
+                                    if(certs.Count > 0)
+                                    {
+                                        serverCertificate = certs[0];
+                                    }else
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] ConnectPipeHttp TLS search certificate error");
+#endif
+                                    }
+                                }
+
+                                if(serverCertificate != null)
+                                {
+                                    try
+                                    {
+                                        sslStream = new SslStream(pipe.Stream,
+                                                                  true,
+                                                                  null,
+                                                                  null);
+
+                                        sslStream.AuthenticateAsServer(serverCertificate,
+                                                                       false,
+                                                                       SslProtocols.Tls12 | SslProtocols.Tls13,
+                                                                       false);
+
+                                        pipe.SslStream = sslStream;
+
+                                        // http connection
+                                        ret = pipe.DoHttpConnectionServer();
+                                    }catch(Exception ex)
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] ListenPipeHttp TLS error: {0}",
+                                                          ex.Message);
+#endif
+                                    }finally
+                                    {
+                                        if(sslStream != null)
+                                        {
+                                            pipe.SslStream = null;
+                                            sslStream.Close();
+                                        }
+
+                                        pipe.TcpClient = null;
+                                        pipe.Sock = IntPtr.Zero;
+                                        pipe.Stream = null;
+                                        pipeTcpClient.Dispose();
+                                    }
+                                }else
+                                {
+                                    pipe.TcpClient = null;
+                                    pipe.Sock = IntPtr.Zero;
+                                    pipe.Stream = null;
+                                    pipeTcpClient.Dispose();
+                                }
+                            }else
+                            {
+                                // http connection
+                                ret = pipe.DoHttpConnectionServer();
+
+                                pipe.TcpClient = null;
+                                pipe.Sock = IntPtr.Zero;
+                                pipe.Stream = null;
+                                pipeTcpClient.Dispose();
+                            }
                         }else
                         {
 #if DEBUGPRINT
@@ -1805,7 +2005,7 @@ namespace spider
                     pipeListen = new Pipe(spiderIp,
                                           0,
                                           mode,
-                                          'h',
+                                          messageMode,
                                           pipeListenIp,
                                           "",
                                           pipeListenPort,
@@ -1856,7 +2056,7 @@ namespace spider
                                 pipe = new Pipe(spiderIp,
                                                 0,
                                                 '-',
-                                                'h',
+                                                messageMode,
                                                 pipeListenIp,
                                                 "",
                                                 pipeDestinationIp,
@@ -1884,13 +2084,84 @@ namespace spider
                             }
 
 
-                            // http connection
-                            ret = pipe.DoHttpConnectionServer();
+                            // TLS
+                            X509Certificate2 serverCertificate = null;
+                            SslStream sslStream = null;
 
-                            pipe.TcpClient = null;
-                            pipe.Sock = IntPtr.Zero;
-                            pipe.Stream = null;
-                            pipeTcpClient.Dispose();
+                            if(tlsFlag == true)
+                            {
+                                using(X509Store store = new X509Store(STORE_NAME, StoreLocation.CurrentUser))
+                                {
+                                    store.Open(OpenFlags.ReadOnly);
+
+                                    X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySubjectName,
+                                                                                               CERT_SEARCH_STRING,
+                                                                                               false);
+                                    if(certs.Count > 0)
+                                    {
+                                        serverCertificate = certs[0];
+                                    }else
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] ConnectPipeHttp TLS search certificate error");
+#endif
+                                    }
+                                }
+
+                                if(serverCertificate != null)
+                                {
+                                    try
+                                    {
+                                        sslStream = new SslStream(pipe.Stream,
+                                                                  true,
+                                                                  null,
+                                                                  null);
+
+                                        sslStream.AuthenticateAsServer(serverCertificate,
+                                                                       false,
+                                                                       SslProtocols.Tls12 | SslProtocols.Tls13,
+                                                                       false);
+
+                                        pipe.SslStream = sslStream;
+
+                                        // http connection
+                                        ret = pipe.DoHttpConnectionServer();
+                                    }catch(Exception ex)
+                                    {
+#if DEBUGPRINT
+                                        Console.WriteLine("[-] ListenPipeHttp TLS error: {0}",
+                                                          ex.Message);
+#endif
+                                    }finally
+                                    {
+                                        if(sslStream != null)
+                                        {
+                                            pipe.SslStream = null;
+                                            sslStream.Close();
+                                        }
+
+                                        pipe.TcpClient = null;
+                                        pipe.Sock = IntPtr.Zero;
+                                        pipe.Stream = null;
+                                        pipeTcpClient.Dispose();
+                                    }
+                                }else
+                                {
+                                    pipe.TcpClient = null;
+                                    pipe.Sock = IntPtr.Zero;
+                                    pipe.Stream = null;
+                                    pipeTcpClient.Dispose();
+                                }
+                            }else
+                            {
+                                // http connection
+                                ret = pipe.DoHttpConnectionServer();
+
+                                pipe.TcpClient = null;
+                                pipe.Sock = IntPtr.Zero;
+                                pipe.Stream = null;
+                                pipeTcpClient.Dispose();
+                            }
                         }else
                         {
 #if DEBUGPRINT
@@ -1923,9 +2194,10 @@ namespace spider
             object[] parameters = obj as object[];
 
             char mode = (char)parameters[0];
-            string pipeListenIp = parameters[1] as string;
-            string pipeListenIpScopeId = parameters[2] as string;
-            string pipeListenPort = parameters[3] as string;
+            bool tlsFlag = (bool)parameters[1];
+            string pipeListenIp = parameters[2] as string;
+            string pipeListenIpScopeId = parameters[3] as string;
+            string pipeListenPort = parameters[4] as string;
 
 
             if(pipeListenIp != null &&
@@ -1933,6 +2205,7 @@ namespace spider
                pipeListenPort != null)
             {
                 int ret = ListenPipeHttp(mode,
+                                         tlsFlag,
                                          pipeListenIp,
                                          pipeListenIpScopeId,
                                          pipeListenPort);
@@ -1946,7 +2219,8 @@ namespace spider
             string config = "";
             char mode;  // self:s other:o
             char pipeMode;  // client:c server:s
-            char messageMode;  // default:d http:h
+            char messageMode;  // default:d http:h https:s
+            bool tlsFlag = false;
             string sourceSpiderIp = "";
             string sourceSpiderIpScopeId = "";
             string destinationSpiderIp = "";
@@ -1978,15 +2252,24 @@ namespace spider
                     pipeMode = input[0];
                     if(pipeMode == 'c')
                     {
-                        Console.Write("message mode (default:d http:h)                > ");
+                        Console.Write("message mode (default:d http:h https:s)        > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
                         messageMode = input[0];
 
                         if(messageMode != 'd' &&
-                           messageMode != 'h')
+                           messageMode != 'h' &&
+                           messageMode != 's')
                         {
                             messageMode = 'd';
+                            tlsFlag = false;
+                        }else if(messageMode == 'd' ||
+                                 messageMode == 'h')
+                        {
+                            tlsFlag = false;
+                        }else if(messageMode == 's')
+                        {
+                            tlsFlag = true;
                         }
 
                         Console.Write("pipe ip                                        > ");
@@ -2049,9 +2332,11 @@ namespace spider
 
                                 Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipe));
                                 thread.Start(parameters);
-                            }else if(messageMode == 'h')
+                            }else if(messageMode == 'h' ||
+                                     messageMode == 's')   // http or https
                             {
                                 parameters = new object[] {pipeMode,
+                                                           tlsFlag,
                                                            pipeIp,
                                                            pipeIpScopeId,
                                                            pipeDestinationIp,
@@ -2076,15 +2361,24 @@ namespace spider
                         }
                     }else if(pipeMode == 's')
                     {
-                        Console.Write("message mode (default:d http:h)                > ");
+                        Console.Write("message mode (default:d http:h https:s)        > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
                         messageMode = input[0];
 
                         if(messageMode != 'd' &&
-                           messageMode != 'h')
+                           messageMode != 'h' &&
+                           messageMode != 's')
                         {
                             messageMode = 'd';
+                            tlsFlag = false;
+                        }else if(messageMode == 'd' ||
+                                 messageMode == 'h')
+                        {
+                            tlsFlag = false;
+                        }else if(messageMode == 's')
+                        {
+                            tlsFlag = true;
                         }
 
                         Console.Write("pipe listen ip                                 > ");
@@ -2139,9 +2433,11 @@ namespace spider
 
                                 Thread thread = new Thread(new ParameterizedThreadStart(ListenPipe));
                                 thread.Start(parameters);
-                            }else if(messageMode == 'h')
+                            }else if(messageMode == 'h' ||
+                                     messageMode == 's')   // http or https
                             {
                                 parameters = new object[] {pipeMode,
+                                                           tlsFlag,
                                                            pipeIp,
                                                            pipeIpScopeId,
                                                            pipeListenPort};
@@ -2201,15 +2497,24 @@ namespace spider
                         tmp = Encoding.UTF8.GetBytes(input.Trim());
                         destinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
-                        Console.Write("message mode (default:d http:h)                > ");
+                        Console.Write("message mode (default:d http:h https:s)        > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
                         messageMode = input[0];
 
                         if(messageMode != 'd' &&
-                           messageMode != 'h')
+                           messageMode != 'h' &&
+                           messageMode != 's')
                         {
                             messageMode = 'd';
+                            tlsFlag = false;
+                        }else if(messageMode == 'd' ||
+                                 messageMode == 'h')
+                        {
+                            tlsFlag = false;
+                        }else if(messageMode == 's')
+                        {
+                            tlsFlag = true;
                         }
 
                         Console.Write("pipe ip                                        > ");
@@ -2274,10 +2579,15 @@ namespace spider
 
                                 Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
                                 thread.Start(parameters);
-                            }else if(messageMode == 'h')
+                            }else if(messageMode == 'h' ||
+                                     messageMode == 's')   // http or https
                             {
                                 config = "";
                                 config += "[pipe_client_http]\n";
+
+                                config += "tls_flag:";
+                                config += tlsFlag ? "true" : "false";
+                                config += "\n";
 
                                 config += "pipe_ip:";
                                 config += pipeIp;
@@ -2339,15 +2649,24 @@ namespace spider
                         tmp = Encoding.UTF8.GetBytes(input.Trim());
                         destinationSpiderIp = Encoding.UTF8.GetString(tmp);
 
-                        Console.Write("message mode (default:d http:h)                > ");
+                        Console.Write("message mode (default:d http:h https:s)        > ");
                         input = Console.ReadLine();
                         input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
                         messageMode = input[0];
 
                         if(messageMode != 'd' &&
-                           messageMode != 'h')
+                           messageMode != 'h' &&
+                           messageMode != 's')
                         {
                             messageMode = 'd';
+                            tlsFlag = false;
+                        }else if(messageMode == 'd' ||
+                                 messageMode == 'h')
+                        {
+                            tlsFlag = false;
+                        }else if(messageMode == 's')
+                        {
+                            tlsFlag = true;
                         }
 
                         Console.Write("pipe listen ip                                 > ");
@@ -2401,10 +2720,15 @@ namespace spider
 
                                 Thread thread = new Thread(new ParameterizedThreadStart(AddNodeToDestinationSpiderWorker));
                                 thread.Start(parameters);
-                            }else if(messageMode == 'h')
+                            }else if(messageMode == 'h' ||
+                                     messageMode == 's')   // http or https
                             {
                                 config = "";
                                 config += "[pipe_server_http]\n";
+
+                                config += "tls_flag:";
+                                config += tlsFlag ? "true" : "false";
+                                config += "\n";
 
                                 config += "pipe_listen_ip:";
                                 config += pipeIp;
@@ -5480,11 +5804,46 @@ namespace spider
                 }else if(String.Compare(line, "[pipe_client_http]") == 0)
                 {
                     char mode = 'c';
+                    bool tlsFlag = false;
+                    string tlsFlagString = "";
                     string pipeIp = "";
                     string pipeIpScopeId = "";
                     string pipeDestinationIp = "";
                     string pipeDestinationPort = "";
                     object[] parameters;
+
+
+                    // tls_flag
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("tls_flag:"))
+                    {
+                        tlsFlagString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(tlsFlagString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] [tls_flag] error");
+#endif
+                        return -1;
+                    }
+
+                    if(tlsFlagString == "true")
+                    {
+                        tlsFlag = true;
+                    }else
+                    {
+                        tlsFlag = false;
+                    }
 
 
                     // pipe_ip
@@ -5580,6 +5939,7 @@ namespace spider
 
 
                     parameters = new object[] {mode,
+                                               tlsFlag,
                                                pipeIp,
                                                pipeIpScopeId,
                                                pipeDestinationIp,
@@ -5675,10 +6035,45 @@ namespace spider
                 }else if(String.Compare(line, "[pipe_server_http]") == 0)
                 {
                     char mode = 's';
+                    bool tlsFlag = false;
+                    string tlsFlagString = "";
                     string pipeListenIp = "";
                     string pipeListenIpScopeId = "";
                     string pipeListenPort = "";
                     object[] parameters;
+
+
+                    // tls_flag
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("tls_flag:"))
+                    {
+                        tlsFlagString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(tlsFlagString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_server_http] [tls_flag] error");
+#endif
+                        return -1;
+                    }
+
+                    if(tlsFlagString == "true")
+                    {
+                        tlsFlag = true;
+                    }else
+                    {
+                        tlsFlag = false;
+                    }
 
 
                     // pipe_listen_ip
@@ -5749,6 +6144,7 @@ namespace spider
 
 
                     parameters = new object[] {mode,
+                                               tlsFlag,
                                                pipeListenIp,
                                                pipeListenIpScopeId,
                                                pipeListenPort};
@@ -7009,11 +7405,41 @@ namespace spider
                     }else if(String.Compare(line, "[pipe_client_http]") == 0)
                     {
                         char mode = 'c';
+                        bool tlsFlag = false;
+                        string tlsFlagString = "";
                         string pipeIp = "";
                         string pipeIpScopeId = "";
                         string pipeDestinationIp = "";
                         string pipeDestinationPort = "";
                         object[] parameters;
+
+
+                        // tls_flag
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("tls_flag:"))
+                        {
+                            tlsFlagString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(tlsFlagString))
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] [tls_flag] error");
+                            break;
+                        }
+
+                        if(tlsFlagString == "true")
+                        {
+                            tlsFlag = true;
+                        }else
+                        {
+                            tlsFlag = false;
+                        }
 
 
                         // pipe_ip
@@ -7092,6 +7518,7 @@ namespace spider
 
 
                         parameters = new object[] {mode,
+                                                   tlsFlag,
                                                    pipeIp,
                                                    pipeIpScopeId,
                                                    pipeDestinationIp,
@@ -7175,10 +7602,40 @@ namespace spider
                     }else if(String.Compare(line, "[pipe_server_http]") == 0)
                     {
                         char mode = 's';
+                        bool tlsFlag = false;
+                        string tlsFlagString = "";
                         string pipeListenIp = "";
                         string pipeListenIpScopeId = "";
                         string pipeListenPort = "";
                         object[] parameters;
+
+
+                        // tls_flag
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("tls_flag:"))
+                        {
+                            tlsFlagString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(tlsFlagString))
+                        {
+                            Console.WriteLine("[-] [pipe_server_http] [tls_flag] error");
+                            break;
+                        }
+
+                        if(tlsFlagString == "true")
+                        {
+                            tlsFlag = true;
+                        }else
+                        {
+                            tlsFlag = false;
+                        }
 
 
                         // pipe_listen_ip
@@ -7237,6 +7694,7 @@ namespace spider
 
 
                         parameters = new object[] {mode,
+                                                   tlsFlag,
                                                    pipeListenIp,
                                                    pipeListenIpScopeId,
                                                    pipeListenPort};

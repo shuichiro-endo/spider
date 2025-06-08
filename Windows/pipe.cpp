@@ -112,6 +112,26 @@ namespace spider
         return message_mode;
     }
 
+    void Pipe::set_ctxt_handle(CtxtHandle *ctxt_handle)
+    {
+        this->ctxt_handle = ctxt_handle;
+    }
+
+    CtxtHandle *Pipe::get_ctxt_handle()
+    {
+        return ctxt_handle;
+    }
+
+    void Pipe::set_stream_sizes(SecPkgContext_StreamSizes stream_sizes)
+    {
+        this->stream_sizes = stream_sizes;
+    }
+
+    SecPkgContext_StreamSizes Pipe::get_stream_sizes()
+    {
+        return stream_sizes;
+    }
+
     void Pipe::set_pipe_ip(std::string pipe_ip)
     {
         this->pipe_ip = pipe_ip;
@@ -620,6 +640,207 @@ namespace spider
         return length;
     }
 
+    int32_t Pipe::encrypt_data_tls(char *input,
+                                   int32_t input_length,
+                                   char *output,
+                                   int32_t output_length)
+    {
+        SecBuffer sec_buffer[4] = {0};
+        SecBufferDesc sec_buffer_desc = {0};
+        SECURITY_STATUS status;
+        int32_t encrypt_data_length = 0;
+
+        if(input_length > (int32_t)stream_sizes.cbMaximumMessage)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] input length is too long input_length: %d stream_sizes.cbMaximumMessag: %d\n",
+                        input_length,
+                        (int32_t)stream_sizes.cbMaximumMessage);
+#endif
+            return -1;
+        }
+
+        if(output_length < (int32_t)stream_sizes.cbHeader + input_length + (int32_t)stream_sizes.cbTrailer)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] output length is too small\n");
+#endif
+            return -1;
+        }
+
+        sec_buffer[0].BufferType = SECBUFFER_STREAM_HEADER;
+        sec_buffer[0].pvBuffer = output;
+        sec_buffer[0].cbBuffer = stream_sizes.cbHeader;
+        sec_buffer[1].BufferType = SECBUFFER_DATA;
+        sec_buffer[1].pvBuffer = output + stream_sizes.cbHeader;
+        sec_buffer[1].cbBuffer = input_length;
+        sec_buffer[2].BufferType = SECBUFFER_STREAM_TRAILER;
+        sec_buffer[2].pvBuffer = output + stream_sizes.cbHeader + input_length;
+        sec_buffer[2].cbBuffer = stream_sizes.cbTrailer;
+        sec_buffer[3].BufferType = SECBUFFER_EMPTY;
+        sec_buffer[3].pvBuffer = NULL;
+        sec_buffer[3].cbBuffer = 0;
+
+        std::memcpy(sec_buffer[1].pvBuffer,
+                    input,
+                    input_length);
+
+        sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+        sec_buffer_desc.cBuffers = 4;
+        sec_buffer_desc.pBuffers = sec_buffer;
+
+        status = EncryptMessage(ctxt_handle,
+                                0,
+                                &sec_buffer_desc,
+                                0);
+        if(status != SEC_E_OK)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] encrypt_data_tls error: %x\n",
+                        status);
+#endif
+            return -1;
+        }
+
+        encrypt_data_length = sec_buffer[0].cbBuffer + sec_buffer[1].cbBuffer + sec_buffer[2].cbBuffer;
+
+        return encrypt_data_length;
+    }
+
+    int32_t Pipe::decrypt_data_tls(char *input,
+                                   int32_t *input_length,
+                                   char *output,
+                                   int32_t output_length,
+                                   int32_t *decrypt_data_length,
+                                   int32_t *remaining_size)
+    {
+        int message_length = 0;
+        SecBuffer sec_buffer[4] = {0};
+        SecBufferDesc sec_buffer_desc = {0};
+        SECURITY_STATUS status;
+
+        message_length = *input_length - (int32_t)stream_sizes.cbHeader - stream_sizes.cbTrailer;
+/*
+        if(message_length > (int32_t)stream_sizes.cbMaximumMessage)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] message length is too long message_length: %d stream_sizes.cbMaximumMessage: %d\n",
+                        message_length,
+                        (uint32_t)stream_sizes.cbMaximumMessage);
+#endif
+            return -1;
+        }
+*/
+        if(output_length < message_length)
+        {
+#ifdef DEBUGPRINT
+            std::printf("[-] output length is too small\n");
+#endif
+            return -1;
+        }
+
+        sec_buffer[0].BufferType = SECBUFFER_DATA;
+        sec_buffer[0].pvBuffer = input;
+        sec_buffer[0].cbBuffer = *input_length;
+        sec_buffer[1].BufferType = SECBUFFER_EMPTY;
+        sec_buffer[1].pvBuffer = NULL;
+        sec_buffer[1].cbBuffer = 0;
+        sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+        sec_buffer[2].pvBuffer = NULL;
+        sec_buffer[2].cbBuffer = 0;
+        sec_buffer[3].BufferType = SECBUFFER_EMPTY;
+        sec_buffer[3].pvBuffer = NULL;
+        sec_buffer[3].cbBuffer = 0;
+
+        sec_buffer_desc.ulVersion = SECBUFFER_VERSION;
+        sec_buffer_desc.cBuffers = 4;
+        sec_buffer_desc.pBuffers = sec_buffer;
+
+        while(1)
+        {
+            status = DecryptMessage(ctxt_handle,
+                                    &sec_buffer_desc,
+                                    0,
+                                    NULL);
+            if(status == SEC_E_INCOMPLETE_MESSAGE)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[+] SEC_E_INCOMPLETE_MESSAGE\n");
+#endif
+                *remaining_size = 0;
+
+                for(int i=0; i<4; i++)
+                {
+                    if(sec_buffer[i].BufferType == SECBUFFER_MISSING)
+                    {
+                        *remaining_size = sec_buffer[i].cbBuffer;
+                        break;
+                    }
+                }
+
+                return 1;
+            }else if(status == SEC_E_DECRYPT_FAILURE)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[+] SEC_E_DECRYPT_FAILURE\n");
+#endif
+                return 2;
+            }else if(status != SEC_E_OK)
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] DecryptMessage error: %x\n",
+                            status);
+#endif
+                return -1;
+            }
+
+            if(sec_buffer[1].BufferType == SECBUFFER_DATA)
+            {
+                std::memcpy(output + *decrypt_data_length,
+                            sec_buffer[1].pvBuffer,
+                            sec_buffer[1].cbBuffer);
+
+                *decrypt_data_length += sec_buffer[1].cbBuffer;
+
+                if(sec_buffer[3].cbBuffer != 0)
+                {
+                    std::memcpy(input,
+                                sec_buffer[3].pvBuffer,
+                                sec_buffer[3].cbBuffer);
+
+                    *input_length = sec_buffer[3].cbBuffer;
+
+                    sec_buffer[0].BufferType = SECBUFFER_DATA;
+                    sec_buffer[0].pvBuffer = input;
+                    sec_buffer[0].cbBuffer = *input_length;
+                    sec_buffer[1].BufferType = SECBUFFER_EMPTY;
+                    sec_buffer[1].pvBuffer = NULL;
+                    sec_buffer[1].cbBuffer = 0;
+                    sec_buffer[2].BufferType = SECBUFFER_EMPTY;
+                    sec_buffer[2].pvBuffer = NULL;
+                    sec_buffer[2].cbBuffer = 0;
+                    sec_buffer[3].BufferType = SECBUFFER_EMPTY;
+                    sec_buffer[3].pvBuffer = NULL;
+                    sec_buffer[3].cbBuffer = 0;
+
+                    continue;
+                }else
+                {
+                    break;
+                }
+            }else
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] sec_buffer[1].BufferType error: %x\n",
+                            sec_buffer[1].BufferType);
+#endif
+                return -1;
+            }
+        }
+
+        return 0;
+    }
+
     int32_t Pipe::do_http_connection_client()
     {
         int ret = 0;
@@ -639,6 +860,9 @@ namespace spider
         int32_t buffer_http_body_size = NODE_BUFFER_SIZE * 11;
         char *buffer = (char *)calloc(buffer_size,
                                       sizeof(char));
+        char *buffer2 = (char *)calloc(buffer_size,
+                                       sizeof(char));
+        char *tmp = NULL;
         char *buffer_http_header = (char *)calloc(buffer_http_header_size,
                                                   sizeof(char));
         char *buffer_http_body = (char *)calloc(buffer_http_body_size,
@@ -657,6 +881,10 @@ namespace spider
         struct spider_message *spider_message;
         int32_t spider_message_header_size = sizeof(struct spider_message_header);
         std::shared_ptr<Pipe> pipe;
+        BOOL tls_flag = this->message_mode == 's' ? true : false;
+        int32_t decrypt_data_length = 0;
+        int32_t count = 0;
+        int32_t p = 0;
 
 
         routing_message = pop_latest_routing_message();
@@ -699,99 +927,257 @@ namespace spider
                                           http_body_length);
         }
 
-        std::memcpy(buffer,
-                    buffer_http_header,
-                    http_header_length);
-
-        std::memcpy(buffer + http_header_length,
-                    buffer_http_body,
-                    http_body_length);
-
-        len = http_header_length + http_body_length;
-        send_length = 0;
-
-#ifdef DEBUGPRINT
-//        std::printf("len: %d\n", len);
-//        print_bytes(buffer, len);
-#endif
-
-        while(len > 0)
+        if(tls_flag == false)
         {
-            FD_ZERO(&writefds);
-            FD_SET(sock,
-                   &writefds);
-            tv.tv_sec = tv_sec;
-            tv.tv_usec = tv_usec;
+            std::memcpy(buffer,
+                        buffer_http_header,
+                        http_header_length);
 
-            ret = select(NULL,
-                         NULL,
-                         &writefds,
-                         NULL,
-                         &tv);
-            if(ret == 0)
-            {
-#ifdef DEBUGPRINT
-                std::printf("[+] do_http_connection_client select timeout\n");
-#endif
-                free(buffer);
-                free(buffer_http_header);
-                free(buffer_http_body);
-                return 0;
-            }else if(ret == SOCKET_ERROR)
-            {
-                ret = WSAGetLastError();
-#ifdef DEBUGPRINT
-                std::printf("[+] do_http_connection_client select error:0x%x\n",
-                            ret);
-#endif
-                free(buffer);
-                free(buffer_http_header);
-                free(buffer_http_body);
-                return 0;
-            }
+            std::memcpy(buffer + http_header_length,
+                        buffer_http_body,
+                        http_body_length);
 
-            ret = FD_ISSET(sock,
-                           &writefds);
-            if(ret > 0)
+            len = http_header_length + http_body_length;
+            send_length = 0;
+
+#ifdef DEBUGPRINT
+//            std::printf("len: %d\n", len);
+//            print_bytes(buffer, len);
+#endif
+
+            while(len > 0)
             {
-                sen = send(sock,
-                           buffer+send_length,
-                           len,
-                           0);
-                if(sen == SOCKET_ERROR)
+                FD_ZERO(&writefds);
+                FD_SET(sock,
+                       &writefds);
+                tv.tv_sec = tv_sec;
+                tv.tv_usec = tv_usec;
+
+                ret = select(NULL,
+                             NULL,
+                             &writefds,
+                             NULL,
+                             &tv);
+                if(ret == 0)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] do_http_connection_client select timeout\n");
+#endif
+                    free(buffer);
+                    free(buffer2);
+                    free(buffer_http_header);
+                    free(buffer_http_body);
+                    return 0;
+                }else if(ret == SOCKET_ERROR)
                 {
                     ret = WSAGetLastError();
-                    if(ret == WSAEWOULDBLOCK)
+#ifdef DEBUGPRINT
+                    std::printf("[+] do_http_connection_client select error: 0x%x\n",
+                                ret);
+#endif
+                    free(buffer);
+                    free(buffer2);
+                    free(buffer_http_header);
+                    free(buffer_http_body);
+                    return 0;
+                }
+
+                ret = FD_ISSET(sock,
+                               &writefds);
+                if(ret > 0)
+                {
+                    sen = send(sock,
+                               buffer+send_length,
+                               len,
+                               0);
+                    if(sen == SOCKET_ERROR)
                     {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] do_http_connection_client send error: %d\n",
+                                        ret);
+#endif
+                            free(buffer);
+                            free(buffer2);
+                            free(buffer_http_header);
+                            free(buffer_http_body);
+                            return -1;
+                        }
+                    }
+                    send_length += sen;
+                    len -= sen;
+                }
+            }
+        }else
+        {
+            std::memset(buffer,
+                        0,
+                        buffer_size);
+
+            std::memcpy(buffer2,
+                        buffer_http_header,
+                        http_header_length);
+
+            std::memcpy(buffer2 + http_header_length,
+                        buffer_http_body,
+                        http_body_length);
+
+            total_length = http_header_length + http_body_length;
+            remaining_size = total_length;
+            count = total_length / (int32_t)stream_sizes.cbMaximumMessage + 1;
+            p = 0;
+
+            for(int32_t i=0 ; i<count; i++)
+            {
+                if(remaining_size > (int32_t)stream_sizes.cbMaximumMessage)
+                {
+                    len = encrypt_data_tls(buffer2 + p,
+                                           (int32_t)stream_sizes.cbMaximumMessage,
+                                           buffer,
+                                           buffer_size);
+                    if(len < 0)
                     {
 #ifdef DEBUGPRINT
-                        std::printf("[-] do_http_connection_client send error: %d\n",
-                                    ret);
+                        std::printf("[-] do_http_connection_client encrypt_data_tls error: %d\n",
+                                    len);
 #endif
                         free(buffer);
+                        free(buffer2);
                         free(buffer_http_header);
                         free(buffer_http_body);
                         return -1;
                     }
+
+                    p += (int32_t)stream_sizes.cbMaximumMessage;
+                    remaining_size -= (int32_t)stream_sizes.cbMaximumMessage;
+                }else
+                {
+                    len = encrypt_data_tls(buffer2 + p,
+                                           remaining_size,
+                                           buffer,
+                                           buffer_size);
+                    if(len < 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] do_http_connection_client encrypt_data_tls error: %d\n",
+                                    len);
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(buffer_http_header);
+                        free(buffer_http_body);
+                        return -1;
+                    }
+
+                    p += remaining_size;
+                    remaining_size = 0;
                 }
-                send_length += sen;
-                len -= sen;
+
+                send_length = 0;
+
+#ifdef DEBUGPRINT
+//                std::printf("len: %d\n", len);
+//                print_bytes(buffer, len);
+#endif
+
+                while(len > 0)
+                {
+                    FD_ZERO(&writefds);
+                    FD_SET(sock,
+                           &writefds);
+                    tv.tv_sec = tv_sec;
+                    tv.tv_usec = tv_usec;
+
+                    ret = select(NULL,
+                                 NULL,
+                                 &writefds,
+                                 NULL,
+                                 &tv);
+                    if(ret == 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[+] do_http_connection_client select timeout\n");
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(buffer_http_header);
+                        free(buffer_http_body);
+                        return 0;
+                    }else if(ret == SOCKET_ERROR)
+                    {
+                        ret = WSAGetLastError();
+#ifdef DEBUGPRINT
+                        std::printf("[+] do_http_connection_client select error: 0x%x\n",
+                                    ret);
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(buffer_http_header);
+                        free(buffer_http_body);
+                        return 0;
+                    }
+
+                    ret = FD_ISSET(sock,
+                                   &writefds);
+                    if(ret > 0)
+                    {
+                        sen = send(sock,
+                                   buffer+send_length,
+                                   len,
+                                   0);
+                        if(sen == SOCKET_ERROR)
+                        {
+                            ret = WSAGetLastError();
+                            if(ret == WSAEWOULDBLOCK)
+                            {
+                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                continue;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_client send error: %d\n",
+                                            ret);
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(buffer_http_header);
+                                free(buffer_http_body);
+                                return -1;
+                            }
+                        }
+                        send_length += sen;
+                        len -= sen;
+                    }
+                }
             }
         }
 
+
+        free(buffer_http_header);
+        free(buffer_http_body);
 
         std::memset(buffer,
                     0,
                     buffer_size);
 
-        free(buffer_http_header);
-        free(buffer_http_body);
+        std::memset(buffer2,
+                    0,
+                    buffer_size);
+
+        tmp = (char *)calloc(buffer_size,
+                             sizeof(char));
 
         http_header_length = 0;
         http_body_length = 0;
+        remaining_size = 0;
+        tmprec = 0;
+        decrypt_data_length = 0;
 
 
         while(1)
@@ -813,6 +1199,8 @@ namespace spider
                 std::printf("[+] do_http_connection_client select timeout\n");
 #endif
                 free(buffer);
+                free(buffer2);
+                free(tmp);
                 return 0;
             }else if(ret == SOCKET_ERROR)
             {
@@ -822,6 +1210,8 @@ namespace spider
                             ret);
 #endif
                 free(buffer);
+                free(buffer2);
+                free(tmp);
                 return 0;
             }
 
@@ -829,149 +1219,285 @@ namespace spider
                            &readfds);
             if(ret > 0)
             {
-                if(recv_http_header_flag == false)
+                if(tls_flag == false)   // http
                 {
-                    tmprec = recv(sock,
-                                  buffer,
-                                  buffer_http_header_size,
-                                  0);
-                }else
-                {
-                    tmprec = recv(sock,
-                                  buffer + rec,
-                                  remaining_size,
-                                  0);
-                }
-
-                if(tmprec == SOCKET_ERROR)
-                {
-                    ret = WSAGetLastError();
-                    if(ret == WSAEWOULDBLOCK)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
-                    {
-#ifdef DEBUGPRINT
-                        std::printf("[-] do_http_connection_client recv error: %d\n",
-                                    ret);
-#endif
-                        free(buffer);
-                        return -1;
-                    }
-                }else
-                {
-                    rec += tmprec;
-                    tmprec = 0;
-
-#ifdef DEBUGPRINT
-//                    std::printf("rec: %d\n", rec);
-//                    print_bytes(buffer, rec);
-#endif
-
                     if(recv_http_header_flag == false)
                     {
-                        recv_http_header_flag = true;
-
-                        http_header_length = get_http_header_length((const char *)buffer);
-                        http_body_length = get_content_length((const char *)buffer);
-                        total_length = http_header_length + http_body_length;
-
-                        if(total_length == 0)
-                        {
-#ifdef DEBUGPRINT
-                            std::printf("[-] do_http_connection_client error total_length: %d\n",
-                                        total_length);
-#endif
-                            free(buffer);
-                            return -1;
-                        }else if(total_length > buffer_size)
-                        {
-#ifdef DEBUGPRINT
-                            std::printf("[-] do_http_connection_client http size error buffer_size: %d total_length: %d\n",
-                                        buffer_size,
-                                        total_length);
-#endif
-                            free(buffer);
-                            return -1;
-                        }
-
-                        remaining_size = total_length - rec;
-                        if(remaining_size > 0)
-                        {
-                            continue;
-                        }
+                        tmprec = recv(sock,
+                                      buffer,
+                                      buffer_http_header_size,
+                                      0);
                     }else
                     {
-                        remaining_size = total_length - rec;
-                        if(remaining_size > 0)
-                        {
-                            continue;
-                        }
+                        tmprec = recv(sock,
+                                      buffer + rec,
+                                      remaining_size,
+                                      0);
                     }
 
-                    pos = buffer + http_header_length;
-
-                    while(pos < buffer + total_length)
+                    if(tmprec == SOCKET_ERROR)
                     {
-                        spider_message = (struct spider_message *)pos;
-                        if(spider_message->header.message_type == 'r')
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
                         {
-                            routing_message = std::make_shared<Routingmessage>(this->get_pipe_id(),
-                                                                               spider_message);
-
-                            std::thread thread_message_manager(&Messagemanager::push_routing_message,
-                                                               message_manager,
-                                                               routing_message);
-                            thread_message_manager.detach();
-
-                            pos += spider_message_header_size + routing_message->get_data_size();
-                        }else if(spider_message->header.message_type  == 's')
-                        {
-                            socks5_message = std::make_shared<Socks5message>(spider_message);
-                            if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip() ||
-                               spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip() ||
-                               spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip() ||
-                               spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
-                            {
-                                std::thread thread_message_manager(&Messagemanager::push_socks5_message,
-                                                                   message_manager,
-                                                                   socks5_message);
-                                thread_message_manager.detach();
-                            }else
-                            {
-                                pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
-                                if(pipe != nullptr)
-                                {
-                                    std::thread thread_pipe(&Pipe::push_socks5_message,
-                                                            pipe,
-                                                            socks5_message);
-                                    thread_pipe.detach();
-                                }else
-                                {
-#ifdef DEBUGPRINT
-                                    std::printf("[-] do_http_connection_client cannot transfer pipe message\n");
-#endif
-                                }
-                            }
-
-                            pos += spider_message_header_size + socks5_message->get_data_size();
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
                         }else
                         {
 #ifdef DEBUGPRINT
-                            std::printf("[-] do_http_connection_client message type error: %c\n",
-                                        spider_message->header.message_type);
+                            std::printf("[-] do_http_connection_client recv error: %d\n",
+                                        ret);
 #endif
-                            break;
+                            free(buffer);
+                            free(buffer2);
+                            free(tmp);
+                            return -1;
                         }
+                    }else
+                    {
+                        rec += tmprec;
+                        tmprec = 0;
+
+                        if(recv_http_header_flag == false)
+                        {
+                            recv_http_header_flag = true;
+
+                            http_header_length = get_http_header_length((const char *)buffer);
+                            http_body_length = get_content_length((const char *)buffer);
+                            total_length = http_header_length + http_body_length;
+
+                            if(total_length == 0)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_client error total_length: %d\n",
+                                            total_length);
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(tmp);
+                                return -1;
+                            }else if(total_length > buffer_size)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_client http size error buffer_size: %d total_length: %d\n",
+                                            buffer_size,
+                                            total_length);
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(tmp);
+                                return -1;
+                            }
+
+                            remaining_size = total_length - rec;
+                            if(remaining_size > 0)
+                            {
+                                continue;
+                            }
+                        }else
+                        {
+                            remaining_size = total_length - rec;
+                            if(remaining_size > 0)
+                            {
+                                continue;
+                            }
+                        }
+
+                        break;
+                    }
+                }else   // https
+                {
+                    if(remaining_size == 0)
+                    {
+                        rec = recv(sock,
+                                   buffer2,
+                                   buffer_http_header_size,
+                                   0);
+                    }else
+                    {
+                        rec = recv(sock,
+                                   buffer2,
+                                   remaining_size,
+                                   0);
                     }
 
-                    break;
+                    if(rec == SOCKET_ERROR)
+                    {
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] do_http_connection_client recv error: %d\n",
+                                        ret);
+#endif
+                            free(buffer);
+                            free(buffer2);
+                            free(tmp);
+                            return -1;
+                        }
+                    }else if(rec == 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] do_http_connection_client error rec: %d\n",
+                                    rec);
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(tmp);
+                        return -1;
+                    }else
+                    {
+                        if(tmprec + rec <= buffer_size)
+                        {
+                            std::memcpy(tmp + tmprec,
+                                        buffer2,
+                                        rec);
+                            tmprec += rec;
+
+                            std::memset(buffer2,
+                                        0,
+                                        buffer_size);
+
+                            remaining_size = 0;
+
+                            ret = decrypt_data_tls(tmp,
+                                                   &tmprec,
+                                                   buffer,
+                                                   buffer_size,
+                                                   &decrypt_data_length,
+                                                   &remaining_size);
+                            if(ret == 1)    // SEC_E_INCOMPLETE_MESSAGE
+                            {
+                                continue;
+                            }else if(ret == 2)  // SEC_E_DECRYPT_FAILURE
+                            {
+                                tmprec = 0;
+                                std::memset(tmp,
+                                            0,
+                                            buffer_size);
+                                continue;
+                            }else if(ret < 0)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_client decrypt_data_tls error\n");
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(tmp);
+                                return -1;
+                            }else
+                            {
+                                http_header_length = get_http_header_length((const char *)buffer);
+                                http_body_length = get_content_length((const char *)buffer);
+                                total_length = http_header_length + http_body_length;
+
+                                if(total_length == 0)
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] do_http_connection_client error total_length: %d\n",
+                                                total_length);
+#endif
+                                    free(buffer);
+                                    free(buffer2);
+                                    free(tmp);
+                                    return -1;
+                                }else if(total_length > buffer_size)
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] do_http_connection_client http size error buffer_size: %d total_length: %d\n",
+                                                buffer_size,
+                                                total_length);
+#endif
+                                    free(buffer);
+                                    free(buffer2);
+                                    free(tmp);
+                                    return -1;
+                                }
+
+                                break;
+                            }
+                        }else{
+#ifdef DEBUGPRINT
+                            std::printf("[-] do_http_connection_client received data size has exceeded the maximum value\n");
+#endif
+                            free(buffer);
+                            free(buffer2);
+                            free(tmp);
+                            return -1;
+                        }
+                    }
                 }
             }
         }
 
+#ifdef DEBUGPRINT
+//        std::printf("rec: %d\n", rec);
+//        print_bytes(buffer, rec);
+#endif
+
+        pos = buffer + http_header_length;
+
+        while(pos < buffer + total_length)
+        {
+            spider_message = (struct spider_message *)pos;
+            if(spider_message->header.message_type == 'r')
+            {
+                routing_message = std::make_shared<Routingmessage>(this->get_pipe_id(),
+                                                                   spider_message);
+
+                std::thread thread_message_manager(&Messagemanager::push_routing_message,
+                                                   message_manager,
+                                                   routing_message);
+                thread_message_manager.detach();
+
+                pos += spider_message_header_size + routing_message->get_data_size();
+            }else if(spider_message->header.message_type  == 's')
+            {
+                socks5_message = std::make_shared<Socks5message>(spider_message);
+                if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
+                {
+                    std::thread thread_message_manager(&Messagemanager::push_socks5_message,
+                                                       message_manager,
+                                                       socks5_message);
+                    thread_message_manager.detach();
+                }else
+                {
+                    pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
+                    if(pipe != nullptr)
+                    {
+                        std::thread thread_pipe(&Pipe::push_socks5_message,
+                                                pipe,
+                                                socks5_message);
+                        thread_pipe.detach();
+                    }else
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] do_http_connection_client cannot transfer pipe message\n");
+#endif
+                    }
+                }
+
+                pos += spider_message_header_size + socks5_message->get_data_size();
+            }else
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] do_http_connection_client message type error: %c\n",
+                            spider_message->header.message_type);
+#endif
+                break;
+            }
+        }
+
         free(buffer);
+        free(buffer2);
+        free(tmp);
         return 0;
     }
 
@@ -994,6 +1520,10 @@ namespace spider
         int32_t buffer_http_body_size = NODE_BUFFER_SIZE * 11;
         char *buffer = (char *)calloc(buffer_size,
                                       sizeof(char));
+        char *buffer2 = (char *)calloc(buffer_size,
+                                       sizeof(char));
+        char *tmp = (char *)calloc(buffer_size,
+                                   sizeof(char));
         char *buffer_http_header = NULL;
         char *buffer_http_body = NULL;
         int32_t http_header_length = 0;     // start line + headers + empty line
@@ -1010,6 +1540,10 @@ namespace spider
         struct spider_message *spider_message;
         int32_t spider_message_header_size = sizeof(struct spider_message_header);
         std::shared_ptr<Pipe> pipe;
+        BOOL tls_flag = this->message_mode == 's' ? true : false;
+        int32_t decrypt_data_length = 0;
+        int32_t count = 0;
+        int32_t p = 0;
 
 
         while(1)
@@ -1047,150 +1581,290 @@ namespace spider
                            &readfds);
             if(ret > 0)
             {
-                if(recv_http_header_flag == false)
+                if(tls_flag == false)   // http
                 {
-                    tmprec = recv(sock,
-                                  buffer,
-                                  buffer_http_header_size,
-                                  0);
-                }else
-                {
-                    tmprec = recv(sock,
-                                  buffer + rec,
-                                  remaining_size,
-                                  0);
-                }
-
-                if(tmprec == SOCKET_ERROR)
-                {
-                    ret = WSAGetLastError();
-                    if(ret == WSAEWOULDBLOCK)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
-                    {
-#ifdef DEBUGPRINT
-                        std::printf("[-] do_http_connection_server recv error: %d\n",
-                                    ret);
-#endif
-                        free(buffer);
-                        return -1;
-                    }
-                }else
-                {
-                    rec += tmprec;
-                    tmprec = 0;
-
-#ifdef DEBUGPRINT
-//                    std::printf("rec: %d\n", rec);
-//                    print_bytes(buffer, rec);
-#endif
-
                     if(recv_http_header_flag == false)
                     {
-                        recv_http_header_flag = true;
-
-                        http_header_length = get_http_header_length((const char *)buffer);
-                        http_body_length = get_content_length((const char *)buffer);
-                        total_length = http_header_length + http_body_length;
-
-                        if(total_length == 0)
-                        {
-#ifdef DEBUGPRINT
-                            std::printf("[-] do_http_connection_server error total_length: %d\n",
-                                        total_length);
-#endif
-                            free(buffer);
-                            return -1;
-                        }else if(total_length > buffer_size)
-                        {
-#ifdef DEBUGPRINT
-                            std::printf("[-] do_http_connection_server http size error buffer_size: %d total_length: %d\n",
-                                        buffer_size,
-                                        total_length);
-#endif
-                            free(buffer);
-                            return -1;
-                        }
-
-                        remaining_size = total_length - rec;
-                        if(remaining_size > 0)
-                        {
-                            continue;
-                        }
+                        tmprec = recv(sock,
+                                      buffer,
+                                      buffer_http_header_size,
+                                      0);
                     }else
                     {
-                        remaining_size = total_length - rec;
-                        if(remaining_size > 0)
-                        {
-                            continue;
-                        }
+                        tmprec = recv(sock,
+                                      buffer + rec,
+                                      remaining_size,
+                                      0);
                     }
 
-                    pos = buffer + http_header_length;
-
-                    while(pos < buffer + total_length)
+                    if(tmprec == SOCKET_ERROR)
                     {
-                        spider_message = (struct spider_message *)pos;
-                        if(spider_message->header.message_type == 'r')
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
                         {
-                            routing_message = std::make_shared<Routingmessage>(this->get_pipe_id(),
-                                                                               spider_message);
-
-                            std::thread thread_message_manager(&Messagemanager::push_routing_message,
-                                                               message_manager,
-                                                               routing_message);
-                            thread_message_manager.detach();
-
-                            pos += spider_message_header_size + routing_message->get_data_size();
-                        }else if(spider_message->header.message_type  == 's')
-                        {
-                            socks5_message = std::make_shared<Socks5message>(spider_message);
-                            if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip() ||
-                               spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip() ||
-                               spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip() ||
-                               spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
-                            {
-                                std::thread thread_message_manager(&Messagemanager::push_socks5_message,
-                                                                   message_manager,
-                                                                   socks5_message);
-                                thread_message_manager.detach();
-                            }else
-                            {
-                                pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
-                                if(pipe != nullptr)
-                                {
-                                    std::thread thread_pipe(&Pipe::push_socks5_message,
-                                                            pipe,
-                                                            socks5_message);
-                                    thread_pipe.detach();
-                                }else
-                                {
-#ifdef DEBUGPRINT
-                                    std::printf("[-] do_http_connection_server cannot transfer pipe message\n");
-#endif
-                                }
-                            }
-
-                            pos += spider_message_header_size + socks5_message->get_data_size();
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
                         }else
                         {
 #ifdef DEBUGPRINT
-                            std::printf("[-] do_http_connection_server message type error: %c\n",
-                                        spider_message->header.message_type);
+                            std::printf("[-] do_http_connection_server recv error: %d\n",
+                                        ret);
 #endif
-                            break;
+                            free(buffer);
+                            free(buffer2);
+                            free(tmp);
+                            return -1;
                         }
+                    }else
+                    {
+                        rec += tmprec;
+                        tmprec = 0;
+
+                        if(recv_http_header_flag == false)
+                        {
+                            recv_http_header_flag = true;
+
+                            http_header_length = get_http_header_length((const char *)buffer);
+                            http_body_length = get_content_length((const char *)buffer);
+                            total_length = http_header_length + http_body_length;
+
+                            if(total_length == 0)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_server error total_length: %d\n",
+                                            total_length);
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(tmp);
+                                return -1;
+                            }else if(total_length > buffer_size)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_server http size error buffer_size: %d total_length: %d\n",
+                                            buffer_size,
+                                            total_length);
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(tmp);
+                                return -1;
+                            }
+
+                            remaining_size = total_length - rec;
+                            if(remaining_size > 0)
+                            {
+                                continue;
+                            }
+                        }else
+                        {
+                            remaining_size = total_length - rec;
+                            if(remaining_size > 0)
+                            {
+                                continue;
+                            }
+                        }
+
+                        break;
+                    }
+                }else   // https
+                {
+                    if(remaining_size == 0)
+                    {
+                        rec = recv(sock,
+                                   buffer2,
+                                   buffer_http_header_size,
+                                   0);
+                    }else
+                    {
+                        rec = recv(sock,
+                                   buffer2,
+                                   remaining_size,
+                                   0);
                     }
 
-                    break;
+                    if(rec == SOCKET_ERROR)
+                    {
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] do_http_connection_server recv error: %d\n",
+                                        ret);
+#endif
+                            free(buffer);
+                            free(buffer2);
+                            free(tmp);
+                            return -1;
+                        }
+                    }else if(rec == 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] do_http_connection_server error rec: %d\n",
+                                    rec);
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(tmp);
+                        return -1;
+                    }else
+                    {
+                        if(tmprec + rec <= buffer_size)
+                        {
+                            std::memcpy(tmp + tmprec,
+                                        buffer2,
+                                        rec);
+                            tmprec += rec;
+
+                            std::memset(buffer2,
+                                        0,
+                                        buffer_size);
+
+                            remaining_size = 0;
+
+                            ret = decrypt_data_tls(tmp,
+                                                   &tmprec,
+                                                   buffer,
+                                                   buffer_size,
+                                                   &decrypt_data_length,
+                                                   &remaining_size);
+                            if(ret == 1)    // SEC_E_INCOMPLETE_MESSAGE
+                            {
+                                continue;
+                            }else if(ret == 2)  // SEC_E_DECRYPT_FAILURE
+                            {
+                                tmprec = 0;
+                                std::memset(tmp,
+                                            0,
+                                            buffer_size);
+                                continue;
+                            }else if(ret < 0)
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_server decrypt_data_tls error\n");
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(tmp);
+                                return -1;
+                            }else
+                            {
+                                http_header_length = get_http_header_length((const char *)buffer);
+                                http_body_length = get_content_length((const char *)buffer);
+                                total_length = http_header_length + http_body_length;
+
+                                if(total_length == 0)
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] do_http_connection_server error total_length: %d\n",
+                                                total_length);
+#endif
+                                    free(buffer);
+                                    free(buffer2);
+                                    free(tmp);
+                                    return -1;
+                                }else if(total_length > buffer_size)
+                                {
+#ifdef DEBUGPRINT
+                                    std::printf("[-] do_http_connection_server http size error buffer_size: %d total_length: %d\n",
+                                                buffer_size,
+                                                total_length);
+#endif
+                                    free(buffer);
+                                    free(buffer2);
+                                    free(tmp);
+                                    return -1;
+                                }
+
+                                break;
+                            }
+                        }else{
+#ifdef DEBUGPRINT
+                            std::printf("[-] do_http_connection_server received data size has exceeded the maximum value\n");
+#endif
+                            free(buffer);
+                            free(buffer2);
+                            free(tmp);
+                            return -1;
+                        }
+                    }
                 }
             }
         }
 
+#ifdef DEBUGPRINT
+//        std::printf("rec: %d\n", rec);
+//        print_bytes(buffer, rec);
+#endif
+
+        pos = buffer + http_header_length;
+
+        while(pos < buffer + total_length)
+        {
+            spider_message = (struct spider_message *)pos;
+            if(spider_message->header.message_type == 'r')
+            {
+                routing_message = std::make_shared<Routingmessage>(this->get_pipe_id(),
+                                                                   spider_message);
+
+                std::thread thread_message_manager(&Messagemanager::push_routing_message,
+                                                   message_manager,
+                                                   routing_message);
+                thread_message_manager.detach();
+
+                pos += spider_message_header_size + routing_message->get_data_size();
+            }else if(spider_message->header.message_type  == 's')
+            {
+                socks5_message = std::make_shared<Socks5message>(spider_message);
+                if(spider_ip->get_spider_ipv4() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_global() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_unique_local() == socks5_message->get_destination_ip() ||
+                   spider_ip->get_spider_ipv6_link_local() == socks5_message->get_destination_ip())
+                {
+                    std::thread thread_message_manager(&Messagemanager::push_socks5_message,
+                                                       message_manager,
+                                                       socks5_message);
+                    thread_message_manager.detach();
+                }else
+                {
+                    pipe = routing_manager->get_destination_pipe(socks5_message->get_destination_ip());
+                    if(pipe != nullptr)
+                    {
+                        std::thread thread_pipe(&Pipe::push_socks5_message,
+                                                pipe,
+                                                socks5_message);
+                        thread_pipe.detach();
+                    }else
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] do_http_connection_server cannot transfer pipe message\n");
+#endif
+                    }
+                }
+
+                pos += spider_message_header_size + socks5_message->get_data_size();
+            }else
+            {
+#ifdef DEBUGPRINT
+                std::printf("[-] do_http_connection_server message type error: %c\n",
+                            spider_message->header.message_type);
+#endif
+                break;
+            }
+        }
+
+
+        free(tmp);
 
         std::memset(buffer,
+                    0,
+                    buffer_size);
+
+        std::memset(buffer2,
                     0,
                     buffer_size);
 
@@ -1201,6 +1875,7 @@ namespace spider
 
         http_header_length = 0;
         http_body_length = 0;
+        remaining_size = 0;
 
 
         routing_message = pop_latest_routing_message();
@@ -1228,90 +1903,240 @@ namespace spider
                                       "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n",
                                       http_body_length);
 
-        std::memcpy(buffer,
-                    buffer_http_header,
-                    http_header_length);
-
-        std::memcpy(buffer + http_header_length,
-                    buffer_http_body,
-                    http_body_length);
-
-        len = http_header_length + http_body_length;
-        send_length = 0;
-
-#ifdef DEBUGPRINT
-//        std::printf("len: %d\n", len);
-//        print_bytes(buffer, len);
-#endif
-
-        while(len > 0)
+        if(tls_flag == false)
         {
-            FD_ZERO(&writefds);
-            FD_SET(sock,
-                   &writefds);
-            tv.tv_sec = tv_sec;
-            tv.tv_usec = tv_usec;
+            std::memcpy(buffer,
+                        buffer_http_header,
+                        http_header_length);
 
-            ret = select(NULL,
-                         NULL,
-                         &writefds,
-                         NULL,
-                         &tv);
-            if(ret == 0)
-            {
-#ifdef DEBUGPRINT
-                std::printf("[+] do_http_connection_server select timeout\n");
-#endif
-                free(buffer);
-                free(buffer_http_header);
-                free(buffer_http_body);
-                return 0;
-            }else if(ret == SOCKET_ERROR)
-            {
-                ret = WSAGetLastError();
-#ifdef DEBUGPRINT
-                std::printf("[+] do_http_connection_server select error:0x%x\n",
-                            ret);
-#endif
-                free(buffer);
-                free(buffer_http_header);
-                free(buffer_http_body);
-                return 0;
-            }
+            std::memcpy(buffer + http_header_length,
+                        buffer_http_body,
+                        http_body_length);
 
-            ret = FD_ISSET(sock,
-                           &writefds);
-            if(ret > 0)
+            len = http_header_length + http_body_length;
+            send_length = 0;
+
+#ifdef DEBUGPRINT
+//            std::printf("len: %d\n", len);
+//            print_bytes(buffer, len);
+#endif
+
+            while(len > 0)
             {
-                sen = send(sock,
-                           buffer+send_length,
-                           len,
-                           0);
-                if(sen == SOCKET_ERROR)
+                FD_ZERO(&writefds);
+                FD_SET(sock,
+                       &writefds);
+                tv.tv_sec = tv_sec;
+                tv.tv_usec = tv_usec;
+
+                ret = select(NULL,
+                             NULL,
+                             &writefds,
+                             NULL,
+                             &tv);
+                if(ret == 0)
+                {
+#ifdef DEBUGPRINT
+                    std::printf("[+] do_http_connection_server select timeout\n");
+#endif
+                    free(buffer);
+                    free(buffer2);
+                    free(buffer_http_header);
+                    free(buffer_http_body);
+                    return 0;
+                }else if(ret == SOCKET_ERROR)
                 {
                     ret = WSAGetLastError();
-                    if(ret == WSAEWOULDBLOCK)
+#ifdef DEBUGPRINT
+                    std::printf("[+] do_http_connection_server select error: 0x%x\n",
+                                ret);
+#endif
+                    free(buffer);
+                    free(buffer2);
+                    free(buffer_http_header);
+                    free(buffer_http_body);
+                    return 0;
+                }
+
+                ret = FD_ISSET(sock,
+                               &writefds);
+                if(ret > 0)
+                {
+                    sen = send(sock,
+                               buffer+send_length,
+                               len,
+                               0);
+                    if(sen == SOCKET_ERROR)
                     {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
+                        ret = WSAGetLastError();
+                        if(ret == WSAEWOULDBLOCK)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
+#ifdef DEBUGPRINT
+                            std::printf("[-] do_http_connection_server send error: %d\n",
+                                        ret);
+#endif
+                            free(buffer);
+                            free(buffer2);
+                            free(buffer_http_header);
+                            free(buffer_http_body);
+                            return -1;
+                        }
+                    }
+                    send_length += sen;
+                    len -= sen;
+                }
+            }
+        }else
+        {
+            std::memset(buffer,
+                        0,
+                        buffer_size);
+
+            std::memcpy(buffer2,
+                        buffer_http_header,
+                        http_header_length);
+
+            std::memcpy(buffer2 + http_header_length,
+                        buffer_http_body,
+                        http_body_length);
+
+            total_length = http_header_length + http_body_length;
+            remaining_size = total_length;
+            count = total_length / (int32_t)stream_sizes.cbMaximumMessage + 1;
+            p = 0;
+
+            for(int32_t i=0 ; i<count; i++)
+            {
+                if(remaining_size > (int32_t)stream_sizes.cbMaximumMessage)
+                {
+                    len = encrypt_data_tls(buffer2 + p,
+                                           (int32_t)stream_sizes.cbMaximumMessage,
+                                           buffer,
+                                           buffer_size);
+                    if(len < 0)
                     {
 #ifdef DEBUGPRINT
-                        std::printf("[-] do_http_connection_server send error: %d\n",
-                                    ret);
+                        std::printf("[-] do_http_connection_server encrypt_data_tls error: %d\n",
+                                    len);
 #endif
                         free(buffer);
+                        free(buffer2);
                         free(buffer_http_header);
                         free(buffer_http_body);
                         return -1;
                     }
+
+                    p += (int32_t)stream_sizes.cbMaximumMessage;
+                    remaining_size -= (int32_t)stream_sizes.cbMaximumMessage;
+                }else
+                {
+                    len = encrypt_data_tls(buffer2 + p,
+                                           remaining_size,
+                                           buffer,
+                                           buffer_size);
+                    if(len < 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[-] do_http_connection_server encrypt_data_tls error: %d\n",
+                                    len);
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(buffer_http_header);
+                        free(buffer_http_body);
+                        return -1;
+                    }
+
+                    p += remaining_size;
+                    remaining_size = 0;
                 }
-                send_length += sen;
-                len -= sen;
+
+                send_length = 0;
+
+#ifdef DEBUGPRINT
+//                std::printf("len: %d\n", len);
+//                print_bytes(buffer, len);
+#endif
+
+                while(len > 0)
+                {
+                    FD_ZERO(&writefds);
+                    FD_SET(sock,
+                           &writefds);
+                    tv.tv_sec = tv_sec;
+                    tv.tv_usec = tv_usec;
+
+                    ret = select(NULL,
+                                 NULL,
+                                 &writefds,
+                                 NULL,
+                                 &tv);
+                    if(ret == 0)
+                    {
+#ifdef DEBUGPRINT
+                        std::printf("[+] do_http_connection_server select timeout\n");
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(buffer_http_header);
+                        free(buffer_http_body);
+                        return 0;
+                    }else if(ret == SOCKET_ERROR)
+                    {
+                        ret = WSAGetLastError();
+#ifdef DEBUGPRINT
+                        std::printf("[+] do_http_connection_server select error: 0x%x\n",
+                                    ret);
+#endif
+                        free(buffer);
+                        free(buffer2);
+                        free(buffer_http_header);
+                        free(buffer_http_body);
+                        return 0;
+                    }
+
+                    ret = FD_ISSET(sock,
+                                   &writefds);
+                    if(ret > 0)
+                    {
+                        sen = send(sock,
+                                   buffer+send_length,
+                                   len,
+                                   0);
+                        if(sen == SOCKET_ERROR)
+                        {
+                            ret = WSAGetLastError();
+                            if(ret == WSAEWOULDBLOCK)
+                            {
+                                std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                                continue;
+                            }else
+                            {
+#ifdef DEBUGPRINT
+                                std::printf("[-] do_http_connection_server send error: %d\n",
+                                            ret);
+#endif
+                                free(buffer);
+                                free(buffer2);
+                                free(buffer_http_header);
+                                free(buffer_http_body);
+                                return -1;
+                            }
+                        }
+                        send_length += sen;
+                        len -= sen;
+                    }
+                }
             }
+
         }
 
         free(buffer);
+        free(buffer2);
         free(buffer_http_header);
         free(buffer_http_body);
         return 0;

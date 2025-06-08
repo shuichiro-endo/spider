@@ -17,6 +17,8 @@
 #include "routingmanager.hpp"
 #include "messagemanager.hpp"
 #include "encryption.hpp"
+#include "clienttls.hpp"
+#include "servertls.hpp"
 
 
 namespace spider
@@ -1711,6 +1713,7 @@ namespace spider
     }
 
     int Spidercommand::connect_pipe_http(char mode,
+                                         bool tls_flag,
                                          std::string pipe_ip,
                                          std::string pipe_ip_scope_id,
                                          std::string pipe_destination_ip,
@@ -1735,6 +1738,8 @@ namespace spider
         std::string pipe_destination_ip_scope_id;
         std::shared_ptr<Pipe> pipe = nullptr;
         uint32_t pipe_key = 0;
+        char message_mode = tls_flag ? 's' : 'h';
+
 
         std::memset((char *)&pipe_dest_addr,
                     0,
@@ -1868,7 +1873,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   mode,
-                                                  'h',
+                                                  message_mode,
                                                   pipe_ip,
                                                   pipe_ip_scope_id,
                                                   pipe_destination_ip,
@@ -1890,14 +1895,154 @@ namespace spider
                 }
 
 
+                // TLS
+                SSL_CTX *ctx = NULL;
+                SSL *ssl = NULL;
+                BIO *bio_tls = NULL;
+
+                if(tls_flag == true)
+                {
+                    ctx = SSL_CTX_new(TLS_client_method());
+                    if(ctx == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_new error\n");
+#endif
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    ret = SSL_CTX_set_min_proto_version(ctx,
+                                                        TLS1_2_VERSION);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_min_proto_version error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    ret = SSL_CTX_set_default_verify_paths(ctx);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_default_verify_paths error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    ret = SSL_CTX_load_verify_locations(ctx,
+                                                        pipe_server_https_certificate_filepath,
+                                                        NULL);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_load_verify_locations error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    SSL_CTX_set_verify(ctx,
+                                       SSL_VERIFY_PEER,
+                                       NULL);
+
+                    ssl = SSL_new(ctx);
+                    if(ssl == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_new error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    bio_tls = BIO_new_socket(pipe_sock,
+                                             BIO_NOCLOSE);
+                    if(bio_tls == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] BIO_new_socket error\n");
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    SSL_set_bio(ssl,
+                                bio_tls,
+                                bio_tls);
+
+                    if(SSL_connect(ssl) <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_connect error: %s\n",
+                                    ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    pipe->set_bio_tls(bio_tls);
+                    pipe->set_ssl(ssl);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_client();
                 if(ret < 0)
                 {
+                    if(tls_flag == true)
+                    {
+                        pipe->set_bio_tls(NULL);
+                        pipe->set_ssl(NULL);
+
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+                    }
+
                     pipe->set_sock(-1);
                     close(pipe_sock);
                     pipe_manager->erase_pipe(pipe_key);
                     break;
+                }
+
+                if(tls_flag == true)
+                {
+                    pipe->set_bio_tls(NULL);
+                    pipe->set_ssl(NULL);
+
+                    SSL_free(ssl);
+                    SSL_CTX_free(ctx);
                 }
 
                 pipe->set_sock(-1);
@@ -1984,7 +2129,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   mode,
-                                                  'h',
+                                                  message_mode,
                                                   pipe_ip,
                                                   pipe_ip_scope_id,
                                                   pipe_destination_ip,
@@ -2006,14 +2151,154 @@ namespace spider
                 }
 
 
+                // TLS
+                SSL_CTX *ctx = NULL;
+                SSL *ssl = NULL;
+                BIO *bio_tls = NULL;
+
+                if(tls_flag == true)
+                {
+                    ctx = SSL_CTX_new(TLS_client_method());
+                    if(ctx == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_new error\n");
+#endif
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    ret = SSL_CTX_set_min_proto_version(ctx,
+                                                        TLS1_2_VERSION);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_min_proto_version error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    ret = SSL_CTX_set_default_verify_paths(ctx);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_default_verify_paths error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    ret = SSL_CTX_load_verify_locations(ctx,
+                                                        pipe_server_https_certificate_filepath,
+                                                        NULL);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_load_verify_locations error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    SSL_CTX_set_verify(ctx,
+                                       SSL_VERIFY_PEER,
+                                       NULL);
+
+                    ssl = SSL_new(ctx);
+                    if(ssl == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_new error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    bio_tls = BIO_new_socket(pipe_sock,
+                                             BIO_NOCLOSE);
+                    if(bio_tls == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] BIO_new_socket error\n");
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    SSL_set_bio(ssl,
+                                bio_tls,
+                                bio_tls);
+
+                    if(SSL_connect(ssl) <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_connect error: %s\n",
+                                    ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        pipe_manager->erase_pipe(pipe_key);
+                        break;
+                    }
+
+                    pipe->set_bio_tls(bio_tls);
+                    pipe->set_ssl(ssl);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_client();
                 if(ret < 0)
                 {
+                    if(tls_flag == true)
+                    {
+                        pipe->set_bio_tls(NULL);
+                        pipe->set_ssl(NULL);
+
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+                    }
+
                     pipe->set_sock(-1);
                     close(pipe_sock);
                     pipe_manager->erase_pipe(pipe_key);
                     break;
+                }
+
+                if(tls_flag == true)
+                {
+                    pipe->set_bio_tls(NULL);
+                    pipe->set_ssl(NULL);
+
+                    SSL_free(ssl);
+                    SSL_CTX_free(ctx);
                 }
 
                 pipe->set_sock(-1);
@@ -2031,6 +2316,7 @@ namespace spider
     }
 
     int Spidercommand::listen_pipe_http(char mode,
+                                        bool tls_flag,
                                         std::string pipe_listen_ip,
                                         std::string pipe_listen_ip_scope_id,
                                         std::string pipe_listen_port)
@@ -2061,6 +2347,8 @@ namespace spider
         std::string pipe_destination_ip_scope_id;
         std::string pipe_destination_port;
         std::shared_ptr<Pipe> pipe = nullptr;
+        char message_mode = tls_flag ? 's' : 'h';
+
 
         std::memset((char *)&pipe_listen_addr,
                     0,
@@ -2186,7 +2474,7 @@ namespace spider
             pipe_listen = std::make_shared<Pipe>(spider_ip,
                                                  0,
                                                  mode,
-                                                 'h',
+                                                 message_mode,
                                                  pipe_listen_ip,
                                                  "",
                                                  pipe_listen_port,
@@ -2236,7 +2524,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   '-',
-                                                  'h',
+                                                  message_mode,
                                                   pipe_listen_ip,
                                                   "",
                                                   pipe_destination_ip,
@@ -2262,8 +2550,197 @@ namespace spider
                 }
 
 
+                // TLS
+                SSL_CTX *ctx = NULL;
+                SSL *ssl = NULL;
+                BIO *bio_tls = NULL;
+
+                if(tls_flag == true)
+                {
+                    ctx = SSL_CTX_new(TLS_server_method());
+                    if(ctx == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_new error\n");
+#endif
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    BIO *bio_key = BIO_new_mem_buf(pipe_server_https_privatekey,
+                                                    -1);
+
+                    BIO *bio_cert = BIO_new_mem_buf(pipe_server_https_certificate,
+                                                    -1);
+
+                    EVP_PKEY *server_pkey = PEM_read_bio_PrivateKey(bio_key,
+                                                                    NULL,
+                                                                    0,
+                                                                    NULL);
+
+                    X509 *server_cert = PEM_read_bio_X509(bio_cert,
+                                                          NULL,
+                                                          0,
+                                                          NULL);
+
+                    BIO_free(bio_key);
+                    BIO_free(bio_cert);
+
+                    ret = SSL_CTX_use_PrivateKey(ctx,
+                                                 server_pkey);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_use_PrivateKey error\n");
+#endif
+                        EVP_PKEY_free(server_pkey);
+                        X509_free(server_cert);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    EVP_PKEY_free(server_pkey);
+
+                    ret = SSL_CTX_use_certificate(ctx,
+                                                  server_cert);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_use_certificate error\n");
+#endif
+                        X509_free(server_cert);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    X509_free(server_cert);
+
+                    ret = SSL_CTX_check_private_key(ctx);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_check_private_key error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    ret = SSL_CTX_set_min_proto_version(ctx,
+                                                        TLS1_2_VERSION);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_min_proto_version error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    ret = SSL_CTX_set_cipher_list(ctx,
+                                                  cipher_suite_tls_1_2);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_cipher_list error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+
+                    ret = SSL_CTX_set_ciphersuites(ctx,
+                                                   cipher_suite_tls_1_3);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_ciphersuites error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    ssl = SSL_new(ctx);
+                    if(ssl == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_new error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    bio_tls = BIO_new_socket(pipe_sock,
+                                             BIO_NOCLOSE);
+                    if(bio_tls == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] BIO_new_socket error\n");
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    SSL_set_bio(ssl,
+                                bio_tls,
+                                bio_tls);
+
+                    if(SSL_accept(ssl) <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_accept error: %s\n",
+                                    ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+
+                    }
+
+                    pipe->set_bio_tls(bio_tls);
+                    pipe->set_ssl(ssl);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_server();
+
+                if(tls_flag == true)
+                {
+                    pipe->set_bio_tls(NULL);
+                    pipe->set_ssl(NULL);
+
+                    SSL_free(ssl);
+                    SSL_CTX_free(ctx);
+                }
 
                 pipe->set_sock(-1);
                 close(pipe_sock);
@@ -2318,7 +2795,7 @@ namespace spider
             pipe_listen = std::make_shared<Pipe>(spider_ip,
                                                  0,
                                                  mode,
-                                                 'h',
+                                                 message_mode,
                                                  pipe_listen_ip,
                                                  pipe_listen_ip_scope_id,
                                                  pipe_listen_port,
@@ -2382,7 +2859,7 @@ namespace spider
                     pipe = std::make_shared<Pipe>(spider_ip,
                                                   0,
                                                   '-',
-                                                  'h',
+                                                  message_mode,
                                                   pipe_listen_ip,
                                                   pipe_listen_ip_scope_id,
                                                   pipe_destination_ip,
@@ -2409,8 +2886,196 @@ namespace spider
                 }
 
 
+                // TLS
+                SSL_CTX *ctx = NULL;
+                SSL *ssl = NULL;
+                BIO *bio_tls = NULL;
+
+                if(tls_flag == true)
+                {
+                    ctx = SSL_CTX_new(TLS_server_method());
+                    if(ctx == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_new error\n");
+#endif
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    BIO *bio_key = BIO_new_mem_buf(pipe_server_https_privatekey,
+                                                    -1);
+
+                    BIO *bio_cert = BIO_new_mem_buf(pipe_server_https_certificate,
+                                                    -1);
+
+                    EVP_PKEY *server_pkey = PEM_read_bio_PrivateKey(bio_key,
+                                                                    NULL,
+                                                                    0,
+                                                                    NULL);
+
+                    X509 *server_cert = PEM_read_bio_X509(bio_cert,
+                                                          NULL,
+                                                          0,
+                                                          NULL);
+
+                    BIO_free(bio_key);
+                    BIO_free(bio_cert);
+
+                    ret = SSL_CTX_use_PrivateKey(ctx,
+                                                 server_pkey);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_use_PrivateKey error\n");
+#endif
+                        EVP_PKEY_free(server_pkey);
+                        X509_free(server_cert);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    EVP_PKEY_free(server_pkey);
+
+                    ret = SSL_CTX_use_certificate(ctx,
+                                                  server_cert);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_use_certificate error\n");
+#endif
+                        X509_free(server_cert);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    X509_free(server_cert);
+
+                    ret = SSL_CTX_check_private_key(ctx);
+                    if(ret <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_check_private_key error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    ret = SSL_CTX_set_min_proto_version(ctx,
+                                                        TLS1_2_VERSION);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_min_proto_version error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    ret = SSL_CTX_set_cipher_list(ctx,
+                                                  cipher_suite_tls_1_2);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_cipher_list error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+
+                    ret = SSL_CTX_set_ciphersuites(ctx,
+                                                   cipher_suite_tls_1_3);
+                    if(ret == 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_CTX_set_ciphersuites error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    ssl = SSL_new(ctx);
+                    if(ssl == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_new error\n");
+#endif
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    bio_tls = BIO_new_socket(pipe_sock,
+                                             BIO_NOCLOSE);
+                    if(bio_tls == NULL)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] BIO_new_socket error\n");
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    SSL_set_bio(ssl,
+                                bio_tls,
+                                bio_tls);
+
+                    if(SSL_accept(ssl) <= 0)
+                    {
+#ifdef _DEBUG
+                        std::printf("[-] SSL_accept error: %s\n",
+                                    ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                        SSL_free(ssl);
+                        SSL_CTX_free(ctx);
+
+                        pipe->set_sock(-1);
+                        close(pipe_sock);
+                        continue;
+                    }
+
+                    pipe->set_bio_tls(bio_tls);
+                    pipe->set_ssl(ssl);
+                }
+
+
                 // http connection
                 ret = pipe->do_http_connection_server();
+
+                if(tls_flag == true)
+                {
+                    pipe->set_bio_tls(NULL);
+                    pipe->set_ssl(NULL);
+
+                    SSL_free(ssl);
+                    SSL_CTX_free(ctx);
+                }
 
                 pipe->set_sock(-1);
                 close(pipe_sock);
@@ -2430,7 +3095,8 @@ namespace spider
         std::string config = "";
         char mode;  // self:s other:o
         char pipe_mode;  // client:c server:s
-        char message_mode;  // default:d http:h
+        char message_mode;  // default:d http:h https:s
+        bool tls_flag = false;
         std::string source_spider_ip;
         std::string source_spider_ip_scope_id;
         std::string destination_spider_ip;
@@ -2473,7 +3139,7 @@ namespace spider
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2484,9 +3150,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe ip                                        > ");
@@ -2570,11 +3245,13 @@ namespace spider
                                                pipe_destination_ip,
                                                pipe_destination_port);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             std::thread thread(&Spidercommand::connect_pipe_http,
                                                this,
                                                pipe_mode,
+                                               tls_flag,
                                                pipe_ip,
                                                pipe_ip_scope_id,
                                                pipe_destination_ip,
@@ -2608,7 +3285,7 @@ namespace spider
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2619,9 +3296,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe listen ip                                 > ");
@@ -2693,11 +3379,13 @@ namespace spider
                                                pipe_ip_scope_id,
                                                pipe_listen_port);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             std::thread thread(&Spidercommand::listen_pipe_http,
                                                this,
                                                pipe_mode,
+                                               tls_flag,
                                                pipe_ip,
                                                pipe_ip_scope_id,
                                                pipe_listen_port);
@@ -2783,7 +3471,7 @@ namespace spider
                         continue;
                     }
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2794,9 +3482,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe ip                                        > ");
@@ -2880,10 +3577,15 @@ namespace spider
                                                source_spider_ip_scope_id,
                                                destination_spider_ip);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             config = "";
                             config += "[pipe_client_http]\n";
+
+                            config += "tls_flag:";
+                            config += tls_flag ? "true" : "false";
+                            config += "\n";
 
                             config += "pipe_ip:";
                             config += pipe_ip;
@@ -2966,7 +3668,7 @@ namespace spider
                         continue;
                     }
 
-                    std::printf("message mode (default:d http:h)                > ");
+                    std::printf("message mode (default:d http:h https:s)        > ");
                     std::cin >> message_mode;
                     if(std::cin.fail())
                     {
@@ -2977,9 +3679,18 @@ namespace spider
                     }
 
                     if(message_mode != 'd' &&
-                       message_mode != 'h')
+                       message_mode != 'h' &&
+                       message_mode != 's')
                     {
                         message_mode = 'd';
+                        tls_flag = false;
+                    }else if(message_mode == 'd' ||
+                             message_mode == 'h')
+                    {
+                        tls_flag = false;
+                    }else if(message_mode == 's')
+                    {
+                        tls_flag = true;
                     }
 
                     std::printf("pipe listen ip                                 > ");
@@ -3048,10 +3759,15 @@ namespace spider
                                                source_spider_ip_scope_id,
                                                destination_spider_ip);
                             thread.detach();
-                        }else if(message_mode == 'h')   // http
+                        }else if(message_mode == 'h' ||
+                                 message_mode == 's')   // http or https
                         {
                             config = "";
                             config += "[pipe_server_http]\n";
+
+                            config += "tls_flag:";
+                            config += tls_flag ? "true" : "false";
+                            config += "\n";
 
                             config += "pipe_listen_ip:";
                             config += pipe_ip;
@@ -6495,11 +7211,50 @@ namespace spider
         }else if(line == "[pipe_client_http]")
         {
             char mode = 'c';
+            bool tls_flag = false;
+            std::string tls_flag_string;
             std::string pipe_ip;
             std::string pipe_ip_scope_id;
             std::string pipe_destination_ip;
             std::string pipe_destination_ip_scope_id;
             std::string pipe_destination_port;
+
+
+            // tls_flag
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] error\n");
+#endif
+                return -1;
+            }
+
+
+            if(line.find("tls_flag:") != std::string::npos)
+            {
+                tls_flag_string = get_line_value(line,
+                                                 "tls_flag:");
+            }
+
+            if(tls_flag_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] [tls_flag] error\n");
+#endif
+                return -1;
+            }
+
+            if(tls_flag_string == "true")
+            {
+                tls_flag = true;
+            }else
+            {
+                tls_flag = false;
+            }
 
 
             // pipe_ip
@@ -6607,6 +7362,7 @@ namespace spider
             std::thread thread(&Spidercommand::connect_pipe_http,
                                this,
                                mode,
+                               tls_flag,
                                pipe_ip,
                                pipe_ip_scope_id,
                                pipe_destination_ip,
@@ -6703,9 +7459,48 @@ namespace spider
         }else if(line == "[pipe_server_http]")
         {
             char mode = 's';
+            bool tls_flag = false;
+            std::string tls_flag_string;
             std::string pipe_listen_ip;
             std::string pipe_listen_ip_scope_id;
             std::string pipe_listen_port;
+
+
+            // tls_flag
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] error\n");
+#endif
+                return -1;
+            }
+
+
+            if(line.find("tls_flag:") != std::string::npos)
+            {
+                tls_flag_string = get_line_value(line,
+                                                 "tls_flag:");
+            }
+
+            if(tls_flag_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_server_http] [tls_flag] error\n");
+#endif
+                return -1;
+            }
+
+            if(tls_flag_string == "true")
+            {
+                tls_flag = true;
+            }else
+            {
+                tls_flag = false;
+            }
 
 
             // pipe_listen_ip
@@ -6784,6 +7579,7 @@ namespace spider
             std::thread thread(&Spidercommand::listen_pipe_http,
                                this,
                                mode,
+                               tls_flag,
                                pipe_listen_ip,
                                pipe_listen_ip_scope_id,
                                pipe_listen_port);
@@ -8163,11 +8959,46 @@ namespace spider
             }else if(line == "[pipe_client_http]")
             {
                 char mode = 'c';
+                bool tls_flag = false;
+                std::string tls_flag_string;
                 std::string pipe_ip;
                 std::string pipe_ip_scope_id;
                 std::string pipe_destination_ip;
                 std::string pipe_destination_ip_scope_id;
                 std::string pipe_destination_port;
+
+
+                // tls_flag
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_client_http] error\n");
+                    break;
+                }
+
+
+                if(line.find("tls_flag:") != std::string::npos)
+                {
+                    tls_flag_string = get_line_value(line,
+                                                     "tls_flag:");
+                }
+
+                if(tls_flag_string.empty())
+                {
+                    std::printf("[-] [pipe_client_http] [tls_flag] error\n");
+                    break;
+                }
+
+                if(tls_flag_string == "true")
+                {
+                    tls_flag = true;
+                }else
+                {
+                    tls_flag = false;
+                }
 
 
                 // pipe_ip
@@ -8261,6 +9092,7 @@ namespace spider
                 std::thread thread(&Spidercommand::connect_pipe_http,
                                    this,
                                    mode,
+                                   tls_flag,
                                    pipe_ip,
                                    pipe_ip_scope_id,
                                    pipe_destination_ip,
@@ -8347,9 +9179,44 @@ namespace spider
             }else if(line == "[pipe_server_http]")
             {
                 char mode = 's';
+                bool tls_flag = false;
+                std::string tls_flag_string;
                 std::string pipe_listen_ip;
                 std::string pipe_listen_ip_scope_id;
                 std::string pipe_listen_port;
+
+
+                // tls_flag
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_server_http] error\n");
+                    break;
+                }
+
+
+                if(line.find("tls_flag:") != std::string::npos)
+                {
+                    tls_flag_string = get_line_value(line,
+                                                     "tls_flag:");
+                }
+
+                if(tls_flag_string.empty())
+                {
+                    std::printf("[-] [pipe_server_http] [tls_flag] error\n");
+                    break;
+                }
+
+                if(tls_flag_string == "true")
+                {
+                    tls_flag = true;
+                }else
+                {
+                    tls_flag = false;
+                }
 
 
                 // pipe_listen_ip
@@ -8418,6 +9285,7 @@ namespace spider
                 std::thread thread(&Spidercommand::listen_pipe_http,
                                    this,
                                    mode,
+                                   tls_flag,
                                    pipe_listen_ip,
                                    pipe_listen_ip_scope_id,
                                    pipe_listen_port);

@@ -92,6 +92,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 
 #pragma pack(push, 1)
 struct spider_message_header

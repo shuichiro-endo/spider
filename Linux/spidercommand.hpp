@@ -70,6 +70,7 @@ namespace spider
                         std::string pipe_listen_port);
 
         int listen_pipe_http(char mode,
+                             bool tls_flag,
                              std::string pipe_listen_ip,
                              std::string pipe_listen_ip_scope_id,
                              std::string pipe_listen_port);
@@ -152,6 +153,7 @@ namespace spider
                          std::string pipe_destination_port);
 
         int connect_pipe_http(char mode,
+                              bool tls_flag,
                               std::string pipe_ip,
                               std::string pipe_ip_scope_id,
                               std::string pipe_destination_ip,

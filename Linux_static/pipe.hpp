@@ -24,7 +24,9 @@ namespace spider
         std::shared_ptr<Spiderip> spider_ip;
         uint32_t pipe_id;
         char mode;                          // client:c server:s
-        char message_mode;                  // default:d http:h
+        char message_mode;                  // default:d http:h https:s
+        BIO *bio_tls = NULL;
+        SSL *ssl = NULL;
         std::string pipe_ip;
         std::string pipe_ip_scope_id;
         std::string pipe_listen_port;
@@ -78,6 +80,12 @@ namespace spider
 
         void set_message_mode(char message_mode);
         char get_message_mode();
+
+        void set_bio_tls(BIO *bio_tls);
+        BIO *get_bio_tls();
+
+        void set_ssl(SSL *ssl);
+        SSL *get_ssl();
 
         void set_pipe_ip(std::string pipe_ip);
         std::string get_pipe_ip();

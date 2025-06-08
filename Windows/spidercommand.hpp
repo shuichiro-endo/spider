@@ -70,6 +70,7 @@ namespace spider
                         std::string pipe_listen_port);
 
         int listen_pipe_http(char mode,
+                             BOOL tls_flag,
                              std::string pipe_listen_ip,
                              std::string pipe_listen_ip_scope_id,
                              std::string pipe_listen_port);
@@ -151,7 +152,13 @@ namespace spider
                          std::string pipe_destination_ip,
                          std::string pipe_destination_port);
 
+        void free_all_buffers(SecBufferDesc *sec_buffer_desc);
+
+        PCCERT_CONTEXT find_certificate(const HCERTSTORE h_cert_store,
+                                        const char* cert_search_string);
+
         int connect_pipe_http(char mode,
+                              BOOL tls_flag,
                               std::string pipe_ip,
                               std::string pipe_ip_scope_id,
                               std::string pipe_destination_ip,

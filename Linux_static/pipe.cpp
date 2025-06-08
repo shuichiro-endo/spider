@@ -112,6 +112,26 @@ namespace spider
         return message_mode;
     }
 
+    void Pipe::set_bio_tls(BIO *bio_tls)
+    {
+        this->bio_tls = bio_tls;
+    }
+
+    BIO *Pipe::get_bio_tls()
+    {
+        return this->bio_tls;
+    }
+
+    void Pipe::set_ssl(SSL *ssl)
+    {
+        this->ssl = ssl;
+    }
+
+    SSL *Pipe::get_ssl()
+    {
+        return this->ssl;
+    }
+
     void Pipe::set_pipe_ip(std::string pipe_ip)
     {
         this->pipe_ip = pipe_ip;
@@ -660,6 +680,7 @@ namespace spider
         struct spider_message *spider_message;
         int32_t spider_message_header_size = sizeof(struct spider_message_header);
         std::shared_ptr<Pipe> pipe;
+        bool tls_flag = this->message_mode == 's' ? true : false;
 
 
         routing_message = pop_latest_routing_message();
@@ -747,33 +768,60 @@ namespace spider
                            &writefds);
             if(ret > 0)
             {
-                sen = send(sock,
-                           buffer+send_length,
-                           len,
-                           MSG_NOSIGNAL);
-                if(sen <= 0)
+                if(tls_flag == false)   // http
                 {
-                    if(errno == EINTR)
+                    sen = send(sock,
+                               buffer+send_length,
+                               len,
+                               MSG_NOSIGNAL);
+                    if(sen <= 0)
                     {
-                        continue;
-                    }else if(errno == EAGAIN)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
-                    {
+                        if(errno == EINTR)
+                        {
+                            continue;
+                        }else if(errno == EAGAIN)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
 #ifdef _DEBUG
-                        std::printf("[-] do_http_connection_client send error: %d\n",
-                                    errno);
+                            std::printf("[-] do_http_connection_client send error: %d\n",
+                                        errno);
 #endif
-                        free(buffer);
-                        free(buffer_http_header);
-                        free(buffer_http_body);
-                        return -1;
+                            free(buffer);
+                            free(buffer_http_header);
+                            free(buffer_http_body);
+                            return -1;
+                        }
                     }
+                    send_length += sen;
+                    len -= sen;
+                }else   // https
+                {
+                    sen = SSL_write(this->ssl,
+                                    buffer+send_length,
+                                    len);
+                    if(sen <= 0)
+                    {
+                        if(BIO_should_retry(this->bio_tls))
+                        {
+                            continue;
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] do_http_connection_client SSL_write error: %s\n",
+                                        ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                            free(buffer);
+                            free(buffer_http_header);
+                            free(buffer_http_body);
+                            return -1;
+                        }
+                    }
+                    send_length += sen;
+                    len -= sen;
                 }
-                send_length += sen;
-                len -= sen;
             }
         }
 
@@ -818,35 +866,68 @@ namespace spider
             {
                 if(recv_http_header_flag == false)
                 {
-                    tmprec = recv(sock,
-                                  buffer,
-                                  buffer_http_header_size,
-                                  0);
+                    if(tls_flag == false)   // http
+                    {
+                        tmprec = recv(sock,
+                                      buffer,
+                                      buffer_http_header_size,
+                                      0);
+                    }else   // https
+                    {
+                        tmprec = SSL_read(this->ssl,
+                                          buffer,
+                                          buffer_http_header_size);
+                    }
                 }else
                 {
-                    tmprec = recv(sock,
-                                  buffer + rec,
-                                  remaining_size,
-                                  0);
+                    if(tls_flag == false)   // http
+                    {
+                        tmprec = recv(sock,
+                                      buffer + rec,
+                                      remaining_size,
+                                      0);
+                    }else   // https
+                    {
+                        tmprec = SSL_read(this->ssl,
+                                          buffer + rec,
+                                          remaining_size);
+                    }
                 }
 
                 if(tmprec <= 0)
                 {
-                    if(errno == EINTR)
+                    if(tls_flag == false)   // http
                     {
-                        continue;
-                    }else if(errno == EAGAIN)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
-                    {
+                        if(errno == EINTR)
+                        {
+                            continue;
+                        }else if(errno == EAGAIN)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
 #ifdef _DEBUG
-                        std::printf("[-] do_http_connection_client recv error: %d\n",
-                                    errno);
+                            std::printf("[-] do_http_connection_client recv error: %d\n",
+                                        errno);
 #endif
-                        free(buffer);
-                        return -1;
+                            free(buffer);
+                            return -1;
+                        }
+                    }else   // https
+                    {
+                        if(BIO_should_retry(this->bio_tls))
+                        {
+                            continue;
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] do_http_connection_client SSL_read error: %s\n",
+                                        ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                            free(buffer);
+                            return -1;
+                        }
                     }
                 }else
                 {
@@ -1000,6 +1081,7 @@ namespace spider
         struct spider_message *spider_message;
         int32_t spider_message_header_size = sizeof(struct spider_message_header);
         std::shared_ptr<Pipe> pipe;
+        bool tls_flag = this->message_mode == 's' ? true : false;
 
 
         while(1)
@@ -1031,35 +1113,68 @@ namespace spider
             {
                 if(recv_http_header_flag == false)
                 {
-                    tmprec = recv(sock,
-                                  buffer,
-                                  buffer_http_header_size,
-                                  0);
+                    if(tls_flag == false)   // http
+                    {
+                        tmprec = recv(sock,
+                                      buffer,
+                                      buffer_http_header_size,
+                                      0);
+                    }else   // https
+                    {
+                        tmprec = SSL_read(this->ssl,
+                                          buffer,
+                                          buffer_http_header_size);
+                    }
                 }else
                 {
-                    tmprec = recv(sock,
-                                  buffer + rec,
-                                  remaining_size,
-                                  0);
+                    if(tls_flag == false)   // http
+                    {
+                        tmprec = recv(sock,
+                                      buffer + rec,
+                                      remaining_size,
+                                      0);
+                    }else   // https
+                    {
+                        tmprec = SSL_read(this->ssl,
+                                          buffer + rec,
+                                          remaining_size);
+                    }
                 }
 
                 if(tmprec <= 0)
                 {
-                    if(errno == EINTR)
+                    if(tls_flag == false)   // http
                     {
-                        continue;
-                    }else if(errno == EAGAIN)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
-                    {
+                        if(errno == EINTR)
+                        {
+                            continue;
+                        }else if(errno == EAGAIN)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
 #ifdef _DEBUG
-                        std::printf("[-] do_http_connection_server recv error: %d\n",
-                                    errno);
+                            std::printf("[-] do_http_connection_server recv error: %d\n",
+                                        errno);
 #endif
-                        free(buffer);
-                        return -1;
+                            free(buffer);
+                            return -1;
+                        }
+                    }else   // https
+                    {
+                        if(BIO_should_retry(this->bio_tls))
+                        {
+                            continue;
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] do_http_connection_server SSL_read error: %s\n",
+                                        ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                            free(buffer);
+                            return -1;
+                        }
                     }
                 }else
                 {
@@ -1257,33 +1372,60 @@ namespace spider
                            &writefds);
             if(ret > 0)
             {
-                sen = send(sock,
-                           buffer+send_length,
-                           len,
-                           MSG_NOSIGNAL);
-                if(sen <= 0)
+                if(tls_flag == false)   // http
                 {
-                    if(errno == EINTR)
+                    sen = send(sock,
+                               buffer+send_length,
+                               len,
+                               MSG_NOSIGNAL);
+                    if(sen <= 0)
                     {
-                        continue;
-                    }else if(errno == EAGAIN)
-                    {
-                        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-                        continue;
-                    }else
-                    {
+                        if(errno == EINTR)
+                        {
+                            continue;
+                        }else if(errno == EAGAIN)
+                        {
+                            std::this_thread::sleep_for(std::chrono::microseconds(5000));
+                            continue;
+                        }else
+                        {
 #ifdef _DEBUG
-                        std::printf("[-] do_http_connection_server send error: %d\n",
-                                    errno);
+                            std::printf("[-] do_http_connection_server send error: %d\n",
+                                        errno);
 #endif
-                        free(buffer);
-                        free(buffer_http_header);
-                        free(buffer_http_body);
-                        return -1;
+                            free(buffer);
+                            free(buffer_http_header);
+                            free(buffer_http_body);
+                            return -1;
+                        }
                     }
+                    send_length += sen;
+                    len -= sen;
+                }else   // https
+                {
+                    sen = SSL_write(this->ssl,
+                                    buffer+send_length,
+                                    len);
+                    if(sen <= 0)
+                    {
+                        if(BIO_should_retry(this->bio_tls))
+                        {
+                            continue;
+                        }else
+                        {
+#ifdef _DEBUG
+                            std::printf("[-] do_http_connection_server SSL_write error: %s\n",
+                                        ERR_reason_error_string(ERR_peek_last_error()));
+#endif
+                            free(buffer);
+                            free(buffer_http_header);
+                            free(buffer_http_body);
+                            return -1;
+                        }
+                    }
+                    send_length += sen;
+                    len -= sen;
                 }
-                send_length += sen;
-                len -= sen;
             }
         }
 
