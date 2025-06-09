@@ -87,7 +87,7 @@ The usage is the same as the Linux version.
 usage   : spider.exe
         : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-f config_file]
-        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
+        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)] [-t sleep_ms(0-1000 ms)]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
@@ -135,7 +135,7 @@ Hide the console window.
 >
 > You need to operate from other spider.
 
-#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
+#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)] [-t sleep_ms(0-1000 ms)]
 Create pipe client node at startup.
 
 Set the ip address and port number of the destination pipe server node.

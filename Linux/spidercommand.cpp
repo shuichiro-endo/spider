@@ -1717,7 +1717,8 @@ namespace spider
                                          std::string pipe_ip,
                                          std::string pipe_ip_scope_id,
                                          std::string pipe_destination_ip,
-                                         std::string pipe_destination_port)
+                                         std::string pipe_destination_port,
+                                         int32_t sleep_ms)
     {
         int ret = 0;
         uint32_t pipe_id = 0;
@@ -2046,7 +2047,7 @@ namespace spider
                     break;
                 }
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(PIPE_MESSAGE_MODE_HTTP_SLEEP));
+                std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
             }
         }else if(family == AF_INET6)    // IPv6
         {
@@ -2299,7 +2300,7 @@ namespace spider
                     break;
                 }
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(PIPE_MESSAGE_MODE_HTTP_SLEEP));
+                std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
             }
         }else
         {
@@ -3100,6 +3101,7 @@ namespace spider
         std::string pipe_destination_ip;
         std::string pipe_destination_port;
         std::string pipe_listen_port;
+        int32_t sleep_ms = 0;
         char check = 'n';
 
 
@@ -3205,6 +3207,23 @@ namespace spider
                         continue;
                     }
 
+                    if(message_mode == 'h' ||
+                       message_mode == 's')   // http or https
+                    {
+                        std::printf("sleep (0-1000 milliseconds)                    > ");
+                        std::cin >> sleep_ms;
+                        if(std::cin.fail())
+                        {
+                            std::printf("[-] input error\n");
+                            std::cin.clear();
+                            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                        }else if(sleep_ms < 0 || sleep_ms > 1000)
+                        {
+                            sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                        }
+                    }
+
                     std::printf("\n");
                     std::printf("pipe mode                 : %c\n", pipe_mode);
                     std::printf("message mode              : %c\n", message_mode);
@@ -3215,6 +3234,11 @@ namespace spider
                     }
                     std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
                     std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
+                    if(message_mode == 'h' ||
+                       message_mode == 's')   // http or https
+                    {
+                        std::printf("sleep                     : %4d ms\n", sleep_ms);
+                    }
                     std::printf("\n");
 
                     std::printf("ok? (yes:y no:n quit:q)                        > ");
@@ -3250,7 +3274,8 @@ namespace spider
                                                pipe_ip,
                                                pipe_ip_scope_id,
                                                pipe_destination_ip,
-                                               pipe_destination_port);
+                                               pipe_destination_port,
+                                               sleep_ms);
                             thread.detach();
                         }
 
@@ -3521,6 +3546,23 @@ namespace spider
                         continue;
                     }
 
+                    if(message_mode == 'h' ||
+                       message_mode == 's')   // http or https
+                    {
+                        std::printf("sleep (0-1000 milliseconds)                    > ");
+                        std::cin >> sleep_ms;
+                        if(std::cin.fail())
+                        {
+                            std::printf("[-] input error\n");
+                            std::cin.clear();
+                            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                        }else if(sleep_ms < 0 || sleep_ms > 1000)
+                        {
+                            sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                        }
+                    }
+
                     std::printf("\n");
                     std::printf("pipe mode                 : %c\n", pipe_mode);
                     std::printf("source spider ip          : %s\n", source_spider_ip.c_str());
@@ -3533,6 +3575,11 @@ namespace spider
                     std::printf("pipe ip                   : %s\n", pipe_ip.c_str());
                     std::printf("pipe destination ip       : %s\n", pipe_destination_ip.c_str());
                     std::printf("pipe destination port     : %s\n", pipe_destination_port.c_str());
+                    if(message_mode == 'h' ||
+                       message_mode == 's')   // http or https
+                    {
+                        std::printf("sleep                     : %4d ms\n", sleep_ms);
+                    }
                     std::printf("\n");
 
                     std::printf("ok? (yes:y no:n quit:q)                        > ");
@@ -3592,6 +3639,10 @@ namespace spider
 
                             config += "pipe_destination_port:";
                             config += pipe_destination_port;
+                            config += "\n";
+
+                            config += "sleep_ms:";
+                            config += std::to_string(sleep_ms);
                             config += "\n";
 
                             std::thread thread(&Spidercommand::add_node_to_destination_spider_worker,
@@ -7213,6 +7264,8 @@ namespace spider
             std::string pipe_destination_ip;
             std::string pipe_destination_ip_scope_id;
             std::string pipe_destination_port;
+            std::string sleep_ms_string;
+            int32_t sleep_ms = 0;
 
 
             // tls_flag
@@ -7354,6 +7407,41 @@ namespace spider
             }
 
 
+            // sleep_ms
+            line = get_line(config.data(),
+                            config.size(),
+                            &line_start,
+                            &line_end);
+            if(line.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] error\n");
+#endif
+                return -1;
+            }
+
+            if(line.find("sleep_ms:") != std::string::npos)
+            {
+                sleep_ms_string = get_line_value(line,
+                                                 "sleep_ms:");
+            }
+
+            if(sleep_ms_string.empty())
+            {
+#ifdef _DEBUG
+                std::printf("[-] [pipe_client_http] [sleep_ms] error\n");
+#endif
+                return -1;
+            }
+
+            sleep_ms = std::stoi(sleep_ms_string);
+
+            if(sleep_ms < 0 || sleep_ms > 1000)
+            {
+                sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+            }
+
+
             std::thread thread(&Spidercommand::connect_pipe_http,
                                this,
                                mode,
@@ -7361,7 +7449,8 @@ namespace spider
                                pipe_ip,
                                pipe_ip_scope_id,
                                pipe_destination_ip,
-                               pipe_destination_port);
+                               pipe_destination_port,
+                               sleep_ms);
             thread.detach();
         }else if(line == "[pipe_server]")
         {
@@ -8961,6 +9050,8 @@ namespace spider
                 std::string pipe_destination_ip;
                 std::string pipe_destination_ip_scope_id;
                 std::string pipe_destination_port;
+                std::string sleep_ms_string;
+                int32_t sleep_ms = 0;
 
 
                 // tls_flag
@@ -9084,6 +9175,37 @@ namespace spider
                 }
 
 
+                // sleep_ms
+                line = get_line(config.data(),
+                                config.size(),
+                                &line_start,
+                                &line_end);
+                if(line.empty())
+                {
+                    std::printf("[-] [pipe_client_http] error\n");
+                    break;
+                }
+
+                if(line.find("sleep_ms:") != std::string::npos)
+                {
+                    sleep_ms_string = get_line_value(line,
+                                                     "sleep_ms:");
+                }
+
+                if(sleep_ms_string.empty())
+                {
+                    std::printf("[-] [pipe_client_http] [sleep_ms] error\n");
+                    break;
+                }
+
+                sleep_ms = std::stoi(sleep_ms_string);
+
+                if(sleep_ms < 0 || sleep_ms > 1000)
+                {
+                    sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                }
+
+
                 std::thread thread(&Spidercommand::connect_pipe_http,
                                    this,
                                    mode,
@@ -9091,7 +9213,8 @@ namespace spider
                                    pipe_ip,
                                    pipe_ip_scope_id,
                                    pipe_destination_ip,
-                                   pipe_destination_port);
+                                   pipe_destination_port,
+                                   sleep_ms);
                 thread.detach();
             }else if(line == "[pipe_server]")
             {

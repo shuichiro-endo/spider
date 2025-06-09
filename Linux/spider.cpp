@@ -61,7 +61,7 @@ namespace spider
         std::printf("usage   : %s\n", filename);
         std::printf("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]\n");
         std::printf("        : [-f config_file]\n");
-        std::printf("        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]\n");
+        std::printf("        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)] [-t sleep_ms(0-1000 ms)]\n");
         std::printf("        : [-r routing_mode(auto:a self:s)]\n");
         std::printf("        : [-e x(xor encryption)] [-k key(hexstring)]\n");
         std::printf("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]\n");
@@ -86,7 +86,7 @@ int main(int argc,
          char **argv)
 {
     int opt;
-    const char *optstring = "h:4:6:u:l:f:di:p:m:r:e:k:v:s";
+    const char *optstring = "h:4:6:u:l:f:di:p:m:t:r:e:k:v:s";
     opterr = 0;
     std::string spider_ipv4;
     std::string spider_ipv6_global;
@@ -109,6 +109,7 @@ int main(int argc,
     std::string pipe_destination_port;
     std::string message_mode;
     bool tls_flag = false;
+    int32_t sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
     std::string ipv6_global_prefix = "2001:";
     std::string ipv6_unique_local_prefix = "fd00:";
     std::string ipv6_link_local_prefix = "fe80:";
@@ -167,6 +168,10 @@ int main(int argc,
 
             case 'm':
                 message_mode = optarg;
+                break;
+
+            case 't':
+                sleep_ms = atoi(optarg);
                 break;
 
             case 'r':
@@ -469,6 +474,11 @@ int main(int argc,
                 tls_flag = false;
             }
 
+            if(sleep_ms < 0 || sleep_ms > 1000)
+            {
+                sleep_ms = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+            }
+
             std::thread thread(&spider::Spidercommand::connect_pipe_http,
                                spider_command,
                                mode,
@@ -476,7 +486,8 @@ int main(int argc,
                                pipe_ip,
                                pipe_ip_scope_id,
                                pipe_destination_ip,
-                               pipe_destination_port);
+                               pipe_destination_port,
+                               sleep_ms);
             thread.detach();
         }else   // default
         {

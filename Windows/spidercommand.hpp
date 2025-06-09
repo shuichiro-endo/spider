@@ -162,7 +162,8 @@ namespace spider
                               std::string pipe_ip,
                               std::string pipe_ip_scope_id,
                               std::string pipe_destination_ip,
-                              std::string pipe_destination_port);
+                              std::string pipe_destination_port,
+                              int32_t sleep_ms);
 
         void add_node_spider_pipe();
 

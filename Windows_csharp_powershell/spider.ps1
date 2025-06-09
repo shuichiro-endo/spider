@@ -15073,7 +15073,8 @@ namespace spider
                                     string pipeIp,
                                     string pipeIpScopeId,
                                     string pipeDestinationIp,
-                                    string pipeDestinationPort)
+                                    string pipeDestinationPort,
+                                    int sleepMs)
         {
             int ret = 0;
             TcpClient pipeTcpClient = null;
@@ -15214,7 +15215,7 @@ namespace spider
                             break;
                         }
 
-                        Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
+                        Thread.Sleep(sleepMs);
                     }
                 }else
                 {
@@ -15338,7 +15339,7 @@ namespace spider
                             break;
                         }
 
-                        Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
+                        Thread.Sleep(sleepMs);
                     }
                 }
             }catch(Exception ex)
@@ -15369,6 +15370,7 @@ namespace spider
             string pipeIpScopeId = parameters[3] as string;
             string pipeDestinationIp = parameters[4] as string;
             string pipeDestinationPort = parameters[5] as string;
+            int sleepMs = (int)parameters[6];
 
 
             if(pipeIp != null &&
@@ -15381,7 +15383,8 @@ namespace spider
                                           pipeIp,
                                           pipeIpScopeId,
                                           pipeDestinationIp,
-                                          pipeDestinationPort);
+                                          pipeDestinationPort,
+                                          sleepMs);
             }
 
             return;
@@ -15841,6 +15844,7 @@ namespace spider
             string pipeDestinationIp = "";
             string pipeDestinationPort = "";
             string pipeListenPort = "";
+            int sleepMs = 0;
             string input = "";
             byte[] tmp;
             char check = 'n';
@@ -15916,6 +15920,28 @@ namespace spider
                         tmp = Encoding.UTF8.GetBytes(input.Trim());
                         pipeDestinationPort = Encoding.UTF8.GetString(tmp);
 
+                        if(messageMode == 'h' ||
+                           messageMode == 's')   // http or https
+                        {
+                            Console.Write("sleep (0-1000 milliseconds)                    > ");
+                            input = Console.ReadLine();
+                            input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                            try
+                            {
+                                sleepMs = int.Parse(input);
+                            }catch(Exception ex)
+                            {
+                                Console.WriteLine("[-] input error: {0}",
+                                                  ex.Message);
+                                sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                            }
+
+                            if(sleepMs < 0 || sleepMs > 1000)
+                            {
+                                sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                            }
+                        }
+
                         Console.WriteLine("");
                         Console.WriteLine("pipe mode                 : {0}", pipeMode);
                         Console.WriteLine("messagemode mode          : {0}", messageMode);
@@ -15926,6 +15952,11 @@ namespace spider
                         }
                         Console.WriteLine("pipe destination ip       : {0}", pipeDestinationIp);
                         Console.WriteLine("pipe destination port     : {0}", pipeDestinationPort);
+                        if(messageMode == 'h' ||
+                           messageMode == 's')   // http or https
+                        {
+                            Console.WriteLine("sleep                     : {0,4} ms", sleepMs);
+                        }
                         Console.WriteLine("");
 
                         Console.Write("ok? (yes:y no:n quit:q)                        > ");
@@ -15952,7 +15983,8 @@ namespace spider
                                                            pipeIp,
                                                            pipeIpScopeId,
                                                            pipeDestinationIp,
-                                                           pipeDestinationPort};
+                                                           pipeDestinationPort,
+                                                           sleepMs};
 
                                     Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipeHttp));
                                     thread.Start(parameters);
@@ -16147,6 +16179,28 @@ namespace spider
                         tmp = Encoding.UTF8.GetBytes(input.Trim());
                         pipeDestinationPort = Encoding.UTF8.GetString(tmp);
 
+                        if(messageMode == 'h' ||
+                           messageMode == 's')   // http or https
+                        {
+                            Console.Write("sleep (0-1000 milliseconds)                    > ");
+                            input = Console.ReadLine();
+                            input = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+                            try
+                            {
+                                sleepMs = int.Parse(input);
+                            }catch(Exception ex)
+                            {
+                                Console.WriteLine("[-] input error: {0}",
+                                                  ex.Message);
+                                sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                            }
+
+                            if(sleepMs < 0 || sleepMs > 1000)
+                            {
+                                sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                            }
+                        }
+
                         Console.WriteLine("");
                         Console.WriteLine("pipe mode                 : {0}", pipeMode);
                         Console.WriteLine("source spider ip          : {0}", sourceSpiderIp);
@@ -16159,6 +16213,11 @@ namespace spider
                         Console.WriteLine("pipe ip                   : {0}", pipeIp);
                         Console.WriteLine("pipe destination ip       : {0}", pipeDestinationIp);
                         Console.WriteLine("pipe destination port     : {0}", pipeDestinationPort);
+                        if(messageMode == 'h' ||
+                           messageMode == 's')   // http or https
+                        {
+                            Console.WriteLine("sleep                     : {0,4} ms", sleepMs);
+                        }
                         Console.WriteLine("");
 
                         Console.Write("ok? (yes:y no:n quit:q)                        > ");
@@ -16211,6 +16270,10 @@ namespace spider
 
                                 config += "pipe_destination_port:";
                                 config += pipeDestinationPort;
+                                config += "\n";
+
+                                config += "sleep_ms:";
+                                config += sleepMs.ToString();
                                 config += "\n";
 
                                 parameters = new object[] {config,
@@ -19422,6 +19485,8 @@ namespace spider
                     string pipeIpScopeId = "";
                     string pipeDestinationIp = "";
                     string pipeDestinationPort = "";
+                    string sleepMsString = "";
+                    int sleepMs = 0;
                     object[] parameters;
 
 
@@ -19550,12 +19615,45 @@ namespace spider
                     }
 
 
+                    // sleep_ms
+                    line = lines[index];
+                    index++;
+                    if(line == null)
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] error");
+#endif
+                        return -1;
+                    }
+
+                    if(line.StartsWith("sleep_ms:", StringComparison.Ordinal))
+                    {
+                        sleepMsString = line.Substring(line.IndexOf(":") + 1);
+                    }
+
+                    if(string.IsNullOrEmpty(sleepMsString))
+                    {
+#if DEBUGPRINT
+                        Console.WriteLine("[-] [pipe_client_http] [sleep_ms] error");
+#endif
+                        return -1;
+                    }
+
+                    sleepMs = int.Parse(sleepMsString);
+
+                    if(sleepMs < 0 || sleepMs > 1000)
+                    {
+                        sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                    }
+
+
                     parameters = new object[] {mode,
                                                tlsFlag,
                                                pipeIp,
                                                pipeIpScopeId,
                                                pipeDestinationIp,
-                                               pipeDestinationPort};
+                                               pipeDestinationPort,
+                                               sleepMs};
 
                     Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipeHttp));
                     thread.Start(parameters);
@@ -21022,6 +21120,8 @@ namespace spider
                         string pipeIpScopeId = "";
                         string pipeDestinationIp = "";
                         string pipeDestinationPort = "";
+                        string sleepMsString = "";
+                        int sleepMs = 0;
                         object[] parameters;
 
 
@@ -21128,12 +21228,40 @@ namespace spider
                         }
 
 
+                        // sleep_ms
+                        line = getLine(lineEnumerator);
+                        if(line == null)
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] error");
+                            break;
+                        }
+
+                        if(line.StartsWith("sleep_ms:"))
+                        {
+                            sleepMsString = line.Substring(line.IndexOf(":") + 1);
+                        }
+
+                        if(string.IsNullOrEmpty(sleepMsString))
+                        {
+                            Console.WriteLine("[-] [pipe_client_http] [sleep_ms] error");
+                            break;
+                        }
+
+                        sleepMs = int.Parse(sleepMsString);
+
+                        if(sleepMs < 0 || sleepMs > 1000)
+                        {
+                            sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                        }
+
+
                         parameters = new object[] {mode,
                                                    tlsFlag,
                                                    pipeIp,
                                                    pipeIpScopeId,
                                                    pipeDestinationIp,
-                                                   pipeDestinationPort};
+                                                   pipeDestinationPort,
+                                                   sleepMs};
 
                         Thread thread = new Thread(new ParameterizedThreadStart(ConnectPipeHttp));
                         thread.Start(parameters);
@@ -22299,6 +22427,7 @@ namespace spider
         private const string SPIDER_COMMAND_CLOSE_CLIENT_LISTENER_TCP                    = "9";
         private const string SPIDER_COMMAND_EXIT                                         = "0";
         private const int SW_HIDE = 0;
+        private const int PIPE_MESSAGE_MODE_HTTP_SLEEP = 300;
 
 
         private static void PrintTitle()
@@ -22322,7 +22451,7 @@ namespace spider
             Console.WriteLine("usage   : {0}", fileName);
             Console.WriteLine("        : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]");
             Console.WriteLine("        : [-f config_file]");
-            Console.WriteLine("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]");
+            Console.WriteLine("        : [-d (hide)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)] [-t sleep_ms(0-1000 ms)]");
             Console.WriteLine("        : [-r routing_mode(auto:a self:s)]");
             Console.WriteLine("        : [-e x(xor encryption)] [-k key(hexstring)]");
             Console.WriteLine("        : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]");
@@ -22367,6 +22496,7 @@ namespace spider
             string pipeDestinationPort = "";
             string messageMode = "";
             bool tlsFlag = false;
+            int sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
             string routingMode = "a";
             string encryptionType = "";
             string key = "";
@@ -22454,6 +22584,22 @@ namespace spider
                         if(i + 1 < args.Length)
                         {
                             messageMode = args[i + 1];
+                            i++;
+                        }
+                        break;
+
+                    case "-t":
+                        if(i + 1 < args.Length)
+                        {
+                            try
+                            {
+                                sleepMs = int.Parse(args[i + 1]);
+                            }catch(Exception ex)
+                            {
+                                Console.WriteLine("[-] sleep_ms error: {0}",
+                                                  ex.Message);
+                                sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                            }
                             i++;
                         }
                         break;
@@ -22716,12 +22862,18 @@ namespace spider
                         tlsFlag = false;
                     }
 
+                    if(sleepMs < 0 || sleepMs > 1000)
+                    {
+                        sleepMs = PIPE_MESSAGE_MODE_HTTP_SLEEP;
+                    }
+
                     parameters = new object[] {mode,
                                                tlsFlag,
                                                pipeIp,
                                                pipeIpScopeId,
                                                pipeDestinationIp,
-                                               pipeDestinationPort};
+                                               pipeDestinationPort,
+                                               sleepMs};
                     Thread thread = new Thread(new ParameterizedThreadStart(spiderCommand.ConnectPipeHttp));
                     thread.Start(parameters);
                 }else   // default

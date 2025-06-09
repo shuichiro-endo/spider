@@ -89,7 +89,7 @@ cp tools/tls/pipe_server_https_certificate.pem Linux/
 usage   : ./spider
         : [-4 spider_ipv4] [-6 spider_ipv6_global] [-u spider_ipv6_unique_local] [-l spider_ipv6_link_local]
         : [-f config_file]
-        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
+        : [-d (daemon)] [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)] [-t sleep_ms(0-1000 ms)]
         : [-r routing_mode(auto:a self:s)]
         : [-e x(xor encryption)] [-k key(hexstring)]
         : [-e a(aes-256-cbc encryption)] [-k key(hexstring)] [-v iv(hexstring)]
@@ -144,7 +144,7 @@ ps aux | grep "spider" | grep -v grep | awk '{print $2}' | xargs kill -SIGUSR1
 >
 > You need to operate from other spider.
 
-#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)]
+#### [-i pipe_destination_ip] [-p pipe_destination_port] [-m message_mode(default:d http:h https:s)] [-t sleep_ms(0-1000 ms)]
 Create pipe client node at startup.
 
 Set the ip address and port number of the destination pipe server node.
@@ -532,6 +532,9 @@ Set the ip address of the destination pipe server node.
 
 #### pipe destination port (pipe client)
 Set the port number of the destination pipe server node.
+
+#### sleep ms (pipe client message mode (http, https))
+Set sleep time (milliseconds) after HTTP connection.
 
 ### 2: add node (spider client)
 > [!IMPORTANT]
