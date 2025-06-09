@@ -2313,6 +2313,9 @@ namespace spider
 
                 if(error_count >= 10)
                 {
+                    std::printf("[-] connect_pipe_http error\n");
+                    std::printf("[-] close pipe client: %u\n",
+                                pipe_key);
                     pipe_manager->erase_pipe(pipe_key);
                     break;
                 }
@@ -2760,6 +2763,9 @@ namespace spider
 
                 if(error_count >= 10)
                 {
+                    std::printf("[-] connect_pipe_http error\n");
+                    std::printf("[-] close pipe client: %u\n",
+                                pipe_key);
                     pipe_manager->erase_pipe(pipe_key);
                     break;
                 }

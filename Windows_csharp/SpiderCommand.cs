@@ -1609,6 +1609,9 @@ namespace spider
 
                         if(errorCount >= 10)
                         {
+                            Console.WriteLine("[-] ConnectPipeHttp error");
+                            Console.WriteLine("[-] close pipe client: {0}",
+                                              pipeKey);
                             pipeManager.ErasePipe(pipeKey);
                             break;
                         }
@@ -1734,6 +1737,9 @@ namespace spider
 
                         if(errorCount >= 10)
                         {
+                            Console.WriteLine("[-] ConnectPipeHttp error");
+                            Console.WriteLine("[-] close pipe client: {0}",
+                                              pipeKey);
                             pipeManager.ErasePipe(pipeKey);
                             break;
                         }
