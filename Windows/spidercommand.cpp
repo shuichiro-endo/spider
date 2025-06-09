@@ -1816,6 +1816,7 @@ namespace spider
         std::shared_ptr<Pipe> pipe = nullptr;
         uint32_t pipe_key = 0;
         char message_mode = tls_flag ? 's' : 'h';
+        int32_t error_count = 0;
 
 
         std::memset((char *)&pipe_dest_addr,
@@ -2291,19 +2292,10 @@ namespace spider
                 ret = pipe->do_http_connection_client();
                 if(ret < 0)
                 {
-                    if(tls_flag == true)
-                    {
-                        pipe->set_ctxt_handle(NULL);
-                        pipe->set_stream_sizes({0});
-
-                        DeleteSecurityContext(&ctxt_handle);
-                        FreeCredentialsHandle(&cred_handle);
-                    }
-
-                    pipe->set_sock(-1);
-                    closesocket(pipe_sock);
-                    pipe_manager->erase_pipe(pipe_key);
-                    break;
+                    error_count++;
+                }else
+                {
+                    error_count = 0;    // reset
                 }
 
                 if(tls_flag == true)
@@ -2317,6 +2309,12 @@ namespace spider
 
                 pipe->set_sock(-1);
                 closesocket(pipe_sock);
+
+                if(error_count >= 10)
+                {
+                    pipe_manager->erase_pipe(pipe_key);
+                    break;
+                }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(PIPE_MESSAGE_MODE_HTTP_SLEEP));
             }
@@ -2741,19 +2739,10 @@ namespace spider
                 ret = pipe->do_http_connection_client();
                 if(ret < 0)
                 {
-                    if(tls_flag == true)
-                    {
-                        pipe->set_ctxt_handle(NULL);
-                        pipe->set_stream_sizes({0});
-
-                        DeleteSecurityContext(&ctxt_handle);
-                        FreeCredentialsHandle(&cred_handle);
-                    }
-
-                    pipe->set_sock(-1);
-                    closesocket(pipe_sock);
-                    pipe_manager->erase_pipe(pipe_key);
-                    break;
+                    error_count++;
+                }else
+                {
+                    error_count = 0;    // reset
                 }
 
                 if(tls_flag == true)
@@ -2767,6 +2756,12 @@ namespace spider
 
                 pipe->set_sock(-1);
                 closesocket(pipe_sock);
+
+                if(error_count >= 10)
+                {
+                    pipe_manager->erase_pipe(pipe_key);
+                    break;
+                }
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(PIPE_MESSAGE_MODE_HTTP_SLEEP));
             }

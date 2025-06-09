@@ -15083,6 +15083,7 @@ namespace spider
             uint pipeKey = 0;
             string ipv6LinkLocalPrefix = "fe80:";
             char messageMode = tlsFlag ? 's' : 'h';
+            int errorCount = 0;
 
 
             try
@@ -15165,8 +15166,10 @@ namespace spider
                                 ret = pipe.DoHttpConnectionClient();
                                 if(ret < 0)
                                 {
-                                    pipeManager.ErasePipe(pipeKey);
-                                    break;
+                                    errorCount++;
+                                }else
+                                {
+                                    errorCount = 0;     // reset
                                 }
                             }catch(Exception)
                             {
@@ -15193,18 +15196,22 @@ namespace spider
                             ret = pipe.DoHttpConnectionClient();
                             if(ret < 0)
                             {
-                                pipe.TcpClient = null;
-                                pipe.Sock = IntPtr.Zero;
-                                pipe.Stream = null;
-                                pipeTcpClient.Dispose();
-                                pipeManager.ErasePipe(pipeKey);
-                                break;
+                                errorCount++;
+                            }else
+                            {
+                                errorCount = 0;     // reset
                             }
 
                             pipe.TcpClient = null;
                             pipe.Sock = IntPtr.Zero;
                             pipe.Stream = null;
                             pipeTcpClient.Dispose();
+                        }
+
+                        if(errorCount >= 10)
+                        {
+                            pipeManager.ErasePipe(pipeKey);
+                            break;
                         }
 
                         Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
@@ -15283,8 +15290,10 @@ namespace spider
                                 ret = pipe.DoHttpConnectionClient();
                                 if(ret < 0)
                                 {
-                                    pipeManager.ErasePipe(pipeKey);
-                                    break;
+                                    errorCount++;
+                                }else
+                                {
+                                    errorCount = 0;     // reset
                                 }
                             }catch(Exception)
                             {
@@ -15311,18 +15320,22 @@ namespace spider
                             ret = pipe.DoHttpConnectionClient();
                             if(ret < 0)
                             {
-                                pipe.TcpClient = null;
-                                pipe.Sock = IntPtr.Zero;
-                                pipe.Stream = null;
-                                pipeTcpClient.Dispose();
-                                pipeManager.ErasePipe(pipeKey);
-                                break;
+                                errorCount++;
+                            }else
+                            {
+                                errorCount = 0;     // reset
                             }
 
                             pipe.TcpClient = null;
                             pipe.Sock = IntPtr.Zero;
                             pipe.Stream = null;
                             pipeTcpClient.Dispose();
+                        }
+
+                        if(errorCount >= 10)
+                        {
+                            pipeManager.ErasePipe(pipeKey);
+                            break;
                         }
 
                         Thread.Sleep(PIPE_MESSAGE_MODE_HTTP_SLEEP);
