@@ -711,7 +711,7 @@ namespace spider
                                    int32_t *input_length,
                                    char *output,
                                    int32_t output_length,
-                                   int32_t *decrypt_data_length,
+                                   int32_t *decrypted_data_length,
                                    int32_t *remaining_size)
     {
         int message_length = 0;
@@ -771,6 +771,9 @@ namespace spider
 
                 for(int i=0; i<4; i++)
                 {
+#ifdef DEBUGPRINT
+//                std::printf("[+] sec_buffer[%d].BufferType: %d, sec_buffer[%d].cbBuffer: %d\n", i, sec_buffer[i].BufferType, i, sec_buffer[i].cbBuffer);
+#endif
                     if(sec_buffer[i].BufferType == SECBUFFER_MISSING)
                     {
                         *remaining_size = sec_buffer[i].cbBuffer;
@@ -796,11 +799,11 @@ namespace spider
 
             if(sec_buffer[1].BufferType == SECBUFFER_DATA)
             {
-                std::memcpy(output + *decrypt_data_length,
+                std::memcpy(output + *decrypted_data_length,
                             sec_buffer[1].pvBuffer,
                             sec_buffer[1].cbBuffer);
 
-                *decrypt_data_length += sec_buffer[1].cbBuffer;
+                *decrypted_data_length += sec_buffer[1].cbBuffer;
 
                 if(sec_buffer[3].cbBuffer != 0)
                 {
@@ -882,7 +885,8 @@ namespace spider
         int32_t spider_message_header_size = sizeof(struct spider_message_header);
         std::shared_ptr<Pipe> pipe;
         BOOL tls_flag = this->message_mode == 's' ? true : false;
-        int32_t decrypt_data_length = 0;
+        int32_t decrypted_data_length = 0;
+        int32_t completed_length = 0;
         int32_t count = 0;
         int32_t p = 0;
 
@@ -1177,7 +1181,7 @@ namespace spider
         http_body_length = 0;
         remaining_size = 0;
         tmprec = 0;
-        decrypt_data_length = 0;
+        decrypted_data_length = 0;
 
 
         while(1)
@@ -1366,15 +1370,16 @@ namespace spider
 
                             ret = decrypt_data_tls(tmp,
                                                    &tmprec,
-                                                   buffer,
-                                                   buffer_size,
-                                                   &decrypt_data_length,
+                                                   buffer + completed_length,
+                                                   buffer_size - completed_length,
+                                                   &decrypted_data_length,
                                                    &remaining_size);
                             if(ret == 1)    // SEC_E_INCOMPLETE_MESSAGE
                             {
                                 continue;
                             }else if(ret == 2)  // SEC_E_DECRYPT_FAILURE
                             {
+                                decrypted_data_length = 0;
                                 tmprec = 0;
                                 std::memset(tmp,
                                             0,
@@ -1416,6 +1421,23 @@ namespace spider
                                     free(buffer2);
                                     free(tmp);
                                     return -1;
+                                }
+
+                                completed_length += decrypted_data_length;
+
+                                decrypted_data_length = 0;
+                                tmprec = 0;
+                                std::memset(tmp,
+                                            0,
+                                            buffer_size);
+
+                                remaining_size = total_length - completed_length;
+#ifdef DEBUGPRINT
+//                                std::printf("[+] remaining_size: %d\n", remaining_size);
+#endif
+                                if(remaining_size > 0)
+                                {
+                                    continue;
                                 }
 
                                 break;
@@ -1541,7 +1563,8 @@ namespace spider
         int32_t spider_message_header_size = sizeof(struct spider_message_header);
         std::shared_ptr<Pipe> pipe;
         BOOL tls_flag = this->message_mode == 's' ? true : false;
-        int32_t decrypt_data_length = 0;
+        int32_t decrypted_data_length = 0;
+        int32_t completed_length = 0;
         int32_t count = 0;
         int32_t p = 0;
 
@@ -1728,15 +1751,16 @@ namespace spider
 
                             ret = decrypt_data_tls(tmp,
                                                    &tmprec,
-                                                   buffer,
-                                                   buffer_size,
-                                                   &decrypt_data_length,
+                                                   buffer + completed_length,
+                                                   buffer_size - completed_length,
+                                                   &decrypted_data_length,
                                                    &remaining_size);
                             if(ret == 1)    // SEC_E_INCOMPLETE_MESSAGE
                             {
                                 continue;
                             }else if(ret == 2)  // SEC_E_DECRYPT_FAILURE
                             {
+                                decrypted_data_length = 0;
                                 tmprec = 0;
                                 std::memset(tmp,
                                             0,
@@ -1778,6 +1802,23 @@ namespace spider
                                     free(buffer2);
                                     free(tmp);
                                     return -1;
+                                }
+
+                                completed_length += decrypted_data_length;
+
+                                decrypted_data_length = 0;
+                                tmprec = 0;
+                                std::memset(tmp,
+                                            0,
+                                            buffer_size);
+
+                                remaining_size = total_length - completed_length;
+#ifdef DEBUGPRINT
+//                                std::printf("[+] remaining_size: %d\n", remaining_size);
+#endif
+                                if(remaining_size > 0)
+                                {
+                                    continue;
                                 }
 
                                 break;

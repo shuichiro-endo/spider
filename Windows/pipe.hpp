@@ -121,7 +121,7 @@ namespace spider
                                  int32_t *input_length,
                                  char *output,
                                  int32_t output_length,
-                                 int32_t *decrypt_data_length,
+                                 int32_t *decrypted_data_length,
                                  int32_t *remaining_size);
         int32_t do_http_connection_client();
         int32_t do_http_connection_server();
