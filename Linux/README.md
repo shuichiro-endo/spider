@@ -83,7 +83,7 @@ cp tools/tls/pipe_server_https_certificate.pem Linux/
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                 Linux Ver: 2.5   Author: Shuichiro Endo  
+        =-    -:                 Linux Ver: 2.6   Author: Shuichiro Endo  
 
 
 usage   : ./spider
@@ -193,7 +193,7 @@ The spider with this option set prevents the spider server from being generated.
   :-.  ::+=-:--=:=*-             _//_// _// _//_/   _//_/         _//     
          -+: ++-  -*-        _// _//_//     _// _// _//  _////   _///     
         :*-  :*-   .:.              _//                                   
-        =-    -:                 Linux Ver: 2.5   Author: Shuichiro Endo  
+        =-    -:                 Linux Ver: 2.6   Author: Shuichiro Endo  
 
 
 --------------------------------- spider ---------------------------------
